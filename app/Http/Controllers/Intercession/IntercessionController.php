@@ -1,0 +1,532 @@
+<?php
+
+namespace App\Http\Controllers\Intercession;
+
+use App\Http\Controllers\Controller;
+use App\Models\Intercession\SpiritualForm as Form;
+use App\Models\Intercession\FormSubmission;
+use App\Models\Intercession\ActionPlan;
+use App\Models\Intercession\DailyDevotion;
+use App\Models\User\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class IntercessionController extends Controller
+{
+    public function index()
+{
+    // Forms data
+    $stats = [
+        'total_forms' => 0,
+        'my_attempts' => 0,
+        'best_avg' => 0,
+    ];
+    $availableForms = collect();
+    $mySubmissions = collect();
+    $allForms = collect();
+    
+    try {
+        $stats['total_forms'] = Form::count() ?? 0;
+        $stats['my_attempts'] = FormSubmission::where('user_id', auth()->id())->count() ?? 0;
+        $stats['best_avg'] = FormSubmission::where('user_id', auth()->id())->avg('score') ?? 0;
+        $availableForms = Form::where('is_active', true)->get();
+        $mySubmissions = FormSubmission::where('user_id', auth()->id())->with('form')->get();
+        $allForms = Form::all();
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    
+    // Action Plans data
+    $actionPlans = collect();
+    $totalActionPlans = 0;
+    $completedPlans = 0;
+    $inProgressPlans = 0;
+    $pendingPlans = 0;
+    $overallProgress = 0;
+    
+    try {
+        $actionPlans = ActionPlan::where('user_id', auth()->id())->get() ?? collect();
+        $totalActionPlans = $actionPlans->count();
+        $completedPlans = $actionPlans->where('status', 'completed')->count();
+        $inProgressPlans = $actionPlans->where('status', 'in-progress')->count();
+        $pendingPlans = $actionPlans->where('status', 'pending')->count();
+        $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    
+    $users = collect();
+    try {
+        $users = User::all();
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    
+    // Devotions data
+    $todayDevotion = null;
+    $hasCompletedToday = false;
+    $allDevotions = collect(); // Initialize as empty collection
+    
+    try {
+        $todayDevotion = DailyDevotion::getTodaysDevotion();
+        
+        if ($todayDevotion && auth()->check()) {
+            $hasCompletedToday = $todayDevotion->isCompletedByUser(auth()->id());
+        }
+        
+        $allDevotions = DailyDevotion::orderBy('date', 'desc')->get();
+        
+        if (auth()->check()) {
+            foreach ($allDevotions as $devotion) {
+                $devotion->completed_by_user = $devotion->isCompletedByUser(auth()->id());
+            }
+        }
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    
+    // ========== ARCHIVES SECTIONS ==========
+    $archiveSections = collect(); // Initialize as empty collection
+    
+    try {
+        $archiveSections = DB::table('archive_sections')
+            ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
+            ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
+            ->groupBy('archive_sections.id')
+            ->orderBy('archive_sections.created_at', 'desc')
+            ->get();
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    // ========== END ARCHIVES SECTIONS ==========
+    
+    return view('modules.intercession.index', compact(
+        'stats', 
+        'availableForms', 
+        'mySubmissions', 
+        'allForms',
+        'todayDevotion', 
+        'hasCompletedToday', 
+        'allDevotions',
+        'actionPlans', 
+        'users', 
+        'totalActionPlans', 
+        'completedPlans',
+        'inProgressPlans', 
+        'pendingPlans', 
+        'overallProgress',
+        'archiveSections'  // Add this
+    ));
+}
+    
+    public function storeActionPlan(Request $request)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id'
+        ]);
+        
+        $userId = auth()->id();
+        
+        $planId = DB::table('action_plans')->insertGetId([
+            'title' => $request->title,
+            'description' => $request->description,
+            'due_date' => $request->due_date,
+            'assigned_to' => $request->assigned_to ?? $userId,
+            'created_by' => $userId,
+            'user_id' => $userId,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Action plan created successfully',
+                'plan_id' => $planId
+            ]);
+        }
+        
+        return redirect()->back()->with('success', 'Action plan created successfully');
+        
+    } catch (\Exception $e) {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+        return redirect()->back()->with('error', $e->getMessage());
+    }
+}
+    
+    public function updateActionPlanStatus(Request $request, $id)
+    {
+        try {
+            DB::table('action_plans')->where('id', $id)->update([
+                'status' => $request->status,
+                'updated_at' => now()
+            ]);
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function deleteActionPlan($id)
+    {
+        try {
+            DB::table('action_plan_tasks')->where('action_plan_id', $id)->delete();
+            DB::table('action_plans')->where('id', $id)->delete();
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function editActionPlan($id)
+    {
+        $plan = DB::table('action_plans')->where('id', $id)->first();
+        $tasks = DB::table('action_plan_tasks')->where('action_plan_id', $id)->get();
+        
+        return response()->json([
+            'success' => true,
+            'plan' => $plan,
+            'tasks' => $tasks
+        ]);
+    }
+    
+    public function updateActionPlan(Request $request, $id)
+    {
+        try {
+            DB::table('action_plans')->where('id', $id)->update([
+                'title' => $request->title,
+                'description' => $request->description,
+                'due_date' => $request->due_date,
+                'status' => $request->status,
+                'updated_at' => now()
+            ]);
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function completeDevotion(Request $request, $id)
+    {
+        try {
+            $userId = auth()->id();
+            
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'Please login first'], 401);
+            }
+            
+            // Check if already completed
+            $exists = DB::selectOne(
+                "SELECT * FROM user_devotion_completions WHERE user_id = ? AND devotion_id = ?",
+                [$userId, $id]
+            );
+            
+            if (!$exists) {
+                DB::insert(
+                    "INSERT INTO user_devotion_completions (user_id, devotion_id, completed_at) VALUES (?, ?, NOW())",
+                    [$userId, $id]
+                );
+            }
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Devotion completed successfully']);
+            }
+            
+            return redirect()->back()->with('success', 'Devotion completed successfully');
+            
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function storeDevotion(Request $request)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'date' => 'required|date',
+            'bible_verse' => 'nullable|string'
+        ]);
+        
+        $id = DB::table('devotions')->insertGetId([
+            'title' => $request->title,
+            'content' => $request->content,
+            'content_rw' => $request->content_rw,
+            'bible_verse' => $request->bible_verse,
+            'date' => $request->date,
+            'is_active' => $request->has('is_active'),
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true, 'message' => 'Devotion created successfully']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+public function storePrayerRequest(Request $request)
+{
+    try {
+        $request->validate([
+            'devotion_id' => 'required|integer',
+            'prayer_request' => 'required|string|min:3'
+        ]);
+        
+        $id = DB::table('prayer_requests')->insertGetId([
+            'devotion_id' => $request->devotion_id,
+            'user_id' => auth()->id(),
+            'request' => $request->prayer_request,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Prayer request submitted successfully',
+            'request_id' => $id
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+public function updateDevotion(Request $request, $id)
+{
+    try {
+        DB::table('devotions')->where('id', $id)->update([
+            'title' => $request->title,
+            'content' => $request->content,
+            'content_rw' => $request->content_rw,
+            'bible_verse' => $request->bible_verse,
+            'date' => $request->date,
+            'is_active' => $request->has('is_active'),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function editDevotion($id)
+{
+    $devotion = DB::table('devotions')->where('id', $id)->first();
+    return response()->json(['success' => true, 'devotion' => $devotion]);
+}
+
+public function deleteDevotion($id)
+{
+    try {
+        DB::table('user_devotion_completions')->where('devotion_id', $id)->delete();
+        DB::table('devotions')->where('id', $id)->delete();
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function showDevotion($id)
+{
+    $devotion = DB::table('devotions')->where('id', $id)->first();
+    $hasCompleted = false;
+    
+    if (auth()->check()) {
+        $completed = DB::selectOne("SELECT * FROM user_devotion_completions WHERE user_id = ? AND devotion_id = ?", 
+            [auth()->id(), $id]);
+        $hasCompleted = !is_null($completed);
+    }
+    
+    return view('modules.intercession.partials.devotion-show', compact('devotion', 'hasCompleted'));
+}
+
+// ==================== ARCHIVES METHODS ====================
+
+// Store a new section
+// ==================== ARCHIVES METHODS ====================
+
+public function storeArchiveSection(Request $request)
+{
+    try {
+        $request->validate([
+            'name' => 'required|string|max:255'
+        ]);
+        
+        $id = DB::table('archive_sections')->insertGetId([
+            'name' => $request->name,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Section created successfully',
+            'section_id' => $id
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function updateArchiveSection(Request $request, $id)
+{
+    try {
+        DB::table('archive_sections')->where('id', $id)->update([
+            'name' => $request->name,
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function deleteArchiveSection($id)
+{
+    try {
+        DB::table('archive_pages')->where('section_id', $id)->delete();
+        DB::table('archive_sections')->where('id', $id)->delete();
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function getSectionPages($id)
+{
+    try {
+        $section = DB::table('archive_sections')->where('id', $id)->first();
+        $pages = DB::table('archive_pages')
+            ->where('section_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        foreach ($pages as $page) {
+            $page->excerpt = Str::limit(strip_tags($page->content), 100);
+            $page->formatted_date = date('F j, Y', strtotime($page->created_at));
+        }
+        
+        return response()->json([
+            'success' => true,
+            'section_name' => $section->name ?? 'Pages',
+            'pages' => $pages
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function storeArchivePage(Request $request)
+{
+    try {
+        $request->validate([
+            'section_id' => 'required|integer',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+        
+        $id = DB::table('archive_pages')->insertGetId([
+            'section_id' => $request->section_id,
+            'title' => $request->title,
+            'content' => $request->content,
+            'is_published' => $request->has('is_published'),
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Page created successfully',
+            'page_id' => $id
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function updateArchivePage(Request $request, $id)
+{
+    try {
+        DB::table('archive_pages')->where('id', $id)->update([
+            'section_id' => $request->section_id,
+            'title' => $request->title,
+            'content' => $request->content,
+            'is_published' => $request->has('is_published'),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function deleteArchivePage($id)
+{
+    try {
+        DB::table('archive_pages')->where('id', $id)->delete();
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function editArchivePage($id)
+{
+    try {
+        $page = DB::table('archive_pages')->where('id', $id)->first();
+        return response()->json(['success' => true, 'page' => $page]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function showArchivePage($id)
+{
+    $page = DB::table('archive_pages')->where('id', $id)->first();
+    
+    if (!$page) {
+        abort(404);
+    }
+    
+    return view('modules.intercession.partials.archive-page-show', compact('page'));
+}
+
+}
