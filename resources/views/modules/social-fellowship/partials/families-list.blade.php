@@ -81,12 +81,9 @@
                     </div>
                 </div>
                 
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Select Parent *</label>
-                    <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Select Parent *</label>
-    <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Select Parent *</label>
     <div id="parentListContainer" class="border border-gray-300 rounded-lg overflow-y-auto bg-white" style="max-height: 200px;">
         <div id="parentListItems">
             @foreach($availableUsers ?? [] as $user)

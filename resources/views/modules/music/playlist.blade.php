@@ -10,7 +10,7 @@
 ])
 
 <div class="bg-white rounded-lg shadow-lg p-6">
-    <!-- Add to Playlist Section - MOVED TO TOP -->
+    <!-- Add to Playlist Section -->
     @if($canEditPlaylists && $canViewSongs)
     <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
@@ -37,12 +37,13 @@
     </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- PLAYLISTS COLUMN -->
-        <div>
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- PLAYLISTS COLUMN - Fixed height with scroll -->
+        <div class="lg:w-1/2">
             <div class="flex justify-between items-center mb-3 pb-2 border-b">
                 <h4 class="font-semibold text-gray-700">
                     <i class="fas fa-list text-blue-600 mr-2"></i>Playlists
+                    <span class="text-xs text-gray-400 ml-2">({{ count($playlists ?? []) }} total)</span>
                 </h4>
                 @if($canAddPlaylists)
                 <button onclick="openCreatePlaylistModal()" 
@@ -52,7 +53,7 @@
                 @endif
             </div>
             
-            <div class="space-y-2 max-h-96 overflow-y-auto">
+            <div class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                 @forelse($playlists ?? [] as $playlist)
                     <div class="border rounded-lg p-3 hover:bg-gray-50 transition">
                         <div class="flex justify-between items-start">
@@ -101,11 +102,12 @@
             </div>
         </div>
         
-        <!-- SONGS COLUMN -->
-        <div>
+        <!-- SONGS COLUMN - Fixed height with search and scroll -->
+        <div class="lg:w-1/2">
             <div class="flex justify-between items-center mb-3 pb-2 border-b">
                 <h4 class="font-semibold text-gray-700">
                     <i class="fas fa-music text-green-600 mr-2"></i>Songs
+                    <span class="text-xs text-gray-400 ml-2">({{ count($songs ?? []) }} total)</span>
                 </h4>
                 @if($canAddSongs)
                 <button onclick="openCreateSongModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs transition">
@@ -114,11 +116,22 @@
                 @endif
             </div>
             
-            <div class="space-y-2 max-h-96 overflow-y-auto">
+            <!-- Song Search Bar -->
+            <div class="relative mb-3">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" id="songsSearchInput" placeholder="Search songs by title, artist, key, or assigned singer..." 
+                       class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div id="songsListContainer" class="space-y-2 max-h-[450px] overflow-y-auto pr-1">
                 @forelse($songs ?? [] as $song)
-                    <div class="border rounded-lg p-3 hover:bg-gray-50 transition">
+                    <div class="song-item border rounded-lg p-3 hover:bg-gray-50 transition" 
+                         data-title="{{ strtolower($song->title) }}" 
+                         data-artist="{{ strtolower($song->artist ?? '') }}"
+                         data-key="{{ strtolower($song->key_signature ?? '') }}"
+                         data-singer="{{ strtolower($song->assigned_singer ?? '') }}">
                         <div class="flex justify-between items-start">
-                            <div>
+                            <div class="flex-1">
                                 <h5 class="font-medium text-gray-800">{{ $song->title }}</h5>
                                 <div class="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
                                     @if($song->key_signature)
@@ -135,7 +148,7 @@
                                     @endif
                                 </div>
                             </div>
-                            <div class="flex space-x-2">
+                            <div class="flex space-x-2 ml-2">
                                 @if($canViewSongs)
                                 <button onclick="viewLyrics({{ $song->id }})" class="text-green-600 hover:text-green-800 transition" title="View Lyrics">
                                     <i class="fas fa-file-alt"></i>
@@ -171,6 +184,12 @@
                     </div>
                 @endforelse
             </div>
+            
+            <!-- No results message -->
+            <div id="noSongsResults" class="text-center text-gray-500 py-8 hidden">
+                <i class="fas fa-search fa-3x mb-2 text-gray-300"></i>
+                <p>No songs match your search</p>
+            </div>
         </div>
     </div>
 </div>
@@ -205,7 +224,7 @@
                     <!-- Search Bar -->
                     <div class="relative mb-3">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                        <input type="text" id="songSearchInput" placeholder="Search songs by title, artist, or key..." 
+                        <input type="text" id="playlistSongSearchInput" placeholder="Search songs by title, artist, or key..." 
                                class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     
@@ -217,9 +236,9 @@
                             </label>
                             <span id="selectedCount" class="text-xs text-gray-500">0 selected</span>
                         </div>
-                        <div id="songsListContainer" class="space-y-1">
+                        <div id="playlistSongsListContainer" class="space-y-1">
                             @foreach($songs ?? [] as $song)
-                            <label class="song-item flex items-center space-x-2 p-2 hover:bg-white rounded cursor-pointer transition" 
+                            <label class="song-select-item flex items-center space-x-2 p-2 hover:bg-white rounded cursor-pointer transition" 
                                    data-title="{{ strtolower($song->title) }}" 
                                    data-artist="{{ strtolower($song->artist ?? '') }}"
                                    data-key="{{ strtolower($song->key_signature ?? '') }}">
@@ -334,24 +353,62 @@
 </div>
 
 <script>
-// Song search and select all functionality
-let searchInput, songItems, songCheckboxes, selectAllCheckbox, selectedCountSpan;
+// Song search functionality for main songs list
+function initializeSongSearch() {
+    const searchInput = document.getElementById('songsSearchInput');
+    const songsContainer = document.getElementById('songsListContainer');
+    const noResultsDiv = document.getElementById('noSongsResults');
+    
+    if (!searchInput || !songsContainer) return;
+    
+    searchInput.addEventListener('keyup', function() {
+        const searchTerm = this.value.toLowerCase();
+        const songItems = songsContainer.querySelectorAll('.song-item');
+        let visibleCount = 0;
+        
+        songItems.forEach(item => {
+            const title = item.dataset.title || '';
+            const artist = item.dataset.artist || '';
+            const key = item.dataset.key || '';
+            const singer = item.dataset.singer || '';
+            
+            if (title.includes(searchTerm) || artist.includes(searchTerm) || key.includes(searchTerm) || singer.includes(searchTerm)) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        if (noResultsDiv) {
+            if (visibleCount === 0 && searchTerm !== '') {
+                noResultsDiv.classList.remove('hidden');
+                songsContainer.classList.add('hidden');
+            } else {
+                noResultsDiv.classList.add('hidden');
+                songsContainer.classList.remove('hidden');
+            }
+        }
+    });
+}
 
-function initializeSearchAndSelect() {
-    searchInput = document.getElementById('songSearchInput');
-    songItems = document.querySelectorAll('.song-item');
+// Search for songs in playlist modal
+let playlistSearchInput, playlistSongItems, songCheckboxes, selectAllCheckbox, selectedCountSpan;
+
+function initializePlaylistSearch() {
+    playlistSearchInput = document.getElementById('playlistSongSearchInput');
+    playlistSongItems = document.querySelectorAll('.song-select-item');
     songCheckboxes = document.querySelectorAll('.song-checkbox');
     selectAllCheckbox = document.getElementById('selectAllSongs');
     selectedCountSpan = document.getElementById('selectedCount');
     
-    // Update selected count
     function updateSelectedCount() {
-        const checked = document.querySelectorAll('#songsListContainer .song-checkbox:checked').length;
+        const checked = document.querySelectorAll('#playlistSongsListContainer .song-checkbox:checked').length;
         if (selectedCountSpan) {
             selectedCountSpan.textContent = checked + ' selected';
         }
         if (selectAllCheckbox) {
-            const total = document.querySelectorAll('#songsListContainer .song-checkbox').length;
+            const total = document.querySelectorAll('#playlistSongsListContainer .song-checkbox').length;
             if (total > 0) {
                 selectAllCheckbox.checked = checked === total;
                 selectAllCheckbox.indeterminate = checked > 0 && checked < total;
@@ -359,13 +416,12 @@ function initializeSearchAndSelect() {
         }
     }
     
-    // Search songs
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
+    if (playlistSearchInput) {
+        playlistSearchInput.addEventListener('keyup', function() {
             const searchTerm = this.value.toLowerCase();
             let visibleCount = 0;
             
-            songItems.forEach(item => {
+            playlistSongItems.forEach(item => {
                 const title = item.dataset.title || '';
                 const artist = item.dataset.artist || '';
                 const key = item.dataset.key || '';
@@ -378,12 +434,12 @@ function initializeSearchAndSelect() {
                 }
             });
             
-            let noResultsMsg = document.getElementById('noSearchResults');
+            let noResultsMsg = document.getElementById('noPlaylistResults');
             if (visibleCount === 0 && searchTerm !== '') {
                 if (!noResultsMsg) {
-                    const container = document.getElementById('songsListContainer');
+                    const container = document.getElementById('playlistSongsListContainer');
                     const msg = document.createElement('div');
-                    msg.id = 'noSearchResults';
+                    msg.id = 'noPlaylistResults';
                     msg.className = 'text-center text-gray-500 py-4';
                     msg.innerHTML = '<i class="fas fa-search fa-2x mb-2 text-gray-300"></i><p>No songs match your search</p>';
                     container.appendChild(msg);
@@ -394,10 +450,9 @@ function initializeSearchAndSelect() {
         });
     }
     
-    // Select all
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
-            const visibleCheckboxes = document.querySelectorAll('#songsListContainer .song-item:not([style*="display: none"]) .song-checkbox');
+            const visibleCheckboxes = document.querySelectorAll('#playlistSongsListContainer .song-select-item:not([style*="display: none"]) .song-checkbox');
             visibleCheckboxes.forEach(cb => {
                 cb.checked = selectAllCheckbox.checked;
             });
@@ -405,7 +460,6 @@ function initializeSearchAndSelect() {
         });
     }
     
-    // Update count on checkbox change
     songCheckboxes.forEach(cb => {
         cb.addEventListener('change', updateSelectedCount);
     });
@@ -413,47 +467,38 @@ function initializeSearchAndSelect() {
     updateSelectedCount();
 }
 
-// Open Create Playlist Modal
 function openCreatePlaylistModal() {
-    // Reset form
     const titleInput = document.getElementById('playlistTitle');
     const descInput = document.getElementById('playlistDescription');
     if (titleInput) titleInput.value = '';
     if (descInput) descInput.value = '';
     
-    // Reset search
-    if (searchInput) searchInput.value = '';
+    if (playlistSearchInput) playlistSearchInput.value = '';
     
-    // Reset song visibility
-    if (songItems) {
-        songItems.forEach(item => {
+    if (playlistSongItems) {
+        playlistSongItems.forEach(item => {
             item.style.display = '';
         });
     }
     
-    // Uncheck all checkboxes
     if (songCheckboxes) {
         songCheckboxes.forEach(cb => {
             cb.checked = false;
         });
     }
     
-    // Reset select all
     if (selectAllCheckbox) {
         selectAllCheckbox.checked = false;
         selectAllCheckbox.indeterminate = false;
     }
     
-    // Reset selected count
     if (selectedCountSpan) {
         selectedCountSpan.textContent = '0 selected';
     }
     
-    // Remove no results message
-    const noResultsMsg = document.getElementById('noSearchResults');
+    const noResultsMsg = document.getElementById('noPlaylistResults');
     if (noResultsMsg) noResultsMsg.remove();
     
-    // Show modal
     const modal = document.getElementById('createPlaylistModal');
     if (modal) modal.classList.remove('hidden');
 }
@@ -580,9 +625,9 @@ function escapeHtml(text) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    initializeSearchAndSelect();
+    initializeSongSearch();
+    initializePlaylistSearch();
     
-    // Form submissions
     const createPlaylistForm = document.getElementById('createPlaylistForm');
     if (createPlaylistForm) {
         createPlaylistForm.addEventListener('submit', function(e) {

@@ -1,5 +1,7 @@
 <form method="POST" action="{{ route('users.update-roles', $user->id) }}">
     @csrf
+    @method('PUT')
+    
     <div class="space-y-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">User: <strong>{{ $user->name }}</strong></label>

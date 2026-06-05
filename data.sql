@@ -1370,5 +1370,483 @@ ALTER TABLE family_members ADD CONSTRAINT unique_user_per_family UNIQUE (user_id
 
 -- Add unique constraint for parent_id in families table (one parent per family, parent cannot be in multiple families)
 ALTER TABLE families ADD CONSTRAINT unique_parent_per_family UNIQUE (parent_id);
+-- Discipline Sections Table
+CREATE TABLE IF NOT EXISTS discipline_sections (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Discipline Records Table
+CREATE TABLE IF NOT EXISTS discipline_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    section_id INTEGER REFERENCES discipline_sections(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    points INTEGER DEFAULT 0,
+    type VARCHAR(50) CHECK (type IN ('positive', 'warning', 'penalty', 'suspension')),
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'appealed')),
+    recorded_by INTEGER NOT NULL REFERENCES users(id),
+    resolved_by INTEGER REFERENCES users(id),
+    resolved_at TIMESTAMP,
+    resolved_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Attendance Records Table
+CREATE TABLE IF NOT EXISTS attendance_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_date DATE NOT NULL,
+    session_type VARCHAR(100) NOT NULL,
+    status VARCHAR(50) CHECK (status IN ('present', 'absent', 'late', 'excused')),
+    check_in_time TIME,
+    check_out_time TIME,
+    late_minutes INTEGER DEFAULT 0,
+    notes TEXT,
+    marked_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, session_date, session_type)
+);
+
+-- Permission Requests Table
+CREATE TABLE IF NOT EXISTS permission_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
+    approved_by INTEGER REFERENCES users(id),
+    approved_at TIMESTAMP,
+    rejection_reason TEXT,
+    attachment_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Action Plans Table
+CREATE TABLE IF NOT EXISTS action_plans (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    discipline_record_id INTEGER REFERENCES discipline_records(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_date DATE,
+    due_date DATE,
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    progress INTEGER DEFAULT 0,
+    assigned_by INTEGER NOT NULL REFERENCES users(id),
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Action Plan Tasks Table
+CREATE TABLE IF NOT EXISTS action_plan_tasks (
+    id SERIAL PRIMARY KEY,
+    action_plan_id INTEGER NOT NULL REFERENCES action_plans(id) ON DELETE CASCADE,
+    task_name VARCHAR(255) NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_discipline_records_user_id ON discipline_records(user_id);
+CREATE INDEX idx_discipline_records_status ON discipline_records(status);
+CREATE INDEX idx_attendance_records_user_date ON attendance_records(user_id, session_date);
+CREATE INDEX idx_permission_requests_user_status ON permission_requests(user_id, status);
+CREATE INDEX idx_action_plans_user_status ON action_plans(user_id, status);
+
+-- Create trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_discipline_sections_updated_at BEFORE UPDATE ON discipline_sections FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_discipline_records_updated_at BEFORE UPDATE ON discipline_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_attendance_records_updated_at BEFORE UPDATE ON attendance_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_permission_requests_updated_at BEFORE UPDATE ON permission_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_action_plans_updated_at BEFORE UPDATE ON action_plans FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
+ALTER TABLE service_teams ADD COLUMN service_date DATE NULL;
+
+-- YouTube videos table
+CREATE TABLE IF NOT EXISTS landing_youtube_videos (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    youtube_id VARCHAR(100) NOT NULL,
+    is_published BOOLEAN DEFAULT FALSE,
+    sort_order INTEGER DEFAULT 0,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Featured images table
+CREATE TABLE IF NOT EXISTS landing_featured_images (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    description TEXT,
+    is_published BOOLEAN DEFAULT FALSE,
+    sort_order INTEGER DEFAULT 0,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE archive_sections ADD COLUMN module VARCHAR(50) DEFAULT 'general';
+UPDATE archive_sections SET module = 'intercession';
+
+CREATE TABLE IF NOT EXISTS finance_term_settings (
+    id SERIAL PRIMARY KEY,
+    current_year INTEGER DEFAULT 2026,
+    term1_percentage DECIMAL(5,2) DEFAULT 40,
+    term2_percentage DECIMAL(5,2) DEFAULT 30,
+    term3_percentage DECIMAL(5,2) DEFAULT 30,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Contributions table
+CREATE TABLE IF NOT EXISTS contributions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    expected_amount DECIMAL(15,2) DEFAULT 0,
+    amount_paid DECIMAL(15,2) DEFAULT 0,
+    term INTEGER,
+    year INTEGER,
+    status VARCHAR(50) DEFAULT 'pending',
+    notes TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payments table
+CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    amount DECIMAL(15,2) NOT NULL,
+    payment_date DATE DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50),
+    term INTEGER,
+    reference_number VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'completed',
+    notes TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Gifts table
+CREATE TABLE IF NOT EXISTS gifts (
+    id SERIAL PRIMARY KEY,
+    donor_name VARCHAR(255) NOT NULL,
+    commitment_amount DECIMAL(15,2) DEFAULT 0,
+    received_amount DECIMAL(15,2) DEFAULT 0,
+    gift_type VARCHAR(50),
+    date DATE,
+    status VARCHAR(50) DEFAULT 'pending',
+    notes TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sponsors table
+CREATE TABLE IF NOT EXISTS sponsors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    commitment_amount DECIMAL(15,2) DEFAULT 0,
+    received_amount DECIMAL(15,2) DEFAULT 0,
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'active',
+    contact_person VARCHAR(255),
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    notes TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Expenses table
+CREATE TABLE IF NOT EXISTS expenses (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100),
+    description TEXT,
+    amount DECIMAL(15,2) NOT NULL,
+    date DATE DEFAULT CURRENT_DATE,
+    status VARCHAR(50) DEFAULT 'pending',
+    approved_by INTEGER REFERENCES users(id),
+    receipt_path VARCHAR(500),
+    notes TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Finance term settings table
+CREATE TABLE IF NOT EXISTS finance_term_settings (
+    id SERIAL PRIMARY KEY,
+    current_year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
+    term1_percentage DECIMAL(5,2) DEFAULT 40,
+    term2_percentage DECIMAL(5,2) DEFAULT 30,
+    term3_percentage DECIMAL(5,2) DEFAULT 30,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default settings
+INSERT INTO finance_term_settings (current_year, term1_percentage, term2_percentage, term3_percentage)
+VALUES (EXTRACT(YEAR FROM CURRENT_DATE), 40, 30, 30)
+ON CONFLICT (id) DO NOTHING;
+
+-- Add new columns for dynamic terms
+ALTER TABLE finance_term_settings 
+ADD COLUMN IF NOT EXISTS number_of_terms INTEGER DEFAULT 3,
+ADD COLUMN IF NOT EXISTS term_percentages TEXT DEFAULT '[40,30,30]',
+ADD COLUMN IF NOT EXISTS term_numbers TEXT DEFAULT '[1,2,3]';
+
+-- Update table structure
+ALTER TABLE finance_term_settings 
+DROP COLUMN IF EXISTS term1_percentage,
+DROP COLUMN IF EXISTS term2_percentage,
+DROP COLUMN IF EXISTS term3_percentage;
+
+ALTER TABLE finance_term_settings 
+ADD COLUMN IF NOT EXISTS number_of_terms INTEGER DEFAULT 3,
+ADD COLUMN IF NOT EXISTS term_percentages TEXT DEFAULT '{"1":40,"2":30,"3":30}',
+ADD COLUMN IF NOT EXISTS term_numbers TEXT DEFAULT '[1,2,3]';
+-- Drop existing table if needed
+DROP TABLE IF EXISTS contributions;
+
+-- Create contributions table with correct columns
+CREATE TABLE contributions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    annual_amount DECIMAL(15,2) DEFAULT 0,
+    year INTEGER NOT NULL,
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'active',
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, year)
+);
+
+-- Create payments table
+CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    term INTEGER NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_method VARCHAR(50) DEFAULT 'cash',
+    payment_date DATE DEFAULT CURRENT_DATE,
+    year INTEGER NOT NULL,
+    reference_number VARCHAR(100),
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'completed',
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create finance_term_settings table
+CREATE TABLE IF NOT EXISTS finance_term_settings (
+    id SERIAL PRIMARY KEY,
+    current_year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
+    number_of_terms INTEGER DEFAULT 3,
+    term_percentages TEXT DEFAULT '{"1":40,"2":30,"3":30}',
+    term_numbers TEXT DEFAULT '[1,2,3]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default settings
+INSERT INTO finance_term_settings (current_year, number_of_terms, term_percentages, term_numbers)
+VALUES (EXTRACT(YEAR FROM CURRENT_DATE), 3, '{"1":40,"2":30,"3":30}', '[1,2,3]')
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS contributions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    annual_amount DECIMAL(15,2) DEFAULT 0,
+    year INTEGER NOT NULL,
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'active',
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, year)
+);
+
+-- Add year column to payments table
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS year INTEGER;
+
+-- Update existing records with default year
+UPDATE payments SET year = EXTRACT(YEAR FROM CURRENT_DATE) WHERE year IS NULL;
+
+-- Make year column not null after update
+ALTER TABLE payments ALTER COLUMN year SET NOT NULL;
+CREATE TABLE IF NOT EXISTS sponsor_payments (
+    id SERIAL PRIMARY KEY,
+    sponsor_id INTEGER NOT NULL REFERENCES sponsors(id) ON DELETE CASCADE,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_date DATE DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50) DEFAULT 'cash',
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sponsors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    commitment_amount DECIMAL(15,2) DEFAULT 0,
+    received_amount DECIMAL(15,2) DEFAULT 0,
+    fund_type VARCHAR(50) DEFAULT 'one_time',
+    status VARCHAR(50) DEFAULT 'active',
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add missing columns to sponsors table
+ALTER TABLE sponsors 
+ADD COLUMN IF NOT EXISTS fund_type VARCHAR(50) DEFAULT 'one_time',
+ADD COLUMN IF NOT EXISTS received_amount DECIMAL(15,2) DEFAULT 0;
+
+-- If you need to recreate the entire sponsors table, run this instead:
+DROP TABLE IF EXISTS sponsors CASCADE;
+
+CREATE TABLE sponsors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    commitment_amount DECIMAL(15,2) DEFAULT 0,
+    received_amount DECIMAL(15,2) DEFAULT 0,
+    fund_type VARCHAR(50) DEFAULT 'one_time',
+    status VARCHAR(50) DEFAULT 'active',
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create sponsor_payments table
+CREATE TABLE IF NOT EXISTS sponsor_payments (
+    id SERIAL PRIMARY KEY,
+    sponsor_id INTEGER NOT NULL REFERENCES sponsors(id) ON DELETE CASCADE,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_date DATE DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50) DEFAULT 'cash',
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Insert missing contribution records for members who have payments
+INSERT INTO contributions (user_id, annual_amount, year, created_at, updated_at)
+SELECT DISTINCT 
+    p.user_id,
+    COALESCE(c.annual_amount, 0) as annual_amount,
+    p.year,
+    NOW(),
+    NOW()
+FROM payments p
+LEFT JOIN contributions c ON c.user_id = p.user_id AND c.year = p.year
+WHERE c.id IS NULL
+ON CONFLICT (user_id, year) DO NOTHING;
+
+-- Add department column to action_plans table
+ALTER TABLE action_plans ADD COLUMN IF NOT EXISTS department VARCHAR(50) DEFAULT 'finance';
+
+-- Also add other missing columns if they don't exist
+ALTER TABLE action_plans ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE action_plans ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
+ALTER TABLE action_plans ADD COLUMN IF NOT EXISTS budget DECIMAL(15,2) DEFAULT 0;
+-- Add missing columns to announcements table
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS published_by INTEGER REFERENCES users(id);
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS scheduled_date DATE;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS expiry_date DATE;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_audience VARCHAR(100);
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal';
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS image_path VARCHAR(500);
+
+-- Drop and recreate announcements table with all columns
+DROP TABLE IF EXISTS announcements CASCADE;
+
+CREATE TABLE announcements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'general',
+    status VARCHAR(50) DEFAULT 'active',
+    scheduled_date DATE,
+    expiry_date DATE,
+    target_audience VARCHAR(100),
+    priority VARCHAR(20) DEFAULT 'normal',
+    image_path VARCHAR(500),
+    created_by INTEGER REFERENCES users(id),
+    published_by INTEGER REFERENCES users(id),
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX idx_announcements_status ON announcements(status);
+CREATE INDEX idx_announcements_type ON announcements(type);
+CREATE INDEX idx_announcements_created_at ON announcements(created_at);
+-- Event reports table
+CREATE TABLE IF NOT EXISTS event_reports (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    event_date DATE,
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'planned',
+    category VARCHAR(100),
+    location VARCHAR(255),
+    organizer VARCHAR(255),
+    participants_count INTEGER DEFAULT 0,
+    budget DECIMAL(15,2) DEFAULT 0,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Report logs table
+CREATE TABLE IF NOT EXISTS report_logs (
+    id SERIAL PRIMARY KEY,
+    report_type VARCHAR(100),
+    generated_by INTEGER REFERENCES users(id),
+    filters JSONB,
+    file_path VARCHAR(500),
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

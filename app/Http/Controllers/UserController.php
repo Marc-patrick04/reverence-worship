@@ -8,6 +8,7 @@ use App\Models\User\Role;
 use App\Models\System\ActivityLog;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class UserController extends Controller
 {
@@ -56,20 +57,15 @@ class UserController extends Controller
         $users = $query->orderBy('created_at', 'desc')->paginate(10);
         $roles = Role::all();
         
-        // Calculate statistics
-        $stats = [
-            'total' => User::count(),
-            'active' => User::where('is_active', true)->count(),
-            'inactive' => User::where('is_active', false)->count(),
-            'pending' => 0,
-            'rejected' => 0,
-            'admins' => User::whereHas('roles', function($q) {
-                $q->where('name', 'super-admin');
-            })->count(),
-            'discipline_leaders' => User::whereHas('roles', function($q) {
-                $q->where('name', 'discipline-leader');
-            })->count(),
-        ];
+       // Calculate statistics
+$stats = [
+    'total' => User::count(),
+    'active' => User::where('is_active', true)->count(),
+    'inactive' => User::where('is_active', false)->count(),
+    'pending' => 0,
+    'male' => User::where('gender', 'Male')->count(),
+    'female' => User::where('gender', 'Female')->count(),
+];
         
         return view('super-admin.users.index', compact('users', 'roles', 'stats'));
     }
@@ -102,11 +98,47 @@ public function show($id)
     }
     
     // Get user JSON for view modal
-    public function getUserJson($id)
-    {
-        $user = User::with('roles')->findOrFail($id);
-        return response()->json($user);
-    }
+   public function getUserJson($id)
+{
+    $user = User::with('roles')->findOrFail($id);
+    
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'phone' => $user->phone ?? '-',
+        'gender' => $user->gender ?? '-',
+        'address' => $user->address ?? '-',
+        'date_of_birth' => $user->date_of_birth ? date('M d, Y', strtotime($user->date_of_birth)) : '-',
+        'is_active' => $user->is_active,
+        'created_at' => $user->created_at ? date('M d, Y', strtotime($user->created_at)) : 'N/A',
+        'updated_at' => $user->updated_at ? date('M d, Y', strtotime($user->updated_at)) : 'N/A',
+        'email_verified_at' => $user->email_verified_at ? date('M d, Y', strtotime($user->email_verified_at)) : 'Not verified',
+        'province' => $user->province ?? '-',
+        'district' => $user->district ?? '-',
+        'sector' => $user->sector ?? '-',
+        'village' => $user->village ?? '-',
+        'marital_status' => $user->marital_status ?? '-',
+        'membership_type' => $user->membership_type ?? '-',
+        'occupation' => $user->occupation ?? '-',
+        'ministry_role' => $user->ministry_role ?? '-',
+        'emergency_contact' => $user->emergency_contact ?? '-',
+        'emergency_name' => $user->emergency_name ?? '-',
+        'skills' => $user->skills ?? '-',
+        'notes' => $user->notes ?? '-',
+        'is_singer' => $user->is_singer ?? false,
+        'voice_part' => $user->voice_part ?? '-',
+        'singer_level' => $user->singer_level ?? '-',
+        'singer_notes' => $user->singer_notes ?? '-',
+        'roles' => $user->roles->map(function($role) {
+            return [
+                'id' => $role->id,
+                'name' => $role->name,
+                'display_name' => $role->display_name
+            ];
+        }),
+    ]);
+}
     
     // Get edit roles form for modal
     public function getEditRolesForm($id)
@@ -365,63 +397,204 @@ public function show($id)
     }
     
     // Export users to CSV
-    public function export(Request $request)
-    {
-        $query = User::with('roles');
+   public function export(Request $request)
+{
+    $query = User::with('roles');
+    
+    // Apply same filters
+    if ($request->has('search') && $request->search) {
+        $query->where(function($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->search . '%')
+              ->orWhere('email', 'like', '%' . $request->search . '%');
+        });
+    }
+    
+    if ($request->has('role') && $request->role) {
+        $query->whereHas('roles', function($q) use ($request) {
+            $q->where('roles.id', $request->role);
+        });
+    }
+    
+    if ($request->has('status') && $request->status) {
+        if ($request->status == 'active') {
+            $query->where('is_active', true);
+        } elseif ($request->status == 'inactive') {
+            $query->where('is_active', false);
+        }
+    }
+    
+    $users = $query->orderBy('created_at', 'desc')->get();
+    
+    // Get family information for each user
+    $userIds = $users->pluck('id')->toArray();
+    
+    if (!empty($userIds)) {
+        $familyMemberships = DB::select("
+            SELECT fm.user_id, f.name as family_name, fm.role
+            FROM family_members fm
+            JOIN families f ON f.id = fm.family_id
+            WHERE fm.user_id IN (" . implode(',', array_fill(0, count($userIds), '?')) . ")
+        ", $userIds);
         
-        // Apply same filters
-        if ($request->has('search') && $request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
+        // Create a lookup array
+        $familyLookup = [];
+        foreach ($familyMemberships as $membership) {
+            $familyLookup[$membership->user_id] = [
+                'family_name' => $membership->family_name,
+                'role' => $membership->role
+            ];
         }
         
-        if ($request->has('role') && $request->role) {
-            $query->whereHas('roles', function($q) use ($request) {
-                $q->where('roles.id', $request->role);
-            });
+        // Assign family info to users
+        foreach ($users as $user) {
+            if (isset($familyLookup[$user->id])) {
+                $user->family_name = $familyLookup[$user->id]['family_name'];
+                $user->family_role = $familyLookup[$user->id]['role'];
+            } else {
+                $user->family_name = '-';
+                $user->family_role = '-';
+            }
         }
+    } else {
+        foreach ($users as $user) {
+            $user->family_name = '-';
+            $user->family_role = '-';
+        }
+    }
+    
+    $filename = 'users_export_' . date('Y-m-d_His') . '.csv';
+    $handle = fopen('php://temp', 'w+');
+    
+    // Add UTF-8 BOM for Excel compatibility
+    fwrite($handle, "\xEF\xBB\xBF");
+    
+    // Add headers - same columns as PDF
+    fputcsv($handle, [
+        '#', 
+        'Name', 
+        'Email', 
+        'Phone', 
+        'Role', 
+        'Status', 
+        'DOB', 
+        'Gender', 
+        'Marital Status', 
+        'Residence', 
+        'Family', 
+        'Occupation'
+    ]);
+    
+    // Add data
+    $counter = 1;
+    foreach ($users as $user) {
+        // Build residence string
+        $residence = [];
+        if ($user->province) $residence[] = $user->province;
+        if ($user->district) $residence[] = $user->district;
+        if ($user->sector) $residence[] = $user->sector;
+        if ($user->village) $residence[] = $user->village;
+        $residenceStr = !empty($residence) ? implode(', ', $residence) : '-';
         
-        if ($request->has('status') && $request->status) {
-            if ($request->status == 'active') {
-                $query->where('is_active', true);
-            } elseif ($request->status == 'inactive') {
-                $query->where('is_active', false);
+        // Build roles string
+        $rolesStr = '';
+        foreach ($user->roles as $role) {
+            $rolesStr .= $role->display_name . ', ';
+        }
+        $rolesStr = rtrim($rolesStr, ', ');
+        if (empty($rolesStr)) $rolesStr = '-';
+        
+        // Build family string
+        $familyStr = '-';
+        if (isset($user->family_name) && $user->family_name && $user->family_name != '-') {
+            $familyStr = $user->family_name;
+            if (isset($user->family_role) && $user->family_role && $user->family_role != '-') {
+                $familyStr .= ' (' . ucfirst($user->family_role) . ')';
             }
         }
         
-        $users = $query->get();
-        
-        $filename = 'users_export_' . date('Y-m-d_His') . '.csv';
-        $handle = fopen('php://temp', 'w+');
-        
-        // Add UTF-8 BOM for Excel compatibility
-        fwrite($handle, "\xEF\xBB\xBF");
-        
-        // Add headers
-        fputcsv($handle, ['ID', 'Name', 'Email', 'Roles', 'Status', 'Phone', 'Gender', 'Created At']);
-        
-        // Add data
-        foreach ($users as $user) {
-            fputcsv($handle, [
-                $user->id,
-                $user->name,
-                $user->email,
-                $user->roles->pluck('display_name')->implode(', '),
-                $user->is_active ? 'Active' : 'Inactive',
-                $user->phone ?? '',
-                $user->gender ?? '',
-                $user->created_at
-            ]);
-        }
-        
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
-        
-        return response($csv, 200)
-            ->header('Content-Type', 'text/csv; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        fputcsv($handle, [
+            $counter++,
+            $user->name,
+            $user->email,
+            $user->phone ?? '-',
+            $rolesStr,
+            $user->is_active ? 'Active' : 'Inactive',
+            $user->date_of_birth ? date('d/m/y', strtotime($user->date_of_birth)) : '-',
+            $user->gender ?? '-',
+            $user->marital_status ?? '-',
+            $residenceStr,
+            $familyStr,
+            $user->occupation ?? '-'
+        ]);
     }
+    
+    rewind($handle);
+    $csv = stream_get_contents($handle);
+    fclose($handle);
+    
+    return response($csv, 200)
+        ->header('Content-Type', 'text/csv; charset=UTF-8')
+        ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+}
+public function exportPdf(Request $request)
+{
+    $query = User::with('roles');
+    
+    // Apply same filters
+    if ($request->has('search') && $request->search) {
+        $query->where(function($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->search . '%')
+              ->orWhere('email', 'like', '%' . $request->search . '%');
+        });
+    }
+    
+    if ($request->has('role') && $request->role) {
+        $query->whereHas('roles', function($q) use ($request) {
+            $q->where('roles.id', $request->role);
+        });
+    }
+    
+    if ($request->has('status') && $request->status) {
+        if ($request->status == 'active') {
+            $query->where('is_active', true);
+        } elseif ($request->status == 'inactive') {
+            $query->where('is_active', false);
+        }
+    }
+    
+    $users = $query->orderBy('created_at', 'desc')->get();
+    
+    // Get family information for each user from families table
+    foreach ($users as $user) {
+        // Get family name from families table via family_members
+        $familyInfo = DB::selectOne("
+            SELECT f.name as family_name, fm.role
+            FROM families f
+            JOIN family_members fm ON fm.family_id = f.id
+            WHERE fm.user_id = ?
+        ", [$user->id]);
+        
+        if ($familyInfo) {
+            $user->family_name = $familyInfo->family_name;
+            $user->family_role = $familyInfo->role;
+        } else {
+            $user->family_name = '-';
+            $user->family_role = '-';
+        }
+    }
+    
+    $data = [
+        'users' => $users,
+        'generated_date' => now()->format('F j, Y H:i:s'),
+        'total_users' => User::count(),
+        'active_users' => User::where('is_active', true)->count(),
+        'inactive_users' => User::where('is_active', false)->count(),
+        'pending_users' => 0,
+    ];
+    
+    $pdf = Pdf::loadView('super-admin.users.export-pdf', $data);
+    $pdf->setPaper('a4', 'landscape');
+    
+    return $pdf->download('users_report_' . date('Y-m-d_His') . '.pdf');
+}
 }

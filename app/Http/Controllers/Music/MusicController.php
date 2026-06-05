@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Music;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Music\Playlist;
 use App\Models\Music\Song;
 use App\Models\Music\PlaylistSong;
@@ -16,29 +17,42 @@ use App\Models\ActionPlan;
 use App\Models\Music\ServiceTeam;
 use App\Models\Music\TeamMember;
 
+
 class MusicController extends Controller
 {
     // ==================== MAIN INDEX ====================
-    public function index()
-    {
-        if (!auth()->user()->canAccess('music-ministry', 'access')) {
-            abort(403, 'You do not have permission to access this page.');
-        }
-        
-        $playlists = Playlist::with('songs')->orderBy('created_at', 'desc')->get();
-        $songs = Song::orderBy('title')->get();
-        $singers = User::where('is_singer', true)->orderBy('name')->get();
-        $gallery = Gallery::orderBy('created_at', 'desc')->get();
-        $groups = WorshipGroup::with('leader', 'members')->get();
-        $posts = PublicBoard::with('creator')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
-        $tasks = ActionPlan::with('assignedUser', 'creator')->orderBy('due_date')->get();
-        $users = User::where('is_active', true)->get();
-        $serviceTeams = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
-        $generations = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
-        $voiceParts = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Lead'];
-        $performanceLevels = ['Normal', 'Good', 'Advanced', 'Professional'];
-        
-        return view('modules.music.index', compact('playlists', 'songs', 'singers', 'gallery', 'groups', 'posts', 'tasks', 'users', 'serviceTeams', 'generations', 'voiceParts', 'performanceLevels'));
+   public function index()
+{
+    if (!auth()->user()->canAccess('music-ministry', 'access')) {
+        abort(403, 'You do not have permission to access this page.');
+    }
+    
+    $playlists = Playlist::with('songs')->orderBy('created_at', 'desc')->get();
+    $songs = Song::orderBy('title')->get();
+    
+    // Only get users who are singers (is_singer = true)
+    $singers = User::where('is_singer', true)->orderBy('name')->get();
+    
+    $gallery = Gallery::orderBy('created_at', 'desc')->get();
+    $groups = WorshipGroup::with('leader', 'members')->get();
+    $posts = PublicBoard::with('creator')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
+    $tasks = ActionPlan::with('assignedUser', 'creator')->orderBy('due_date')->get();
+    $users = User::where('is_active', true)->get();
+    $serviceTeams = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
+    $generations = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
+    $voiceParts = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Lead'];
+    $performanceLevels = ['Normal', 'Good'];
+    $youtubeVideos = DB::table('landing_youtube_videos')
+        ->orderBy('sort_order')
+        ->get();
+    
+    $featuredImages = DB::table('landing_featured_images')
+        ->orderBy('sort_order')
+        ->get();
+
+    return view('modules.music.index', compact('playlists', 'songs', 'singers', 'gallery', 'groups', 'posts', 'tasks', 'users', 'serviceTeams', 'generations', 'voiceParts', 'performanceLevels','youtubeVideos', 'featuredImages'));
+    
+    
     }
 
     // ==================== PLAYLIST METHODS ====================
@@ -332,25 +346,25 @@ class MusicController extends Controller
     // ==================== PUBLIC BOARD METHODS ====================
     
     public function storeBoardPost(Request $request)
-    {
-        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
-            abort(403, 'You do not have permission to create posts.');
-        }
-        
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string'
-        ]);
-        
-        PublicBoard::create([
-            'title' => $request->title,
-            'content' => $request->content,
-            'is_pinned' => $request->has('is_pinned'),
-            'created_by' => auth()->id()
-        ]);
-        
-        return redirect()->back()->with('success', 'Announcement posted successfully!');
+{
+    if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+        abort(403, 'You do not have permission to create posts.');
     }
+    
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'content' => 'required|string'
+    ]);
+    
+    PublicBoard::create([
+        'title' => $validated['title'],
+        'content' => $validated['content'],
+        'is_pinned' => $request->has('is_pinned'),
+        'created_by' => auth()->id()
+    ]);
+    
+    return redirect()->back()->with('success', 'Announcement posted successfully!');
+}
     
     public function togglePinBoard($id)
     {
@@ -415,128 +429,206 @@ class MusicController extends Controller
 
     // ==================== SERVICE TEAM GENERATOR METHODS ====================
     
-    public function generateBalancedGroups(Request $request)
+public function generateBalancedGroups(Request $request)
 {
     try {
         $request->validate([
             'service_name' => 'required|string|max:255',
+            'service_date' => 'required|date',
             'number_of_teams' => 'required|integer|min:1|max:10'
         ]);
         
-        // Get all singers with voice part and level assigned
-        $singers = User::where('is_singer', true)
+        // Get all singers
+        $allSingers = User::where('is_singer', true)
             ->whereNotNull('voice_part')
             ->whereNotNull('singer_level')
-            ->get()
-            ->map(function($singer) {
-                return [
-                    'id' => $singer->id,
-                    'name' => $singer->name,
-                    'email' => $singer->email,
-                    'voice_part' => $singer->voice_part,
-                    'performance_level' => $singer->singer_level
-                ];
-            });
+            ->get();
         
-        if ($singers->count() < $request->number_of_teams) {
+        $totalSingers = $allSingers->count();
+        $numTeams = $request->number_of_teams;
+        
+        if ($totalSingers == 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Not enough singers. Need at least ' . $request->number_of_teams . ' singers.'
+                'message' => 'No singers found.'
             ]);
         }
         
-        $numTeams = $request->number_of_teams;
-        
-        // Group singers by voice part
+        // Group singers by voice part and level
         $groupedByVoice = [];
-        foreach ($singers as $singer) {
-            $voice = $singer['voice_part'];
+        foreach ($allSingers as $singer) {
+            $voice = $singer->voice_part;
             if (!isset($groupedByVoice[$voice])) {
-                $groupedByVoice[$voice] = [];
+                $groupedByVoice[$voice] = ['good' => [], 'normal' => []];
             }
-            $groupedByVoice[$voice][] = $singer;
+            if ($singer->singer_level == 'Good') {
+                $groupedByVoice[$voice]['good'][] = $singer;
+            } else {
+                $groupedByVoice[$voice]['normal'][] = $singer;
+            }
         }
         
-        // Sort each voice group by performance level (Good first, then Normal)
-        $levelOrder = ['Good' => 1, 'Normal' => 2];
-        foreach ($groupedByVoice as $voice => &$voiceSingers) {
-            usort($voiceSingers, function($a, $b) use ($levelOrder) {
-                return ($levelOrder[$a['performance_level']] ?? 99) - ($levelOrder[$b['performance_level']] ?? 99);
-            });
+        // Shuffle each group for randomness
+        foreach ($groupedByVoice as $voice => &$groups) {
+            shuffle($groups['good']);
+            shuffle($groups['normal']);
         }
+        
+        // Calculate target per team
+        $targetPerTeam = ceil($totalSingers / $numTeams);
+        $minPerTeam = floor($totalSingers / $numTeams);
         
         // Initialize teams
-        $teams = array_fill(0, $numTeams, []);
-        $teamScores = array_fill(0, $numTeams, 0);
+        $teams = [];
+        for ($i = 1; $i <= $numTeams; $i++) {
+            $teams[$i] = [];
+        }
         
-        // Distribute voice parts evenly (snake algorithm)
+        $assignedIds = [];
         $voiceParts = array_keys($groupedByVoice);
-        $voiceIndex = 0;
-        $direction = 1; // 1 for forward, -1 for backward
-        $teamIndex = 0;
         
-        // First pass: distribute high-level singers (Good) evenly
+        // Calculate how many of each voice part per team
+        $voiceCounts = [];
         foreach ($voiceParts as $voice) {
-            $voiceSingers = $groupedByVoice[$voice];
-            $goodSingers = array_filter($voiceSingers, function($s) {
-                return $s['performance_level'] == 'Good';
-            });
-            $normalSingers = array_filter($voiceSingers, function($s) {
-                return $s['performance_level'] == 'Normal';
+            $totalForVoice = count($groupedByVoice[$voice]['good']) + count($groupedByVoice[$voice]['normal']);
+            $voiceCounts[$voice] = [
+                'target' => ceil($totalForVoice / $numTeams),
+                'good_target' => ceil(count($groupedByVoice[$voice]['good']) / $numTeams),
+                'normal_target' => ceil(count($groupedByVoice[$voice]['normal']) / $numTeams)
+            ];
+        }
+        
+        // Track current counts per team
+        $teamVoiceCounts = [];
+        $teamGoodCounts = [];
+        $teamNormalCounts = [];
+        for ($i = 1; $i <= $numTeams; $i++) {
+            $teamVoiceCounts[$i] = [];
+            $teamGoodCounts[$i] = 0;
+            $teamNormalCounts[$i] = 0;
+            foreach ($voiceParts as $voice) {
+                $teamVoiceCounts[$i][$voice] = 0;
+            }
+        }
+        
+        // Distribute singers by voice part with priority to teams needing that voice
+        foreach ($voiceParts as $voice) {
+            $goodSingers = $groupedByVoice[$voice]['good'];
+            $normalSingers = $groupedByVoice[$voice]['normal'];
+            
+            // Find teams with lowest count of this voice part
+            $sortedTeams = range(1, $numTeams);
+            usort($sortedTeams, function($a, $b) use ($teamVoiceCounts, $voice) {
+                return $teamVoiceCounts[$a][$voice] - $teamVoiceCounts[$b][$voice];
             });
             
             // Distribute Good singers first
-            $goodArray = array_values($goodSingers);
-            for ($i = 0; $i < count($goodArray); $i++) {
-                $teams[$teamIndex % $numTeams][] = $goodArray[$i];
+            $teamIndex = 0;
+            foreach ($goodSingers as $singer) {
+                $teamNum = $sortedTeams[$teamIndex % count($sortedTeams)];
+                $teams[$teamNum][] = $singer;
+                $assignedIds[] = $singer->id;
+                $teamVoiceCounts[$teamNum][$voice]++;
+                $teamGoodCounts[$teamNum]++;
                 $teamIndex++;
             }
             
-            // Then distribute Normal singers
-            $normalArray = array_values($normalSingers);
-            for ($i = 0; $i < count($normalArray); $i++) {
-                $teams[$teamIndex % $numTeams][] = $normalArray[$i];
+            // Resort teams for Normal singers
+            usort($sortedTeams, function($a, $b) use ($teamVoiceCounts, $voice) {
+                return $teamVoiceCounts[$a][$voice] - $teamVoiceCounts[$b][$voice];
+            });
+            
+            // Distribute Normal singers
+            $teamIndex = 0;
+            foreach ($normalSingers as $singer) {
+                $teamNum = $sortedTeams[$teamIndex % count($sortedTeams)];
+                $teams[$teamNum][] = $singer;
+                $assignedIds[] = $singer->id;
+                $teamVoiceCounts[$teamNum][$voice]++;
+                $teamNormalCounts[$teamNum]++;
                 $teamIndex++;
             }
         }
         
-        // Calculate team sizes and balance
-        $targetSize = ceil($singers->count() / $numTeams);
-        
-        // Balance team sizes by moving singers
+        // Final balance pass - move singers to equalize team sizes
         for ($attempt = 0; $attempt < 10; $attempt++) {
-            for ($i = 0; $i < $numTeams; $i++) {
-                for ($j = $i + 1; $j < $numTeams; $j++) {
+            for ($i = 1; $i <= $numTeams; $i++) {
+                for ($j = $i + 1; $j <= $numTeams; $j++) {
                     $sizeI = count($teams[$i]);
                     $sizeJ = count($teams[$j]);
                     
                     if (abs($sizeI - $sizeJ) > 1) {
-                        if ($sizeI > $sizeJ) {
-                            // Move one singer from team i to team j
-                            $moved = array_pop($teams[$i]);
-                            $teams[$j][] = $moved;
-                        } elseif ($sizeJ > $sizeI) {
-                            $moved = array_pop($teams[$j]);
-                            $teams[$i][] = $moved;
+                        if ($sizeI > $sizeJ && $sizeI > $minPerTeam) {
+                            // Find a Normal singer to move (prefer moving Normal over Good)
+                            $moved = null;
+                            $moveIndex = null;
+                            foreach ($teams[$i] as $index => $member) {
+                                if ($member->singer_level == 'Normal') {
+                                    $moved = $member;
+                                    $moveIndex = $index;
+                                    break;
+                                }
+                            }
+                            // If no Normal, move Good
+                            if (!$moved && count($teams[$i]) > 0) {
+                                $moved = array_pop($teams[$i]);
+                                $teams[$j][] = $moved;
+                            } elseif ($moved) {
+                                unset($teams[$i][$moveIndex]);
+                                $teams[$i] = array_values($teams[$i]);
+                                $teams[$j][] = $moved;
+                            }
+                        } elseif ($sizeJ > $sizeI && $sizeJ > $minPerTeam) {
+                            $moved = null;
+                            $moveIndex = null;
+                            foreach ($teams[$j] as $index => $member) {
+                                if ($member->singer_level == 'Normal') {
+                                    $moved = $member;
+                                    $moveIndex = $index;
+                                    break;
+                                }
+                            }
+                            if (!$moved && count($teams[$j]) > 0) {
+                                $moved = array_pop($teams[$j]);
+                                $teams[$i][] = $moved;
+                            } elseif ($moved) {
+                                unset($teams[$j][$moveIndex]);
+                                $teams[$j] = array_values($teams[$j]);
+                                $teams[$i][] = $moved;
+                            }
                         }
                     }
                 }
             }
         }
         
-        // Final sort each team by voice part and level
+        // Verify no duplicates
+        $finalAssigned = [];
+        foreach ($teams as $team) {
+            foreach ($team as $member) {
+                if (in_array($member->id, $finalAssigned)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Duplicate detected: ' . $member->name
+                    ], 500);
+                }
+                $finalAssigned[] = $member->id;
+            }
+        }
+        
+        // Sort each team by voice part
         $voicePriority = ['Soprano' => 1, 'Alto' => 2, 'Tenor' => 3, 'Bass' => 4, 'Lead' => 5];
-        foreach ($teams as &$team) {
-            usort($team, function($a, $b) use ($voicePriority, $levelOrder) {
-                $voiceCompare = ($voicePriority[$a['voice_part']] ?? 99) - ($voicePriority[$b['voice_part']] ?? 99);
-                if ($voiceCompare != 0) return $voiceCompare;
-                return ($levelOrder[$a['performance_level']] ?? 99) - ($levelOrder[$b['performance_level']] ?? 99);
+        
+        foreach ($teams as $teamNum => &$team) {
+            usort($team, function($a, $b) use ($voicePriority) {
+                return ($voicePriority[$a->voice_part] ?? 99) - ($voicePriority[$b->voice_part] ?? 99);
             });
         }
         
         // Save to database
         $serviceTeam = ServiceTeam::create([
             'service_name' => $request->service_name,
+            'service_date' => $request->service_date,
             'number_of_teams' => $numTeams,
             'generated_at' => now(),
             'created_by' => auth()->id()
@@ -546,10 +638,10 @@ class MusicController extends Controller
             foreach ($members as $member) {
                 TeamMember::create([
                     'service_team_id' => $serviceTeam->id,
-                    'team_number' => $teamNum + 1,
-                    'user_id' => $member['id'],
-                    'voice_part' => $member['voice_part'],
-                    'performance_level' => $member['performance_level']
+                    'team_number' => $teamNum,
+                    'user_id' => $member->id,
+                    'voice_part' => $member->voice_part,
+                    'performance_level' => $member->singer_level
                 ]);
             }
         }
@@ -557,19 +649,42 @@ class MusicController extends Controller
         // Prepare response
         $teamsData = [];
         foreach ($teams as $teamNum => $members) {
+            $goodCount = 0;
+            $normalCount = 0;
+            $voiceCounts = [];
+            
+            foreach ($members as $member) {
+                if ($member->singer_level == 'Good') $goodCount++;
+                else $normalCount++;
+                
+                $voice = $member->voice_part;
+                $voiceCounts[$voice] = ($voiceCounts[$voice] ?? 0) + 1;
+            }
+            
             $teamsData[] = [
-                'team_number' => $teamNum + 1,
-                'members' => array_values($members)
+                'team_number' => $teamNum,
+                'member_count' => count($members),
+                'good_count' => $goodCount,
+                'normal_count' => $normalCount,
+                'voice_counts' => $voiceCounts,
+                'members' => array_map(function($member) {
+                    return [
+                        'name' => $member->name,
+                        'voice_part' => $member->voice_part,
+                        'performance_level' => $member->singer_level
+                    ];
+                }, $members)
             ];
         }
         
         return response()->json([
             'success' => true,
             'service_team_id' => $serviceTeam->id,
-            'service_name' => $request->service_name,
             'teams' => $teamsData,
-            'total_members' => $singers->count(),
-            'message' => 'Successfully created ' . $numTeams . ' balanced teams'
+            'total_singers' => $totalSingers,
+            'target_per_team' => $targetPerTeam,
+            'min_per_team' => $minPerTeam,
+            'message' => "Successfully distributed {$totalSingers} singers into {$numTeams} teams"
         ]);
         
     } catch (\Exception $e) {
@@ -580,9 +695,11 @@ class MusicController extends Controller
         ], 500);
     }
 }
-    
-    public function getGenerationDetails($id)
-    {
+    // ==================== TEAM DETAILS METHODS ====================
+
+public function getGenerationDetails($id)
+{
+    try {
         $generation = ServiceTeam::with('members.user')->findOrFail($id);
         $teams = $generation->members->groupBy('team_number');
         
@@ -590,40 +707,60 @@ class MusicController extends Controller
         foreach ($teams as $teamNum => $members) {
             $teamsData[] = [
                 'team_number' => $teamNum,
+                'member_count' => $members->count(),
                 'members' => $members->map(function($member) {
                     return [
                         'name' => $member->user->name,
                         'voice_part' => $member->voice_part,
                         'performance_level' => $member->performance_level
                     ];
-                })
+                })->values()
             ];
         }
+        
+        // Sort teams by team_number
+        usort($teamsData, function($a, $b) {
+            return $a['team_number'] - $b['team_number'];
+        });
         
         return response()->json([
             'success' => true,
             'service_name' => $generation->service_name,
-            'generated_at' => $generation->created_at->format('M d, Y H:i:s'),
+            'service_date' => $generation->service_date,
             'number_of_teams' => $generation->number_of_teams,
-            'total_members' => $generation->members->count(),
-            'teams' => $teamsData
+            'teams' => $teamsData,
+            'total_members' => $generation->members->count()
         ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
     
-    public function exportGeneration($id)
-    {
+   public function exportGeneration($id)
+{
+    try {
         $generation = ServiceTeam::with('members.user')->findOrFail($id);
         $teams = $generation->members->groupBy('team_number');
         
         $filename = 'groups_' . preg_replace('/[^a-zA-Z0-9]/', '_', $generation->service_name) . '_' . date('Y-m-d') . '.csv';
+        
         $handle = fopen('php://temp', 'w+');
         
+        // Add UTF-8 BOM for Excel compatibility
+        fwrite($handle, "\xEF\xBB\xBF");
+        
+        // Headers
         fputcsv($handle, ['Team', 'Name', 'Email', 'Voice Part', 'Performance Level']);
         
+        // Data
         foreach ($teams as $teamNum => $members) {
             foreach ($members as $member) {
                 fputcsv($handle, [
-                    'Team ' . $teamNum,
+                    'Service ' . chr(64 + $teamNum),
                     $member->user->name,
                     $member->user->email,
                     $member->voice_part,
@@ -637,16 +774,23 @@ class MusicController extends Controller
         fclose($handle);
         
         return response($csv, 200)
-            ->header('Content-Type', 'text/csv')
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+    } catch (\Exception $e) {
+        \Log::error('Export error: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Error exporting: ' . $e->getMessage());
     }
+}
     
-    public function restoreGeneration($id)
-    {
+  public function restoreGeneration($id)
+{
+    try {
         $oldGeneration = ServiceTeam::with('members')->findOrFail($id);
         
         $newGeneration = ServiceTeam::create([
             'service_name' => $oldGeneration->service_name . ' (Restored)',
+            'service_date' => $oldGeneration->service_date,
             'number_of_teams' => $oldGeneration->number_of_teams,
             'generated_at' => now(),
             'created_by' => auth()->id()
@@ -662,8 +806,19 @@ class MusicController extends Controller
             ]);
         }
         
-        return redirect()->back()->with('success', 'Generation restored successfully!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Generation restored successfully!',
+            'new_generation_id' => $newGeneration->id
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
     
     public function deleteServiceTeam($id)
     {
@@ -787,5 +942,222 @@ public function storeGallery(Request $request)
     }
     
     return redirect()->back()->with('success', $uploadedCount . ' photo(s) uploaded successfully!');
+}
+
+
+// ==================== LANDING PAGE CONTENT METHODS ====================
+
+public function storeYouTubeVideo(Request $request)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'youtube_id' => 'required|string|max:100'
+        ]);
+        
+        $maxOrder = DB::table('landing_youtube_videos')->max('sort_order') ?? 0;
+        
+        $id = DB::table('landing_youtube_videos')->insertGetId([
+            'title' => $request->title,
+            'youtube_id' => $request->youtube_id,
+            'is_published' => $request->has('is_published'),
+            'sort_order' => $maxOrder + 1,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true, 'id' => $id]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function updateYouTubeVideo(Request $request, $id)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'youtube_id' => 'required|string|max:100'
+        ]);
+        
+        DB::table('landing_youtube_videos')->where('id', $id)->update([
+            'title' => $request->title,
+            'youtube_id' => $request->youtube_id,
+            'is_published' => $request->has('is_published'),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function editYouTubeVideo($id)
+{
+    try {
+        $video = DB::table('landing_youtube_videos')->where('id', $id)->first();
+        return response()->json(['success' => true, 'video' => $video]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function deleteYouTubeVideo($id)
+{
+    try {
+        DB::table('landing_youtube_videos')->where('id', $id)->delete();
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function toggleYouTubePublish($id)
+{
+    try {
+        $video = DB::table('landing_youtube_videos')->where('id', $id)->first();
+        DB::table('landing_youtube_videos')->where('id', $id)->update([
+            'is_published' => !$video->is_published,
+            'updated_at' => now()
+        ]);
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+// Featured Image Methods
+public function storeFeaturedImage(Request $request)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'description' => 'nullable|string'
+        ]);
+        
+        // Upload image
+        $image = $request->file('image');
+        $filename = time() . '_' . uniqid() . '_' . $image->getClientOriginalName();
+        $image->move(public_path('uploads/landing'), $filename);
+        $imagePath = 'uploads/landing/' . $filename;
+        
+        $maxOrder = DB::table('landing_featured_images')->max('sort_order') ?? 0;
+        
+        $id = DB::table('landing_featured_images')->insertGetId([
+            'title' => $request->title,
+            'image_path' => $imagePath,
+            'description' => $request->description,
+            'is_published' => $request->has('is_published'),
+            'sort_order' => $maxOrder + 1,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true, 'id' => $id]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function updateFeaturedImage(Request $request, $id)
+{
+    try {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string'
+        ]);
+        
+        $updateData = [
+            'title' => $request->title,
+            'description' => $request->description,
+            'is_published' => $request->has('is_published'),
+            'updated_at' => now()
+        ];
+        
+        // Upload new image if provided
+        if ($request->hasFile('image')) {
+            $request->validate(['image' => 'image|mimes:jpeg,png,jpg,gif|max:5120']);
+            
+            // Delete old image
+            $oldImage = DB::table('landing_featured_images')->where('id', $id)->first();
+            if ($oldImage && file_exists(public_path($oldImage->image_path))) {
+                unlink(public_path($oldImage->image_path));
+            }
+            
+            $image = $request->file('image');
+            $filename = time() . '_' . uniqid() . '_' . $image->getClientOriginalName();
+            $image->move(public_path('uploads/landing'), $filename);
+            $updateData['image_path'] = 'uploads/landing/' . $filename;
+        }
+        
+        DB::table('landing_featured_images')->where('id', $id)->update($updateData);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function editFeaturedImage($id)
+{
+    try {
+        $image = DB::table('landing_featured_images')->where('id', $id)->first();
+        return response()->json(['success' => true, 'image' => $image]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function deleteFeaturedImage($id)
+{
+    try {
+        $image = DB::table('landing_featured_images')->where('id', $id)->first();
+        if ($image && file_exists(public_path($image->image_path))) {
+            unlink(public_path($image->image_path));
+        }
+        DB::table('landing_featured_images')->where('id', $id)->delete();
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function toggleFeaturedPublish($id)
+{
+    try {
+        $image = DB::table('landing_featured_images')->where('id', $id)->first();
+        DB::table('landing_featured_images')->where('id', $id)->update([
+            'is_published' => !$image->is_published,
+            'updated_at' => now()
+        ]);
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function updateLandingOrder(Request $request)
+{
+    try {
+        $type = $request->type;
+        $orders = $request->orders;
+        
+        $table = $type === 'youtube' ? 'landing_youtube_videos' : 'landing_featured_images';
+        
+        foreach ($orders as $order) {
+            DB::table($table)->where('id', $order['id'])->update([
+                'sort_order' => $order['sort_order'],
+                'updated_at' => now()
+            ]);
+        }
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
 }
 }

@@ -6,79 +6,91 @@
 @section('content')
 <div class="max-w-7xl mx-auto">
     
-    <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
-        <p class="text-gray-500 text-sm mt-1">Manage users, roles, and permissions</p>
+    <!-- Statistics Cards - Compact Version -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <!-- TOTAL USERS -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-users text-blue-600 text-sm"></i>
+        </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Total Users</p>
+            <p class="text-lg font-bold text-gray-800">{{ $stats['total'] ?? 0 }}</p>
+        </div>
     </div>
     
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500 hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">Total Users</p>
-                    <p class="text-3xl font-bold text-blue-600 mt-1">{{ $stats['total'] ?? 0 }}</p>
-                </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-users text-blue-600 text-xl"></i>
-                </div>
-            </div>
+    <!-- ACTIVE USERS -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-user-check text-green-600 text-sm"></i>
         </div>
-        
-        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">Active Users</p>
-                    <p class="text-3xl font-bold text-green-600 mt-1">{{ $stats['active'] ?? 0 }}</p>
-                </div>
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-user-check text-green-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500 hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">Admins</p>
-                    <p class="text-3xl font-bold text-purple-600 mt-1">{{ $stats['admins'] ?? 0 }}</p>
-                </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-user-shield text-purple-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-500 hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">Discipline Leaders</p>
-                    <p class="text-3xl font-bold text-yellow-600 mt-1">{{ $stats['discipline_leaders'] ?? 0 }}</p>
-                </div>
-                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-gavel text-yellow-600 text-xl"></i>
-                </div>
-            </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Active Users</p>
+            <p class="text-lg font-bold text-green-600">{{ $stats['active'] ?? 0 }}</p>
         </div>
     </div>
+    
+    <!-- INACTIVE USERS -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-user-slash text-red-600 text-sm"></i>
+        </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Inactive Users</p>
+            <p class="text-lg font-bold text-red-600">{{ $stats['inactive'] ?? 0 }}</p>
+        </div>
+    </div>
+    
+    <!-- PENDING -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-clock text-yellow-600 text-sm"></i>
+        </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Pending</p>
+            <p class="text-lg font-bold text-yellow-600">{{ $stats['pending'] ?? 0 }}</p>
+        </div>
+    </div>
+    
+    <!-- MALE -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-mars text-blue-600 text-sm"></i>
+        </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Male</p>
+            <p class="text-lg font-bold text-blue-600">{{ $stats['male'] ?? 0 }}</p>
+        </div>
+    </div>
+    
+    <!-- FEMALE -->
+    <div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition flex items-center gap-2">
+        <div class="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-venus text-pink-600 text-sm"></i>
+        </div>
+        <div>
+            <p class="text-[10px] text-gray-500 uppercase">Female</p>
+            <p class="text-lg font-bold text-pink-600">{{ $stats['female'] ?? 0 }}</p>
+        </div>
+    </div>
+</div>
     
     <!-- Filters Bar -->
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
         <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
+            <div class="flex-1 min-w-[150px]">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Search name or email</label>
                 <div class="relative">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input type="text" name="search" placeholder="Search by name or email..." 
+                    <input type="text" name="search" placeholder="Search name or email..." 
                            value="{{ request('search') }}"
                            class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
             
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Filter by role...</label>
-                <select name="role" class="w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs font-medium text-gray-700 mb-1">All Roles</label>
+                <select name="role" class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">All Roles</option>
                     @foreach($roles as $role)
                         <option value="{{ $role->id }}" {{ request('role') == $role->id ? 'selected' : '' }}>
@@ -89,11 +101,12 @@
             </div>
             
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Filter by status...</label>
-                <select name="status" class="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs font-medium text-gray-700 mb-1">All Status</label>
+                <select name="status" class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">All Status</option>
                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                     <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                 </select>
             </div>
             
@@ -107,11 +120,14 @@
             </div>
             
             <div class="flex gap-2 ml-auto">
-                <button type="button" onclick="openCreateModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-1">
+                <button type="button" onclick="openCreateModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm transition flex items-center gap-1">
                     <i class="fas fa-user-plus"></i> Add User
                 </button>
-                <button type="button" onclick="exportToCSV()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-1">
+                <button type="button" onclick="exportToCSV()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm transition flex items-center gap-1">
                     <i class="fas fa-download"></i> Export CSV
+                </button>
+                <button type="button" onclick="exportToPDF()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition flex items-center gap-1">
+                    <i class="fas fa-file-pdf"></i> PDF Report
                 </button>
             </div>
         </form>
@@ -183,15 +199,15 @@
                                     <div class="py-1">
                                         <button onclick="openViewModal({{ $user->id }})" 
                                                 class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2">
-                                            <i class="fas fa-eye text-blue-500 w-4"></i> View Details
+                                            <i class="fas fa-eye text-gray-500 w-4"></i> View Details
                                         </button>
                                         <button onclick="openEditModal({{ $user->id }})" 
                                                 class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2">
-                                            <i class="fas fa-edit text-green-500 w-4"></i> Edit User
+                                            <i class="fas fa-edit text-gray-500 w-4"></i> Edit User
                                         </button>
                                         <button onclick="openEditRolesModal({{ $user->id }})" 
                                                 class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2">
-                                            <i class="fas fa-tags text-purple-500 w-4"></i> Edit Roles
+                                            <i class="fas fa-tags text-gray-500 w-4"></i> Edit Roles
                                         </button>
                                         @if(auth()->id() !== $user->id)
                                             <div class="border-t my-1"></div>
@@ -230,7 +246,7 @@
     </div>
 </div>
 
-<!-- Modals -->
+<!-- Modals (same as before) -->
 <div id="viewModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
@@ -343,8 +359,12 @@ function openViewModal(userId) {
                     <div class="grid grid-cols-2 gap-3">
                         <div><label class="text-xs text-gray-500">Phone</label><p class="text-sm">${data.phone || '-'}</p></div>
                         <div><label class="text-xs text-gray-500">Gender</label><p class="text-sm">${data.gender || '-'}</p></div>
-                        <div><label class="text-xs text-gray-500">Role</label><p class="text-sm">${data.roles.map(r => r.display_name).join(', ') || '-'}</p></div>
-                        <div><label class="text-xs text-gray-500">Registered</label><p class="text-sm">${data.created_at}</p></div>
+                        <div><label class="text-xs text-gray-500">Province</label><p class="text-sm">${data.province || '-'}</p></div>
+                        <div><label class="text-xs text-gray-500">District</label><p class="text-sm">${data.district || '-'}</p></div>
+                        <div><label class="text-xs text-gray-500">Sector</label><p class="text-sm">${data.sector || '-'}</p></div>
+                        <div><label class="text-xs text-gray-500">Village</label><p class="text-sm">${data.village || '-'}</p></div>
+                        <div><label class="text-xs text-gray-500">Date of Birth</label><p class="text-sm">${data.date_of_birth || '-'}</p></div>
+                        <div><label class="text-xs text-gray-500">Roles</label><p class="text-sm">${data.roles.map(r => r.display_name).join(', ') || '-'}</p></div>
                     </div>
                     <div class="flex justify-end pt-4 border-t">
                         <button onclick="closeModal('viewModal')" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Close</button>
@@ -432,6 +452,12 @@ function openCreateModal() {
 
 function exportToCSV() {
     let url = '{{ route("users.export") }}';
+    let params = new URLSearchParams(window.location.search);
+    window.open(url + '?' + params.toString(), '_blank');
+}
+
+function exportToPDF() {
+    let url = '{{ route("users.export-pdf") }}';
     let params = new URLSearchParams(window.location.search);
     window.open(url + '?' + params.toString(), '_blank');
 }

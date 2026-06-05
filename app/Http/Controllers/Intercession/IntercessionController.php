@@ -92,11 +92,12 @@ class IntercessionController extends Controller
     
     try {
         $archiveSections = DB::table('archive_sections')
-            ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
-            ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
-            ->groupBy('archive_sections.id')
-            ->orderBy('archive_sections.created_at', 'desc')
-            ->get();
+        ->where('module', 'intercession')  // Add this filter
+        ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
+        ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
+        ->groupBy('archive_sections.id')
+        ->orderBy('archive_sections.created_at', 'desc')
+        ->get();
     } catch (\Exception $e) {
         // Table doesn't exist yet
     }
@@ -257,29 +258,30 @@ class IntercessionController extends Controller
         }
     }
 
-    public function storeDevotion(Request $request)
+  public function storeDevotion(Request $request)
 {
     try {
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'date' => 'required|date',
-            'bible_verse' => 'nullable|string'
+            'bible_verse' => 'nullable|string',
+            'content_rw' => 'nullable|string'
         ]);
         
         $id = DB::table('devotions')->insertGetId([
-            'title' => $request->title,
-            'content' => $request->content,
-            'content_rw' => $request->content_rw,
-            'bible_verse' => $request->bible_verse,
-            'date' => $request->date,
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'content_rw' => $validated['content_rw'] ?? null,
+            'bible_verse' => $validated['bible_verse'] ?? null,
+            'date' => $validated['date'],
             'is_active' => $request->has('is_active'),
             'created_by' => auth()->id(),
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
-        return response()->json(['success' => true, 'message' => 'Devotion created successfully']);
+        return response()->json(['success' => true, 'message' => 'Devotion created successfully', 'id' => $id]);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
@@ -317,12 +319,20 @@ public function storePrayerRequest(Request $request)
 public function updateDevotion(Request $request, $id)
 {
     try {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'date' => 'required|date',
+            'bible_verse' => 'nullable|string',
+            'content_rw' => 'nullable|string'
+        ]);
+        
         DB::table('devotions')->where('id', $id)->update([
-            'title' => $request->title,
-            'content' => $request->content,
-            'content_rw' => $request->content_rw,
-            'bible_verse' => $request->bible_verse,
-            'date' => $request->date,
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'content_rw' => $validated['content_rw'] ?? null,
+            'bible_verse' => $validated['bible_verse'] ?? null,
+            'date' => $validated['date'],
             'is_active' => $request->has('is_active'),
             'updated_at' => now()
         ]);
@@ -376,8 +386,9 @@ public function storeArchiveSection(Request $request)
             'name' => 'required|string|max:255'
         ]);
         
-        $id = DB::table('archive_sections')->insertGetId([
+         $id = DB::table('archive_sections')->insertGetId([
             'name' => $request->name,
+            'module' => 'intercession',  // Add this
             'created_by' => auth()->id(),
             'created_at' => now(),
             'updated_at' => now()
@@ -425,12 +436,26 @@ public function deleteArchiveSection($id)
 public function getSectionPages($id)
 {
     try {
-        $section = DB::table('archive_sections')->where('id', $id)->first();
+        // Get section with module check
+        $section = DB::table('archive_sections')
+            ->where('id', $id)
+            ->where('module', 'intercession')
+            ->first();
+        
+        if (!$section) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Section not found or not accessible'
+            ], 404);
+        }
+        
+        // Get pages for this section
         $pages = DB::table('archive_pages')
             ->where('section_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
         
+        // Format each page
         foreach ($pages as $page) {
             $page->excerpt = Str::limit(strip_tags($page->content), 100);
             $page->formatted_date = date('F j, Y', strtotime($page->created_at));
@@ -438,13 +463,15 @@ public function getSectionPages($id)
         
         return response()->json([
             'success' => true,
-            'section_name' => $section->name ?? 'Pages',
+            'section_name' => $section->name,
             'pages' => $pages
         ]);
+        
     } catch (\Exception $e) {
+        \Log::error('Error loading section pages: ' . $e->getMessage());
         return response()->json([
             'success' => false,
-            'message' => $e->getMessage()
+            'message' => 'Error loading pages: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -452,16 +479,16 @@ public function getSectionPages($id)
 public function storeArchivePage(Request $request)
 {
     try {
-        $request->validate([
-            'section_id' => 'required|integer',
+        $validated = $request->validate([
+            'section_id' => 'required|integer|exists:archive_sections,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string'
         ]);
         
         $id = DB::table('archive_pages')->insertGetId([
-            'section_id' => $request->section_id,
-            'title' => $request->title,
-            'content' => $request->content,
+            'section_id' => $validated['section_id'],
+            'title' => $validated['title'],
+            'content' => $validated['content'],
             'is_published' => $request->has('is_published'),
             'created_by' => auth()->id(),
             'created_at' => now(),
@@ -473,6 +500,12 @@ public function storeArchivePage(Request $request)
             'message' => 'Page created successfully',
             'page_id' => $id
         ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
@@ -484,17 +517,33 @@ public function storeArchivePage(Request $request)
 public function updateArchivePage(Request $request, $id)
 {
     try {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+        
         DB::table('archive_pages')->where('id', $id)->update([
-            'section_id' => $request->section_id,
-            'title' => $request->title,
-            'content' => $request->content,
+            'title' => $validated['title'],
+            'content' => $validated['content'],
             'is_published' => $request->has('is_published'),
             'updated_at' => now()
         ]);
         
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Page updated successfully'
+        ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
     } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
 }
 
@@ -520,10 +569,15 @@ public function editArchivePage($id)
 
 public function showArchivePage($id)
 {
-    $page = DB::table('archive_pages')->where('id', $id)->first();
+    $page = DB::table('archive_pages')
+        ->join('archive_sections', 'archive_pages.section_id', '=', 'archive_sections.id')
+        ->where('archive_pages.id', $id)
+        ->where('archive_sections.module', 'intercession')  // Add this
+        ->select('archive_pages.*')
+        ->first();
     
     if (!$page) {
-        abort(404);
+        abort(404, 'Page not found');
     }
     
     return view('modules.intercession.partials.archive-page-show', compact('page'));

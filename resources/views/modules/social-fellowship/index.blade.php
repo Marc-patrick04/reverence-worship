@@ -6,12 +6,7 @@
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Social Fellowship</h1>
-        <p class="text-gray-500 text-sm mt-1">Manage family groups, members, and activities</p>
-    </div>
-    
+   
     <!-- Navigation Tabs -->
     <div class="border-b border-gray-200">
         <nav class="flex space-x-8 overflow-x-auto">

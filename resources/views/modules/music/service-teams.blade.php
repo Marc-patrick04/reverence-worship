@@ -78,8 +78,7 @@
                                     <span class="text-xs text-gray-500 ml-2">({{ $member->voice_part ?? '?' }})</span>
                                 </div>
                                 <span class="text-xs px-2 py-0.5 rounded-full 
-                                    {{ $member->performance_level == 'Professional' ? 'bg-purple-100 text-purple-800' : '' }}
-                                    {{ $member->performance_level == 'Advanced' ? 'bg-blue-100 text-blue-800' : '' }}
+                                  
                                     {{ $member->performance_level == 'Good' ? 'bg-green-100 text-green-800' : '' }}
                                     {{ $member->performance_level == 'Normal' ? 'bg-gray-100 text-gray-800' : '' }}">
                                     {{ $member->performance_level ?? '?' }}

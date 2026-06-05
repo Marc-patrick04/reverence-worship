@@ -1,4 +1,3 @@
-
 @props(['canManage' => false])
 
 <div class="bg-white rounded-lg shadow-lg p-6">
@@ -28,8 +27,8 @@
                     <td class="px-6 py-4">{{ $singer->email }}</td>
                     <td class="px-6 py-4">
                         @if($canManage)
-                        <select onchange="updateVoicePart({{ $singer->id }}, this.value)" 
-                                class="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <select data-user-id="{{ $singer->id }}" 
+                                class="voice-part-select border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             <option value="">Select Voice</option>
                             <option value="Soprano" {{ $singer->voice_part == 'Soprano' ? 'selected' : '' }}>Soprano</option>
                             <option value="Alto" {{ $singer->voice_part == 'Alto' ? 'selected' : '' }}>Alto</option>
@@ -43,8 +42,8 @@
                     </td>
                     <td class="px-6 py-4">
                         @if($canManage)
-                        <select onchange="updatePerformanceLevel({{ $singer->id }}, this.value)" 
-                                class="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <select data-user-id="{{ $singer->id }}" 
+                                class="performance-level-select border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                             <option value="">Select Level</option>
                             <option value="Normal" {{ $singer->singer_level == 'Normal' ? 'selected' : '' }}>Normal</option>
                             <option value="Good" {{ $singer->singer_level == 'Good' ? 'selected' : '' }}>Good</option>
@@ -65,40 +64,61 @@
 </div>
 
 <script>
-function updateVoicePart(userId, value) {
-    fetch(`/music/singers/${userId}/voice-part`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ voice_part: value })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success indication
-            alert('Voice part updated!');
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle voice part changes
+    document.querySelectorAll('.voice-part-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const value = this.value;
+            
+            fetch(`/music/singers/${userId}/voice-part`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ voice_part: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Voice part updated!');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating voice part');
+            });
+        });
     });
-}
-
-function updatePerformanceLevel(userId, value) {
-    fetch(`/music/singers/${userId}/performance-level`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ performance_level: value })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Performance level updated!');
-        }
+    
+    // Handle performance level changes
+    document.querySelectorAll('.performance-level-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const value = this.value;
+            
+            fetch(`/music/singers/${userId}/performance-level`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ performance_level: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Performance level updated!');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating performance level');
+            });
+        });
     });
-}
+});
 
 function toggleSingerStatus(userId) {
     if (confirm('Remove this user from singers list?')) {
@@ -115,6 +135,10 @@ function toggleSingerStatus(userId) {
             if (data.success) {
                 location.reload();
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating singer status');
         });
     }
 }

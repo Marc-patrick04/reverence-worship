@@ -77,7 +77,6 @@
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Other">Other</option>
             </select>
         </div>
         
@@ -108,44 +107,21 @@
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg">
         </div>
         
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ministry Role</label>
-            <input type="text" name="ministry_role" 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                   placeholder="e.g., Worship Leader, Musician, Media">
-        </div>
-        
-        <!-- Emergency Contact -->
-        <div class="md:col-span-2">
-            <h4 class="text-md font-bold text-blue-700 mb-2 border-b pb-1 mt-2">Emergency Contact</h4>
-        </div>
-        
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Name</label>
-            <input type="text" name="emergency_name" 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-        </div>
-        
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Emergency Phone</label>
-            <input type="text" name="emergency_contact" 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-        </div>
-        
         <!-- Singer Information -->
         <div class="md:col-span-2">
-            <h4 class="text-md font-bold text-purple-700 mb-2 border-b pb-1 mt-2">Singer Information</h4>
+            <h4 class="text-md font-bold text-black-700 mb-2 border-b pb-1 mt-2">Singer</h4>
         </div>
         
         <div class="md:col-span-2">
-            <label class="flex items-center space-x-2">
+            <label class="flex items-center space-x-2 cursor-pointer">
                 <input type="checkbox" name="is_singer" value="1" id="isSingerCheckbox"
+                       onclick="document.getElementById('singerFields').style.display = this.checked ? 'block' : 'none'"
                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                 <span class="text-sm font-medium text-gray-700">This user is a singer in the worship team</span>
             </label>
         </div>
         
-        <div id="singerFields" class="md:col-span-2 hidden">
+        <div id="singerFields" class="md:col-span-2" style="display: none;">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-3 bg-purple-50 rounded-lg">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Voice Part</label>
@@ -183,12 +159,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Skills / Talents</label>
             <textarea name="skills" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" 
                       placeholder="e.g., Singing, Guitar, Drums, Keyboard, Dancing, etc."></textarea>
-        </div>
-        
-        <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea name="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      placeholder="Any additional notes about this member"></textarea>
         </div>
         
         <!-- Password -->
@@ -235,7 +205,7 @@
 </form>
 
 <script>
-// Handle form submission via AJAX (NO singer toggle here - handled by parent)
+// Handle form submission via AJAX
 document.getElementById('createUserForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const form = this;

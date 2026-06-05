@@ -25,11 +25,78 @@
         </div>
         
         <div class="border-t pt-4">
-            <h3 class="font-bold text-lg mb-2">Lyrics</h3>
-            <div class="prose max-w-none">
-                <pre class="whitespace-pre-wrap font-sans text-gray-700">{{ $song->lyrics ?? 'No lyrics available.' }}</pre>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-lg">Lyrics</h3>
+                <button onclick="copyLyrics()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition">
+                    <i class="fas fa-copy"></i> Copy Lyrics
+                </button>
+            </div>
+            <div id="lyricsContent" class="prose max-w-none">
+                <pre id="lyricsText" class="whitespace-pre-wrap font-sans text-gray-700">{{ $song->lyrics ?? 'No lyrics available.' }}</pre>
             </div>
         </div>
     </div>
+
+    <script>
+        function copyLyrics() {
+            const lyricsText = document.getElementById('lyricsText');
+            const textToCopy = lyricsText.innerText || lyricsText.textContent;
+            
+            if (!textToCopy || textToCopy === 'No lyrics available.') {
+                alert('No lyrics to copy!');
+                return;
+            }
+            
+            // Modern approach
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(function() {
+                        showCopySuccess();
+                    })
+                    .catch(function(err) {
+                        console.error('Failed to copy: ', err);
+                        fallbackCopyText(textToCopy);
+                    });
+            } else {
+                fallbackCopyText(textToCopy);
+            }
+        }
+        
+        function fallbackCopyText(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '0';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy lyrics. Please select and copy manually.');
+            }
+            
+            document.body.removeChild(textarea);
+        }
+        
+        function showCopySuccess() {
+            const copyBtn = document.querySelector('button[onclick="copyLyrics()"]');
+            const originalHtml = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            copyBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            copyBtn.classList.add('bg-green-600');
+            
+            setTimeout(function() {
+                copyBtn.innerHTML = originalHtml;
+                copyBtn.classList.remove('bg-green-600');
+                copyBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }, 2000);
+        }
+    </script>
 </body>
 </html>

@@ -25,7 +25,13 @@ class SocialFellowshipController extends Controller
         ->get();
     
     \Log::info('Families count: ' . $families->count());
-    
+    $archiveSections = DB::table('archive_sections')
+        ->where('module', 'social-fellowship')  // Add this filter
+        ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
+        ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
+        ->groupBy('archive_sections.id')
+        ->orderBy('archive_sections.created_at', 'desc')
+        ->get();
     // Get all tasks with family names
     $tasks = DB::table('family_tasks')
         ->join('families', 'family_tasks.family_id', '=', 'families.id')
@@ -57,14 +63,7 @@ class SocialFellowshipController extends Controller
     $pendingPlans = $actionPlans->where('status', 'pending')->count();
     $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
     
-    // Archive sections
-    $archiveSections = DB::table('archive_sections')
-        ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
-        ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
-        ->groupBy('archive_sections.id')
-        ->orderBy('archive_sections.created_at', 'desc')
-        ->get();
-    
+   
     \Log::info('Archive Sections count: ' . $archiveSections->count());
     
     // Available users (not in any family)
@@ -610,208 +609,253 @@ public function debugData()
     
     // ==================== ARCHIVES METHODS ====================
     
-    public function storeArchiveSection(Request $request)
-    {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255'
-            ]);
-            
-            $id = DB::table('archive_sections')->insertGetId([
+    // ==================== ARCHIVES METHODS ====================
+
+public function storeArchiveSection(Request $request)
+{
+    try {
+        $request->validate([
+            'name' => 'required|string|max:255'
+        ]);
+        
+        $id = DB::table('archive_sections')->insertGetId([
+            'name' => $request->name,
+            'module' => 'social-fellowship',
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Section created successfully',
+            'section_id' => $id
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function updateArchiveSection(Request $request, $id)
+{
+    try {
+        $request->validate([
+            'name' => 'required|string|max:255'
+        ]);
+        
+        DB::table('archive_sections')
+            ->where('id', $id)
+            ->where('module', 'social-fellowship')
+            ->update([
                 'name' => $request->name,
-                'created_by' => auth()->id(),
-                'created_at' => now(),
                 'updated_at' => now()
             ]);
-            
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Section created successfully',
-                    'section_id' => $id
-                ]);
-            }
-            
-            return redirect()->back()->with('success', 'Section created successfully');
-        } catch (\Exception $e) {
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Section updated successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function deleteArchiveSection($id)
+{
+    try {
+        // Delete pages first
+        DB::table('archive_pages')->where('section_id', $id)->delete();
+        DB::table('archive_sections')
+            ->where('id', $id)
+            ->where('module', 'social-fellowship')
+            ->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Section deleted successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function getSectionPages($id)
+{
+    try {
+        $section = DB::table('archive_sections')
+            ->where('id', $id)
+            ->where('module', 'social-fellowship')
+            ->first();
+        
+        if (!$section) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => 'Section not found'
+            ], 404);
         }
+        
+        $pages = DB::table('archive_pages')
+            ->where('section_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        foreach ($pages as $page) {
+            $page->excerpt = Str::limit(strip_tags($page->content), 100);
+            $page->formatted_date = date('F j, Y', strtotime($page->created_at));
+        }
+        
+        return response()->json([
+            'success' => true,
+            'section_name' => $section->name,
+            'pages' => $pages
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
-    
-    public function updateArchiveSection(Request $request, $id)
-    {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255'
-            ]);
-            
-            DB::table('archive_sections')->where('id', $id)->update([
-                'name' => $request->name,
-                'updated_at' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Section updated successfully'
-            ]);
-        } catch (\Exception $e) {
+}
+
+public function storeArchivePage(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'section_id' => 'required|integer|exists:archive_sections,id',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+        
+        // Verify section exists and belongs to social-fellowship
+        $section = DB::table('archive_sections')
+            ->where('id', $validated['section_id'])
+            ->where('module', 'social-fellowship')
+            ->first();
+        
+        if (!$section) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => 'Invalid section'
+            ], 400);
         }
+        
+        $id = DB::table('archive_pages')->insertGetId([
+            'section_id' => $validated['section_id'],
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'is_published' => $request->has('is_published'),
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Page created successfully',
+            'page_id' => $id
+        ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
-    
-    public function deleteArchiveSection($id)
-    {
-        try {
-            DB::table('archive_pages')->where('section_id', $id)->delete();
-            DB::table('archive_sections')->where('id', $id)->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Section deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+}
+public function updateArchivePage(Request $request, $id)
+{
+    try {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+        
+        DB::table('archive_pages')->where('id', $id)->update([
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'is_published' => $request->has('is_published'),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Page updated successfully'
+        ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
-    
-    public function getSectionPages($id)
-    {
-        try {
-            $section = DB::table('archive_sections')->where('id', $id)->first();
-            $pages = DB::table('archive_pages')
-                ->where('section_id', $id)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            
-            foreach ($pages as $page) {
-                $page->excerpt = Str::limit(strip_tags($page->content), 100);
-                $page->formatted_date = date('F j, Y', strtotime($page->created_at));
-            }
-            
-            return response()->json([
-                'success' => true,
-                'section_name' => $section->name ?? 'Pages',
-                'pages' => $pages
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+}
+
+public function deleteArchivePage($id)
+{
+    try {
+        DB::table('archive_pages')->where('id', $id)->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Page deleted successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
-    
-    public function storeArchivePage(Request $request)
-    {
-        try {
-            $request->validate([
-                'section_id' => 'required|integer',
-                'title' => 'required|string|max:255',
-                'content' => 'required|string'
-            ]);
-            
-            $id = DB::table('archive_pages')->insertGetId([
-                'section_id' => $request->section_id,
-                'title' => $request->title,
-                'content' => $request->content,
-                'is_published' => $request->has('is_published'),
-                'created_by' => auth()->id(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Page created successfully',
-                'page_id' => $id
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    public function updateArchivePage(Request $request, $id)
-    {
-        try {
-            $request->validate([
-                'title' => 'required|string|max:255',
-                'content' => 'required|string'
-            ]);
-            
-            DB::table('archive_pages')->where('id', $id)->update([
-                'section_id' => $request->section_id,
-                'title' => $request->title,
-                'content' => $request->content,
-                'is_published' => $request->has('is_published'),
-                'updated_at' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Page updated successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    public function deleteArchivePage($id)
-    {
-        try {
-            DB::table('archive_pages')->where('id', $id)->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Page deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    public function editArchivePage($id)
-    {
-        try {
-            $page = DB::table('archive_pages')->where('id', $id)->first();
-            
-            return response()->json([
-                'success' => true,
-                'page' => $page
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    public function showArchivePage($id)
-    {
+}
+
+public function editArchivePage($id)
+{
+    try {
         $page = DB::table('archive_pages')->where('id', $id)->first();
         
-        if (!$page) {
-            abort(404);
-        }
-        
-        return view('modules.social-fellowship.partials.archive-page-show', compact('page'));
+        return response()->json([
+            'success' => true,
+            'page' => $page
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
+
+public function showArchivePage($id)
+{
+    $page = DB::table('archive_pages')
+        ->join('archive_sections', 'archive_pages.section_id', '=', 'archive_sections.id')
+        ->where('archive_pages.id', $id)
+        ->where('archive_sections.module', 'social-fellowship')
+        ->select('archive_pages.*', 'archive_sections.name as section_name')
+        ->first();
+    
+    if (!$page) {
+        abort(404, 'Page not found');
+    }
+    
+    return view('modules.social-fellowship.partials.archive-page-show', compact('page'));
+}
 }

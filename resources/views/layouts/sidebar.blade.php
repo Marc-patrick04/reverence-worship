@@ -23,29 +23,6 @@
                     <span class="nav-text text-sm font-medium">User Management</span>
                 </a>
                 
-                <!-- Roles Management -->
-                <a href="{{ route('roles.index') }}" class="nav-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                    <i class="fas fa-tags w-5"></i>
-                    <span class="nav-text text-sm font-medium">Roles Management</span>
-                </a>
-                
-                <!-- Permission Manager -->
-                <a href="{{ route('permission-manager.index') }}" class="nav-item {{ request()->routeIs('permission-manager.*') ? 'active' : '' }}">
-                    <i class="fas fa-lock w-5"></i>
-                    <span class="nav-text text-sm font-medium">Permission Manager</span>
-                </a>
-                
-                <!-- Page Assignment -->
-                <a href="{{ route('page-assignment.index') }}" class="nav-item {{ request()->routeIs('page-assignment.*') ? 'active' : '' }}">
-                    <i class="fas fa-tasks w-5"></i>
-                    <span class="nav-text text-sm font-medium">Page Assignment</span>
-                </a>
-                
-                <!-- Pages & Features -->
-                <a href="{{ route('pages.index') }}" class="nav-item {{ request()->routeIs('pages.*') ? 'active' : '' }}">
-                    <i class="fas fa-file-alt w-5"></i>
-                    <span class="nav-text text-sm font-medium">Pages & Features</span>
-                </a>
                 
                 <!-- My Family -->
                 <a href="{{ route('family.index') }}" class="nav-item {{ request()->routeIs('family.*') ? 'active' : '' }}">
@@ -113,6 +90,29 @@
                     <span class="nav-text text-sm font-medium">Reports</span>
                 </a>
                 
+                <!-- Roles Management -->
+                <a href="{{ route('roles.index') }}" class="nav-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                    <i class="fas fa-tags w-5"></i>
+                    <span class="nav-text text-sm font-medium">Roles Management</span>
+                </a>
+                
+                <!-- Permission Manager -->
+                <a href="{{ route('permission-manager.index') }}" class="nav-item {{ request()->routeIs('permission-manager.*') ? 'active' : '' }}">
+                    <i class="fas fa-lock w-5"></i>
+                    <span class="nav-text text-sm font-medium">Permission Manager</span>
+                </a>
+                
+                <!-- Page Assignment -->
+                <a href="{{ route('page-assignment.index') }}" class="nav-item {{ request()->routeIs('page-assignment.*') ? 'active' : '' }}">
+                    <i class="fas fa-tasks w-5"></i>
+                    <span class="nav-text text-sm font-medium">Page Assignment</span>
+                </a>
+                
+                <!-- Pages & Features -->
+                <a href="{{ route('pages.index') }}" class="nav-item {{ request()->routeIs('pages.*') ? 'active' : '' }}">
+                    <i class="fas fa-file-alt w-5"></i>
+                    <span class="nav-text text-sm font-medium">Pages & Features</span>
+                </a>
             @else
                 <!-- Regular User Menu -->
                 <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">

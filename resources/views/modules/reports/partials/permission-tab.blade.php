@@ -1,0 +1,1 @@
+<div><h3 class="text-lg font-semibold mb-4">Permission Requests Report</h3><div class="text-center py-12 text-gray-500">Permission reports coming soon</div></div>
