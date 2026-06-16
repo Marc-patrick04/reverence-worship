@@ -1,76 +1,107 @@
-<div>
-    <div class="mb-6">
-        <h3 class="text-xl font-bold text-gray-800 mb-1">Permission requests Management</h3>
-        <p class="text-gray-500 text-sm">Review and manage user Permission requests</p>
+<div class="space-y-6">
+    @php
+        $canCreate = auth()->check() && auth()->user()->canAccess('discipline', 'create');
+        $canApprove = auth()->check() && auth()->user()->canAccess('discipline', 'approve-permission');
+        $canReject = auth()->check() && auth()->user()->canAccess('discipline', 'reject-permission');
+        $canDelete = auth()->check() && auth()->user()->canAccess('discipline', 'delete');
+        $canView = auth()->check() && auth()->user()->canAccess('discipline', 'view-permissions');
+    @endphp
+
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-800">Permission Management</h3>
+            <p class="text-sm text-gray-500 mt-1">Review and manage user permission requests</p>
+        </div>
+        @if($canCreate)
+        <button onclick="openPermissionModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm transition">
+            <i class="fas fa-plus-circle"></i> New Request
+        </button>
+        @endif
     </div>
-    
+
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-5 text-white">
-            <div class="flex items-center justify-between mb-2">
-                <i class="fas fa-envelope-open-text text-2xl opacity-80"></i>
-                <span class="text-xs opacity-80">Total</span>
-            </div>
-            <p class="text-3xl font-bold" id="total_requests">0</p>
-            <p class="text-sm mt-1 opacity-90">Total Requests</p>
-        </div>
-        
-        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-5 text-white">
-            <div class="flex items-center justify-between mb-2">
-                <i class="fas fa-clock text-2xl opacity-80"></i>
-                <span class="text-xs opacity-80">Pending</span>
-            </div>
-            <p class="text-3xl font-bold" id="pending_requests">0</p>
-            <p class="text-sm mt-1 opacity-90">Pending</p>
-        </div>
-        
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-5 text-white">
-            <div class="flex items-center justify-between mb-2">
-                <i class="fas fa-check-circle text-2xl opacity-80"></i>
-                <span class="text-xs opacity-80">Approved</span>
-            </div>
-            <p class="text-3xl font-bold" id="approved_requests">0</p>
-            <p class="text-sm mt-1 opacity-90">Approved</p>
-        </div>
-        
-        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-5 text-white">
-            <div class="flex items-center justify-between mb-2">
-                <i class="fas fa-times-circle text-2xl opacity-80"></i>
-                <span class="text-xs opacity-80">Rejected</span>
-            </div>
-            <p class="text-3xl font-bold" id="rejected_requests">0</p>
-            <p class="text-sm mt-1 opacity-90">Rejected</p>
-        </div>
-    </div>
-    
-    <!-- Search and Filter Bar -->
-    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <div class="relative">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="permission_search" placeholder="Search by name, ID, or reason..." 
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-gray-800" id="total_requests">0</p>
+                    <p class="text-xs text-gray-500">Total Requests</p>
+                </div>
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-envelope text-blue-600"></i>
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select id="permission_status_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                    <option value="all">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                </select>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-yellow-600" id="pending_requests">0</p>
+                    <p class="text-xs text-gray-500">Pending</p>
+                </div>
+                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-clock text-yellow-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-green-600" id="approved_requests">0</p>
+                    <p class="text-xs text-gray-500">Approved</p>
+                </div>
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-red-600" id="rejected_requests">0</p>
+                    <p class="text-xs text-gray-500">Rejected</p>
+                </div>
+                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times-circle text-red-600"></i>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Permission Cards List -->
-    <div id="permissions-list" class="space-y-4">
+
+    <!-- Filters - Only show if user can view -->
+    @if($canView)
+    <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs text-gray-600 mb-1">Search</label>
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" id="permission_search" placeholder="Search by name or reason..." 
+                       class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+        </div>
+        <div class="w-40">
+            <label class="block text-xs text-gray-600 mb-1">Status</label>
+            <select id="permission_status_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+        <button onclick="filterPermissions()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition">
+            <i class="fas fa-search mr-1"></i> Filter
+        </button>
+    </div>
+    @endif
+
+    <!-- Permissions List -->
+    <div id="permissions-list" class="space-y-3">
         <div class="text-center py-12">
-            <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
-            <p class="text-gray-500">Loading permission requests...</p>
+            <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-2"></i>
+            <p class="text-gray-500">Loading requests...</p>
         </div>
     </div>
 </div>
@@ -83,7 +114,28 @@ window.approvePermission = approvePermission;
 window.rejectPermission = rejectPermission;
 window.deletePermission = deletePermission;
 
+let currentPermissions = [];
+
+@php
+    $canCreate = auth()->check() && auth()->user()->canAccess('discipline', 'create');
+    $canApprove = auth()->check() && auth()->user()->canAccess('discipline', 'approve-permission');
+    $canReject = auth()->check() && auth()->user()->canAccess('discipline', 'reject-permission');
+    $canDelete = auth()->check() && auth()->user()->canAccess('discipline', 'delete');
+    $canView = auth()->check() && auth()->user()->canAccess('discipline', 'view-permissions');
+@endphp
+
 function openPermissionModal(permissionId = null) {
+    @if(!$canCreate)
+        alert('You do not have permission to create permission requests.');
+        return;
+    @endif
+    
+    const modal = document.getElementById('permissionModal');
+    if (!modal) {
+        alert('Form not ready. Please refresh.');
+        return;
+    }
+    
     if (permissionId) {
         fetch(`/discipline/permission/${permissionId}/edit`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -98,7 +150,7 @@ function openPermissionModal(permissionId = null) {
                 document.getElementById('permission_start_date').value = data.permission.start_date;
                 document.getElementById('permission_end_date').value = data.permission.end_date;
                 document.getElementById('permission_reason').value = data.permission.reason;
-                document.getElementById('permissionModal').classList.remove('hidden');
+                modal.classList.remove('hidden');
             }
         });
     } else {
@@ -109,12 +161,17 @@ function openPermissionModal(permissionId = null) {
         document.getElementById('permission_start_date').value = new Date().toISOString().split('T')[0];
         document.getElementById('permission_end_date').value = new Date().toISOString().split('T')[0];
         document.getElementById('permission_reason').value = '';
-        document.getElementById('permissionModal').classList.remove('hidden');
+        modal.classList.remove('hidden');
     }
 }
 
 function filterPermissions() {
-    const status = document.getElementById('permission_status_filter').value;
+    @if(!$canView)
+        alert('You do not have permission to view permission requests.');
+        return;
+    @endif
+    
+    const status = document.getElementById('permission_status_filter')?.value || 'all';
     const search = document.getElementById('permission_search')?.value || '';
     
     let url = `/discipline/permission?status=${status}`;
@@ -128,8 +185,9 @@ function filterPermissions() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updatePermissionsList(data.permissions);
-            updateStats(data.permissions);
+            currentPermissions = data.permissions;
+            renderPermissionsList(currentPermissions);
+            updateStats(currentPermissions);
         }
     })
     .catch(error => console.error('Error loading permissions:', error));
@@ -147,17 +205,19 @@ function updateStats(permissions) {
     document.getElementById('rejected_requests').textContent = rejected;
 }
 
-function updatePermissionsList(permissions) {
+function renderPermissionsList(permissions) {
     const container = document.getElementById('permissions-list');
     
     if (!permissions || permissions.length === 0) {
         container.innerHTML = `
             <div class="text-center py-12 bg-gray-50 rounded-xl">
-                <i class="fas fa-inbox text-5xl text-gray-300 mb-3"></i>
+                <i class="fas fa-inbox text-4xl text-gray-300 mb-3"></i>
                 <p class="text-gray-500">No permission requests found</p>
+                @if($canCreate)
                 <button onclick="openPermissionModal()" class="mt-3 text-blue-600 hover:text-blue-700 text-sm">
-                    <i class="fas fa-plus"></i> Create your first request
+                    <i class="fas fa-plus"></i> Create request
                 </button>
+                @endif
             </div>
         `;
         return;
@@ -168,108 +228,102 @@ function updatePermissionsList(permissions) {
         const endDate = new Date(perm.end_date);
         const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
         
-        let statusColor = '';
-        let statusIcon = '';
-        let statusBg = '';
+        let statusConfig = {
+            class: '',
+            icon: '',
+            text: ''
+        };
         
         switch(perm.status) {
             case 'approved':
-                statusColor = 'text-green-600';
-                statusIcon = 'fa-check-circle';
-                statusBg = 'bg-green-50 border-green-200';
+                statusConfig = { class: 'bg-green-100 text-green-700', icon: 'fa-check-circle', text: 'Approved' };
                 break;
             case 'rejected':
-                statusColor = 'text-red-600';
-                statusIcon = 'fa-times-circle';
-                statusBg = 'bg-red-50 border-red-200';
-                break;
-            case 'pending':
-                statusColor = 'text-yellow-600';
-                statusIcon = 'fa-clock';
-                statusBg = 'bg-yellow-50 border-yellow-200';
+                statusConfig = { class: 'bg-red-100 text-red-700', icon: 'fa-times-circle', text: 'Rejected' };
                 break;
             default:
-                statusColor = 'text-gray-600';
-                statusIcon = 'fa-question-circle';
-                statusBg = 'bg-gray-50 border-gray-200';
+                statusConfig = { class: 'bg-yellow-100 text-yellow-700', icon: 'fa-clock', text: 'Pending' };
         }
         
         return `
-            <div class="bg-white rounded-xl shadow-md border ${statusBg} overflow-hidden hover:shadow-lg transition">
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-gray-500"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-semibold text-gray-800">${escapeHtml(perm.user_name)}</h4>
-                                    <p class="text-xs text-gray-400 font-mono">ID: ${perm.user_id || 'N/A'}</p>
-                                </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
+                <div class="p-4">
+                    <div class="flex flex-wrap justify-between items-start gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-500"></i>
                             </div>
-                            <div class="flex items-center gap-4 text-sm text-gray-500 mt-2">
-                                <span><i class="fas fa-calendar-alt mr-1"></i> Submission: ${formatDate(perm.created_at)}</span>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">${escapeHtml(perm.user_name)}</h4>
+                                <div class="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
+                                    <span><i class="far fa-calendar-alt mr-1"></i> ${formatDate(perm.created_at)}</span>
+                                    <span><i class="far fa-hourglass mr-1"></i> ${totalDays} day${totalDays !== 1 ? 's' : ''}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColor} bg-white shadow-sm">
-                                <i class="fas ${statusIcon} mr-1"></i> ${perm.status.charAt(0).toUpperCase() + perm.status.slice(1)}
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusConfig.class}">
+                                <i class="fas ${statusConfig.icon} mr-1"></i> ${statusConfig.text}
                             </span>
                             ${perm.status === 'pending' ? `
                                 <div class="flex gap-1">
-                                    <button onclick="approvePermission(${perm.id})" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" title="Approve">
+                                    @if($canApprove)
+                                    <button onclick="approvePermission(${perm.id})" class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition" title="Approve">
                                         <i class="fas fa-check"></i>
                                     </button>
-                                    <button onclick="rejectPermission(${perm.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Reject">
+                                    @endif
+                                    @if($canReject)
+                                    <button onclick="rejectPermission(${perm.id})" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title="Reject">
                                         <i class="fas fa-times"></i>
                                     </button>
+                                    @endif
                                 </div>
                             ` : ''}
-                            <button onclick="deletePermission(${perm.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
-                                <i class="fas fa-trash"></i>
+                            @if($canDelete)
+                            <button onclick="deletePermission(${perm.id})" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
+                                <i class="fas fa-trash-alt"></i>
                             </button>
+                            @endif
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-calendar-plus text-gray-400"></i>
-                            <span class="text-gray-600">Start Date:</span>
-                            <span class="font-medium">${formatDate(perm.start_date)}</span>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex flex-wrap gap-4 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-calendar-plus text-gray-400 text-xs"></i>
+                                <span class="text-gray-500">From:</span>
+                                <span class="font-medium text-gray-700">${formatDate(perm.start_date)}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-calendar-times text-gray-400 text-xs"></i>
+                                <span class="text-gray-500">To:</span>
+                                <span class="font-medium text-gray-700">${formatDate(perm.end_date)}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-tag text-gray-400 text-xs"></i>
+                                <span class="text-gray-500">Type:</span>
+                                <span class="font-medium text-gray-700">${escapeHtml(perm.type || 'General')}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-calendar-times text-gray-400"></i>
-                            <span class="text-gray-600">End Date:</span>
-                            <span class="font-medium">${formatDate(perm.end_date)}</span>
+                        <div class="mt-3 bg-gray-50 rounded-lg p-3">
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-comment mr-2 text-gray-400"></i>
+                                ${escapeHtml(perm.reason)}
+                            </p>
                         </div>
-                        <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-hourglass-half text-gray-400"></i>
-                            <span class="text-gray-600">Total Days:</span>
-                            <span class="font-medium">${totalDays} day${totalDays !== 1 ? 's' : ''}</span>
-                        </div>
+                        ${perm.status === 'approved' && perm.approved_by_name ? `
+                            <div class="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                                <i class="fas fa-user-check text-green-500"></i>
+                                <span>Approved by ${escapeHtml(perm.approved_by_name)} on ${formatDate(perm.approved_at)}</span>
+                            </div>
+                        ` : ''}
+                        ${perm.status === 'rejected' && perm.rejection_reason ? `
+                            <div class="mt-2 text-xs text-red-600 flex items-center gap-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Rejection reason: ${escapeHtml(perm.rejection_reason)}</span>
+                            </div>
+                        ` : ''}
                     </div>
-                    
-                    <div class="bg-gray-50 rounded-lg p-3 mb-4">
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-comment mr-2 text-gray-400"></i>
-                            <strong>Reason:</strong> ${escapeHtml(perm.reason)}
-                        </p>
-                    </div>
-                    
-                    ${perm.status === 'approved' && perm.approved_by_name ? `
-                        <div class="text-sm text-gray-500 border-t pt-3 mt-2">
-                            <i class="fas fa-user-check mr-1"></i>
-                            Approved by: ${escapeHtml(perm.approved_by_name)} on ${formatDate(perm.approved_at)}
-                        </div>
-                    ` : ''}
-                    
-                    ${perm.status === 'rejected' && perm.rejection_reason ? `
-                        <div class="text-sm text-red-600 border-t pt-3 mt-2">
-                            <i class="fas fa-exclamation-triangle mr-1"></i>
-                            Rejection reason: ${escapeHtml(perm.rejection_reason)}
-                        </div>
-                    ` : ''}
                 </div>
             </div>
         `;
@@ -287,6 +341,11 @@ function formatDate(dateString) {
 }
 
 function approvePermission(id) {
+    @if(!$canApprove)
+        alert('You do not have permission to approve requests.');
+        return;
+    @endif
+    
     if (confirm('Approve this permission request?')) {
         fetch(`/discipline/permission/${id}`, {
             method: 'PUT',
@@ -302,7 +361,7 @@ function approvePermission(id) {
             if (data.success) {
                 filterPermissions();
             } else {
-                alert('Error approving request: ' + (data.message || 'Unknown error'));
+                alert('Error: ' + (data.message || 'Failed to approve'));
             }
         })
         .catch(error => {
@@ -313,8 +372,17 @@ function approvePermission(id) {
 }
 
 function rejectPermission(id) {
+    @if(!$canReject)
+        alert('You do not have permission to reject requests.');
+        return;
+    @endif
+    
     const reason = prompt('Enter rejection reason:');
-    if (reason) {
+    if (reason !== null) {
+        if (reason.trim() === '') {
+            alert('Please provide a reason for rejection');
+            return;
+        }
         fetch(`/discipline/permission/${id}`, {
             method: 'PUT',
             headers: {
@@ -329,7 +397,7 @@ function rejectPermission(id) {
             if (data.success) {
                 filterPermissions();
             } else {
-                alert('Error rejecting request: ' + (data.message || 'Unknown error'));
+                alert('Error: ' + (data.message || 'Failed to reject'));
             }
         })
         .catch(error => {
@@ -340,6 +408,11 @@ function rejectPermission(id) {
 }
 
 function deletePermission(id) {
+    @if(!$canDelete)
+        alert('You do not have permission to delete requests.');
+        return;
+    @endif
+    
     if (confirm('Are you sure you want to delete this permission request?')) {
         fetch(`/discipline/permission/${id}`, {
             method: 'DELETE',
@@ -353,12 +426,12 @@ function deletePermission(id) {
             if (data.success) {
                 filterPermissions();
             } else {
-                alert('Error deleting permission request: ' + (data.message || 'Unknown error'));
+                alert('Error: ' + (data.message || 'Failed to delete'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error deleting permission request');
+            alert('Error deleting request');
         });
     }
 }
@@ -370,16 +443,18 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Load initial data
-setTimeout(() => {
+// Load initial data - only if user has view permission
+@if($canView)
+document.addEventListener('DOMContentLoaded', function() {
     filterPermissions();
-}, 100);
+});
+@endif
 
-// Add event listeners for search and filter
+// Event listeners - only if user has view permission
+@if($canView)
 document.getElementById('permission_search')?.addEventListener('keyup', function(e) {
-    filterPermissions();
+    if (e.key === 'Enter') filterPermissions();
 });
-document.getElementById('permission_status_filter')?.addEventListener('change', function() {
-    filterPermissions();
-});
+document.getElementById('permission_status_filter')?.addEventListener('change', filterPermissions);
+@endif
 </script>

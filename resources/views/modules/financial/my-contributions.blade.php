@@ -5,11 +5,23 @@
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- Header -->
-    <div>
-        <h1 class="text-3xl font-bold text-gray-800">My Contributions</h1>
-       
+   
+    <!-- Year Selector - Requires view permission -->
+    @if(auth()->check() && auth()->user()->canAccess('financial', 'view'))
+    <div class="bg-white rounded-xl shadow-md p-4">
+        <div class="flex items-center gap-4">
+            <label class="text-sm font-medium text-gray-700">Select Year:</label>
+            <select onchange="window.location.href='?year='+this.value" 
+                    class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                @foreach($availableYears as $year)
+                    <option value="{{ $year }}" {{ $currentYear == $year ? 'selected' : '' }}>
+                        {{ $year }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
     </div>
+    @endif
 
     <!-- TOP GRID -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -20,7 +32,8 @@
                 <h2 class="text-lg font-bold text-gray-800">
                     Your {{ $currentYear }} Annual Contribution
                 </h2>
-                @if(auth()->user()->isSuperAdmin())
+                <!-- Edit Amount Button - Requires update permission -->
+                @if(auth()->check() && auth()->user()->canAccess('financial', 'update'))
                 <button onclick="openEditAmountModal()"
                     class="text-sm text-blue-600 hover:text-blue-800 border border-blue-300 px-3 py-1 rounded-lg transition">
                     <i class="fas fa-edit mr-1"></i> Edit Amount
@@ -31,11 +44,22 @@
             <div class="bg-gray-50 rounded-lg p-4">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-sm text-gray-600">Annual Amount:</span>
-                    <span class="text-2xl font-bold text-blue-600">RF {{ number_format($totalRequired, 0, ',', '.') }}</span>
+                    <span class="text-2xl font-bold text-blue-600">RWF {{ number_format($totalRequired, 0, ',', ',') }}</span>
+                </div>
+
+                <!-- Term Breakdown -->
+                <div class="mt-4 space-y-2">
+                    <p class="text-xs font-medium text-gray-500">Term Breakdown:</p>
+                    @foreach($termTargets as $termNum => $target)
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Term {{ $termNum }} ({{ $termPercentages[$termNum] ?? round(100/$numberOfTerms, 1) }}%):</span>
+                            <span class="font-medium">RWF {{ number_format($target, 0, ',', ',') }}</span>
+                        </div>
+                    @endforeach
                 </div>
 
                 <!-- Bible Verse -->
-                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-3">
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4">
                     <h4 class="font-bold text-blue-800 text-sm mb-2">2 Abakorinto 9:7</h4>
                     <p class="italic text-blue-700 text-xs leading-relaxed">
                         "Umuntu wese atange nk'uko abigambiriye mu mutima we, atinuba kandi adahatwa kuko Imana ikunda utanga anezerewe."
@@ -51,7 +75,7 @@
             <div class="flex justify-between mb-2">
                 <span class="text-sm text-gray-600">Overall Progress</span>
                 <span class="text-sm font-medium">
-                    RF {{ number_format($totalPaid, 0, ',', '.') }} / RF {{ number_format($totalRequired, 0, ',', '.') }}
+                    RWF {{ number_format($totalPaid, 0, ',', ',') }} / RWF {{ number_format($totalRequired, 0, ',', ',') }}
                 </span>
             </div>
 
@@ -62,41 +86,43 @@
             <p class="text-xs text-gray-500 mb-5">{{ number_format($progressPercent, 1) }}% complete</p>
 
             <!-- TERM CARDS -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                @foreach([1, 2, 3] as $termNum)
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                @for($termNum = 1; $termNum <= $numberOfTerms; $termNum++)
                 @php
-                    $contribution = $contributions[$termNum] ?? null;
-                    $amount = $contribution ? $contribution->amount : 0;
-                    $requiredAmount = $settings->{'term'.$termNum.'_amount'} ?? 0;
-                    $status = $contribution ? $contribution->status : 'pending';
+                    $target = $termTargets[$termNum] ?? 0;
+                    $paid = $termPaidAmounts[$termNum] ?? 0;
+                    $status = $termStatuses[$termNum] ?? 'pending';
+                    $percentage = $termPercentages[$termNum] ?? round(100/$numberOfTerms, 2);
                     
-                    if ($termNum == 1) {
-                        $borderColor = $status == 'completed' ? 'border-green-200' : 'border-gray-200';
-                        $bgColor = $status == 'completed' ? 'bg-green-50' : 'bg-white';
+                    if ($status == 'completed') {
+                        $borderColor = 'border-green-200';
+                        $bgColor = 'bg-green-50';
                         $statusColor = 'green';
                         $statusIcon = '✓';
                         $statusText = 'completed';
-                    } elseif ($termNum == 2) {
-                        $borderColor = $status == 'partial' ? 'border-yellow-200' : 'border-gray-200';
-                        $bgColor = $status == 'partial' ? 'bg-yellow-50' : 'bg-white';
+                    } elseif ($status == 'partial') {
+                        $borderColor = 'border-yellow-200';
+                        $bgColor = 'bg-yellow-50';
                         $statusColor = 'yellow';
-                        $statusIcon = '⚡';
+                        $statusIcon = '';
                         $statusText = 'partial';
                     } else {
-                        $borderColor = $status == 'pending' ? 'border-gray-200' : 'border-gray-200';
+                        $borderColor = 'border-gray-200';
                         $bgColor = 'bg-white';
                         $statusColor = 'gray';
-                        $statusIcon = '⌛';
+                        $statusIcon = '';
                         $statusText = 'pending';
                     }
                     
-                    $progressPercentTerm = $requiredAmount > 0 ? ($amount / $requiredAmount) * 100 : 0;
+                    $progressPercentTerm = $target > 0 ? ($paid / $target) * 100 : 0;
+                    $remainingForTerm = $target - $paid;
                 @endphp
-                <div class="border-2 {{ $borderColor }} {{ $bgColor }} rounded-xl p-3 text-center">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Term {{ $termNum }}</h3>
-                    <p class="text-xl font-bold text-gray-800">RF {{ number_format($amount, 0, ',', '.') }}</p>
-                    <p class="text-xs text-gray-500">of RF {{ number_format($requiredAmount, 0, ',', '.') }}</p>
-                    
+                <div class="border-2 {{ $borderColor }} {{ $bgColor }} rounded-xl p-3 text-center transition hover:shadow-md">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-1">Term {{ $termNum }}</h3>
+                    <p class="text-xs text-gray-500 mb-1">{{ $percentage }}% of annual</p>
+                    <p class="text-xl font-bold text-gray-800">RWF {{ number_format($paid, 0, ',', ',') }}</p>
+                    <p class="text-xs text-gray-500">of RWF {{ number_format($target, 0, ',', ',') }}</p>
+
                     <div class="w-full h-1.5 bg-gray-200 rounded-full mt-3">
                         <div class="h-1.5 rounded-full 
                             {{ $status == 'completed' ? 'bg-green-500' : ($status == 'partial' ? 'bg-yellow-500' : 'bg-gray-300') }}" 
@@ -107,25 +133,32 @@
                         {{ $status == 'completed' ? 'bg-green-100 text-green-700' : '' }}
                         {{ $status == 'partial' ? 'bg-yellow-100 text-yellow-700' : '' }}
                         {{ $status == 'pending' ? 'bg-gray-100 text-gray-600' : '' }}">
-                        {{ $statusIcon }} {{ $statusText }}
+                        {{ $statusIcon }} {{ ucfirst($statusText) }}
                     </div>
 
                     @if($status == 'completed')
-                        <p class="text-green-600 text-xs mt-2">Complete!</p>
+                        <p class="text-green-600 text-xs mt-2">✓ Fully Paid!</p>
                     @else
-                        <button onclick="openPaymentModal({{ $termNum }}, {{ $requiredAmount }})" 
+                        <!-- Pay Button - Requires create/pay permission -->
+                        @if(auth()->check() && auth()->user()->canAccess('financial', 'pay'))
+                        <button onclick='openPaymentModal({{ $termNum }}, {{ $target }}, {{ $remainingForTerm }})' 
                                 class="block w-full mt-3 text-blue-600 text-xs font-medium hover:underline">
-                            Tap to submit
+                            @if($paid > 0)
+                                Pay Remaining (RWF {{ number_format($remainingForTerm, 0, ',', ',') }})
+                            @else
+                                Tap to submit
+                            @endif
                         </button>
+                        @endif
                     @endif
                 </div>
-                @endforeach
+                @endfor
             </div>
         </div>
     </div>
 </div>
 
-<!-- Payment Modal -->
+<!-- Payment Modal - Requires pay permission -->
 <div id="paymentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
@@ -141,6 +174,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Amount (RWF)</label>
                     <input type="number" name="amount" id="paymentAmount" required 
+                           max="10000000"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <p id="maxAmountHint" class="text-xs text-gray-500 mt-1"></p>
                 </div>
@@ -171,7 +205,7 @@
     </div>
 </div>
 
-<!-- Edit Annual Amount Modal (Super Admin only) -->
+<!-- Edit Annual Amount Modal - Requires update permission -->
 <div id="editAmountModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
@@ -192,7 +226,12 @@
                     <label class="block text-xs font-medium text-gray-700 mb-1">Annual Amount (RWF)</label>
                     <input type="number" name="annual_amount" required value="{{ $totalRequired }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">Term 1: 40%, Term 2: 30%, Term 3: 30%</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        This will be distributed across {{ $numberOfTerms }} terms with the following percentages:
+                        @foreach($termPercentages as $termNum => $pct)
+                            Term {{ $termNum }}: {{ $pct }}% @if(!$loop->last) | @endif
+                        @endforeach
+                    </p>
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-5 pt-3 border-t">
@@ -203,16 +242,104 @@
     </div>
 </div>
 
+<!-- Payment History Modal - Requires view permission -->
+<div id="paymentHistoryModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-bold text-gray-800">Payment History</h3>
+            <button onclick="closeModal('paymentHistoryModal')" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="paymentHistoryContent" class="mt-4 max-h-96 overflow-y-auto">
+            <!-- Payment history will be loaded here -->
+        </div>
+        <div class="flex justify-end mt-4 pt-3 border-t">
+            <button onclick="closeModal('paymentHistoryModal')" class="px-4 py-2 bg-gray-100 rounded-lg text-sm">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
-function openPaymentModal(term, maxAmount) {
+let currentTermTarget = 0;
+
+function openPaymentModal(term, targetAmount, remainingAmount) {
+    // Check if user has pay permission
+    @if(!(auth()->check() && auth()->user()->canAccess('financial', 'pay')))
+        alert('You do not have permission to make payments.');
+        return;
+    @endif
+    
     document.getElementById('paymentTerm').value = term;
+    const maxAmount = remainingAmount > 0 ? remainingAmount : targetAmount;
     document.getElementById('paymentModalTitle').innerHTML = 'Submit Payment - Term ' + term;
-    document.getElementById('maxAmountHint').innerHTML = 'Maximum: ' + numberFormat(maxAmount) + ' RWF';
+    document.getElementById('maxAmountHint').innerHTML = 'Remaining: ' + numberFormat(maxAmount) + ' RWF';
+    document.getElementById('paymentAmount').max = maxAmount;
+    document.getElementById('paymentAmount').placeholder = 'Max ' + numberFormat(maxAmount);
     document.getElementById('paymentModal').classList.remove('hidden');
 }
 
 function openEditAmountModal() {
+    // Check if user has update permission
+    @if(!(auth()->check() && auth()->user()->canAccess('financial', 'update')))
+        alert('You do not have permission to edit contribution amounts.');
+        return;
+    @endif
+    
     document.getElementById('editAmountModal').classList.remove('hidden');
+}
+
+function openPaymentHistory() {
+    // Check if user has view permission
+    @if(!(auth()->check() && auth()->user()->canAccess('financial', 'view')))
+        alert('You do not have permission to view payment history.');
+        return;
+    @endif
+    
+    fetch('/financial/payments/history', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.payments.length > 0) {
+            let html = '<div class="space-y-3">';
+            data.payments.forEach(payment => {
+                html += `
+                    <div class="border rounded-lg p-3 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gray-800">Term ${payment.term}</p>
+                                <p class="text-xs text-gray-500">${new Date(payment.payment_date).toLocaleDateString()}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-lg font-bold text-green-600">RWF ${numberFormat(payment.amount)}</p>
+                                <p class="text-xs text-gray-500">${payment.payment_method || 'Cash'}</p>
+                            </div>
+                        </div>
+                        ${payment.transaction_id ? `<p class="text-xs text-gray-400 mt-1">Ref: ${payment.transaction_id}</p>` : ''}
+                        ${payment.notes ? `<p class="text-xs text-gray-400 mt-1">${payment.notes}</p>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            document.getElementById('paymentHistoryContent').innerHTML = html;
+        } else {
+            document.getElementById('paymentHistoryContent').innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-receipt text-3xl mb-2 block"></i>
+                    No payment history found
+                </div>
+            `;
+        }
+        document.getElementById('paymentHistoryModal').classList.remove('hidden');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Could not load payment history');
+    });
 }
 
 function closeModal(modalId) {
@@ -222,6 +349,31 @@ function closeModal(modalId) {
 function numberFormat(num) {
     return new Intl.NumberFormat().format(num);
 }
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('paymentModal');
+    if (event.target === modal) {
+        closeModal('paymentModal');
+    }
+    const editModal = document.getElementById('editAmountModal');
+    if (event.target === editModal) {
+        closeModal('editAmountModal');
+    }
+    const historyModal = document.getElementById('paymentHistoryModal');
+    if (event.target === historyModal) {
+        closeModal('paymentHistoryModal');
+    }
+});
+
+// ESC key to close modals
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal('paymentModal');
+        closeModal('editAmountModal');
+        closeModal('paymentHistoryModal');
+    }
+});
 </script>
 
 <style>

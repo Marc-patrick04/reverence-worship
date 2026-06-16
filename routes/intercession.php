@@ -3,6 +3,7 @@
 use App\Http\Controllers\Intercession\IntercessionController;
 use App\Http\Controllers\Intercession\FormController;
 
+// ==================== INTERCESSION MAIN ROUTES ====================
 Route::middleware('auth')->prefix('intercession')->name('intercession.')->group(function () {
     Route::get('/', [IntercessionController::class, 'index'])->name('index');
     Route::get('/devotion/{id}', [IntercessionController::class, 'showDevotion'])->name('devotion.show');
@@ -14,8 +15,8 @@ Route::middleware('auth')->prefix('intercession')->name('intercession.')->group(
     Route::post('/prayer/store', [IntercessionController::class, 'storePrayerRequest'])->name('prayer.store');
 });
 
-// Action Plans
-Route::prefix('intercession/action-plans')->group(function () {
+// ==================== ACTION PLANS ROUTES ====================
+Route::prefix('intercession/action-plans')->middleware('auth')->group(function () {
     Route::post('/store', [IntercessionController::class, 'storeActionPlan'])->name('intercession.action-plans.store');
     Route::put('/{id}/status', [IntercessionController::class, 'updateActionPlanStatus'])->name('intercession.action-plans.status');
     Route::delete('/{id}', [IntercessionController::class, 'deleteActionPlan'])->name('intercession.action-plans.delete');
@@ -23,44 +24,54 @@ Route::prefix('intercession/action-plans')->group(function () {
     Route::put('/{id}', [IntercessionController::class, 'updateActionPlan'])->name('intercession.action-plans.update');
 });
 
-// Devotions
-Route::prefix('intercession/devotions')->group(function () {
+// ==================== DEVOTIONS ROUTES ====================
+Route::prefix('intercession/devotions')->middleware('auth')->group(function () {
     Route::post('/store', [IntercessionController::class, 'storeDevotion'])->name('intercession.devotions.store');
     Route::get('/{id}/edit', [IntercessionController::class, 'editDevotion'])->name('intercession.devotions.edit');
     Route::post('/{id}', [IntercessionController::class, 'updateDevotion'])->name('intercession.devotions.update');
     Route::delete('/{id}', [IntercessionController::class, 'deleteDevotion'])->name('intercession.devotions.delete');
 });
 
-Route::get('/intercession/devotion/show/{id}', [IntercessionController::class, 'showDevotion'])->name('intercession.devotion.show');
+Route::get('/intercession/devotion/show/{id}', [IntercessionController::class, 'showDevotion'])->name('intercession.devotion.show')->middleware('auth');
 
-// Archives
-Route::prefix('intercession/archives')->group(function () {
+// ==================== ARCHIVES ROUTES ====================
+Route::prefix('intercession/archives')->middleware('auth')->group(function () {
     Route::post('/sections/store', [IntercessionController::class, 'storeArchiveSection'])->name('intercession.archives.sections.store');
-    Route::put('/sections/{id}', [IntercessionController::class, 'updateArchiveSection']);
-    Route::delete('/sections/{id}', [IntercessionController::class, 'deleteArchiveSection']);
-    Route::get('/sections/{id}/pages', [IntercessionController::class, 'getSectionPages']);
+    Route::put('/sections/{id}', [IntercessionController::class, 'updateArchiveSection'])->name('intercession.archives.sections.update');
+    Route::delete('/sections/{id}', [IntercessionController::class, 'deleteArchiveSection'])->name('intercession.archives.sections.delete');
+    Route::get('/sections/{id}/pages', [IntercessionController::class, 'getSectionPages'])->name('intercession.archives.sections.pages');
     Route::post('/pages/store', [IntercessionController::class, 'storeArchivePage'])->name('intercession.archives.pages.store');
-    Route::put('/pages/{id}', [IntercessionController::class, 'updateArchivePage']);
-    Route::delete('/pages/{id}', [IntercessionController::class, 'deleteArchivePage']);
-    Route::get('/pages/{id}/edit', [IntercessionController::class, 'editArchivePage']);
-    Route::get('/pages/{id}', [IntercessionController::class, 'showArchivePage']);
+    Route::put('/pages/{id}', [IntercessionController::class, 'updateArchivePage'])->name('intercession.archives.pages.update');
+    Route::delete('/pages/{id}', [IntercessionController::class, 'deleteArchivePage'])->name('intercession.archives.pages.delete');
+    Route::get('/pages/{id}/edit', [IntercessionController::class, 'editArchivePage'])->name('intercession.archives.pages.edit');
+    Route::get('/pages/{id}', [IntercessionController::class, 'showArchivePage'])->name('intercession.archives.pages.show');
 });
 
-// Forms
-Route::prefix('forms')->group(function () {
-    Route::get('/', [FormController::class, 'index'])->name('forms.manage.index');
-    Route::get('/manage', [FormController::class, 'manageForms'])->name('forms.index');
-    Route::get('/manage/create', [FormController::class, 'createForm'])->name('forms.manage.create');
-    Route::post('/manage/store', [FormController::class, 'storeForm'])->name('forms.store');
-    Route::get('/{id}/take', [FormController::class, 'takeForm'])->name('forms.take');
-    Route::post('/{id}/submit', [FormController::class, 'submitForm'])->name('forms.submit');
-    Route::get('/manage/{id}/edit', [FormController::class, 'editForm'])->name('forms.edit');
-    Route::put('/manage/{id}', [FormController::class, 'updateForm'])->name('forms.update');
-    Route::delete('/manage/{id}', [FormController::class, 'deleteForm'])->name('forms.delete');
-    Route::get('/manage/{id}/settings', [FormController::class, 'settings'])->name('forms.manage.settings');
-    Route::put('/manage/{id}/settings', [FormController::class, 'updateSettings'])->name('forms.manage.settings.update');
-    Route::post('/manage/{id}/toggle-publish', [FormController::class, 'togglePublish'])->name('forms.manage.toggle-publish');
-    Route::get('/manage/{id}/submissions', [FormController::class, 'viewSubmissions'])->name('forms.submissions');
-    Route::get('/manage/{id}/submissions/export', [FormController::class, 'exportSubmissions'])->name('forms.manage.submissions.export');
-    Route::get('/{id}/results', [FormController::class, 'results'])->name('forms.results');
+// ==================== FORMS ROUTES ====================
+Route::middleware('auth')->prefix('forms')->name('forms.')->group(function () {
+    // Form management routes (admin)
+    Route::get('/', [FormController::class, 'index'])->name('index');
+    Route::get('/manage', [FormController::class, 'index'])->name('manage.index');
+    Route::get('/manage/create', [FormController::class, 'create'])->name('manage.create');
+    Route::post('/manage/store', [FormController::class, 'store'])->name('manage.store');
+    Route::get('/manage/{id}/edit', [FormController::class, 'edit'])->name('manage.edit');
+    Route::put('/manage/{id}', [FormController::class, 'update'])->name('manage.update');
+    Route::delete('/manage/{id}', [FormController::class, 'destroy'])->name('manage.delete');
+    Route::post('/manage/{id}/toggle-publish', [FormController::class, 'togglePublish'])->name('manage.toggle-publish');
+    Route::get('/manage/{id}/submissions', [FormController::class, 'submissions'])->name('manage.submissions');
+    Route::get('/manage/{id}/settings', [FormController::class, 'settings'])->name('manage.settings');
+    Route::put('/manage/{id}/settings', [FormController::class, 'updateSettings'])->name('manage.settings.update');
+    Route::get('/manage/{id}/submissions/export', [FormController::class, 'exportSubmissions'])->name('manage.submissions.export');
+    
+    // Form taking routes (users)
+    Route::get('/{id}/take', [FormController::class, 'take'])->name('take');
+    Route::post('/{id}/submit', [FormController::class, 'submit'])->name('submit');
+    Route::get('/{id}/results', [FormController::class, 'results'])->name('results');
+    
+    // Alias for edit (without manage prefix for compatibility)
+    Route::get('/{id}/edit', [FormController::class, 'edit'])->name('edit');
 });
+
+// ==================== BACKWARD COMPATIBILITY ALIASES ====================
+Route::get('/forms/manage', [FormController::class, 'index'])->name('forms.manage')->middleware('auth');
+Route::get('/forms/create', [FormController::class, 'create'])->name('forms.create')->middleware('auth');

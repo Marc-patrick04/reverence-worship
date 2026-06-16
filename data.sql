@@ -1850,3 +1850,228 @@ CREATE TABLE IF NOT EXISTS report_logs (
     file_path VARCHAR(500),
     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create permissions table
+CREATE TABLE IF NOT EXISTS permissions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    session_type VARCHAR(100),
+    reason TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    approved_by INTEGER REFERENCES users(id),
+    approved_at TIMESTAMP,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_permissions_user_id ON permissions(user_id);
+CREATE INDEX idx_permissions_date ON permissions(date);
+CREATE INDEX idx_permissions_status ON permissions(status);
+
+-- Create attendance_records table if not exists
+CREATE TABLE IF NOT EXISTS attendance_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_date DATE NOT NULL,
+    session_type VARCHAR(100) NOT NULL,
+    status VARCHAR(50) DEFAULT 'present',
+    check_in_time TIME,
+    check_out_time TIME,
+    late_minutes INTEGER DEFAULT 0,
+    communicated BOOLEAN DEFAULT FALSE,
+    discipline_points INTEGER DEFAULT 0,
+    notes TEXT,
+    marked_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for attendance_records
+CREATE INDEX idx_attendance_user_id ON attendance_records(user_id);
+CREATE INDEX idx_attendance_session_date ON attendance_records(session_date);
+CREATE INDEX idx_attendance_session_type ON attendance_records(session_type);
+
+-- Create discipline_records table if not exists
+CREATE TABLE IF NOT EXISTS discipline_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(100) NOT NULL,
+    description TEXT,
+    severity VARCHAR(50) DEFAULT 'medium',
+    status VARCHAR(50) DEFAULT 'active',
+    recorded_by INTEGER REFERENCES users(id),
+    resolved_by INTEGER REFERENCES users(id),
+    resolved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create action_plans table if not exists
+CREATE TABLE IF NOT EXISTS action_plans (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    priority VARCHAR(50) DEFAULT 'medium',
+    status VARCHAR(50) DEFAULT 'pending',
+    progress INTEGER DEFAULT 0,
+    department VARCHAR(100),
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create action_plan_tasks table if not exists
+CREATE TABLE IF NOT EXISTS action_plan_tasks (
+    id SERIAL PRIMARY KEY,
+    action_plan_id INTEGER NOT NULL REFERENCES action_plans(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    status VARCHAR(50) DEFAULT 'pending',
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Add year column to sponsor_payments table
+ALTER TABLE sponsor_payments ADD COLUMN year INTEGER;
+
+-- Update existing records to extract year from payment_date
+UPDATE sponsor_payments SET year = EXTRACT(YEAR FROM payment_date);
+
+-- Make year column required for future records
+ALTER TABLE sponsor_payments ALTER COLUMN year SET NOT NULL;
+-- Create sponsors table
+CREATE TABLE IF NOT EXISTS sponsors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    commitment_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    fund_type VARCHAR(50) DEFAULT 'one_time',
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'active',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create indexes for sponsors
+CREATE INDEX idx_sponsors_name ON sponsors(name);
+CREATE INDEX idx_sponsors_status ON sponsors(status);
+CREATE INDEX idx_sponsors_email ON sponsors(email);
+-- Create sponsor_payments table
+CREATE TABLE IF NOT EXISTS sponsor_payments (
+    id SERIAL PRIMARY KEY,
+    sponsor_id INTEGER NOT NULL REFERENCES sponsors(id) ON DELETE CASCADE,
+    amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    payment_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    year INTEGER NOT NULL,
+    payment_method VARCHAR(50) DEFAULT 'cash',
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create sponsors table if not exists
+CREATE TABLE IF NOT EXISTS sponsors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    commitment_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'active',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_sponsor_payments_sponsor_id ON sponsor_payments(sponsor_id);
+CREATE INDEX IF NOT EXISTS idx_sponsor_payments_year ON sponsor_payments(year);
+CREATE INDEX IF NOT EXISTS idx_sponsors_name ON sponsors(name);
+CREATE TABLE IF NOT EXISTS role_page_feature (
+    id SERIAL PRIMARY KEY,
+    role_id INTEGER NOT NULL,
+    page_id INTEGER NOT NULL,
+    feature_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+-- Insert User Management page if not exists
+INSERT INTO pages (name, display_name, icon, sort_order, is_active) 
+VALUES ('user-management', 'User Management', 'fa-users', 1, true)
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert the 4 permissions for User Management
+INSERT INTO features (page_id, name, display_name) 
+SELECT id, 'view', 'View User Management' FROM pages WHERE name = 'user-management'
+ON CONFLICT (name, page_id) DO NOTHING;
+
+INSERT INTO features (page_id, name, display_name) 
+SELECT id, 'create', 'Add User' FROM pages WHERE name = 'user-management'
+ON CONFLICT (name, page_id) DO NOTHING;
+
+INSERT INTO features (page_id, name, display_name) 
+SELECT id, 'edit', 'Edit User' FROM pages WHERE name = 'user-management'
+ON CONFLICT (name, page_id) DO NOTHING;
+
+INSERT INTO features (page_id, name, display_name) 
+SELECT id, 'delete', 'Delete User' FROM pages WHERE name = 'user-management'
+ON CONFLICT (name, page_id) DO NOTHING;
+
+
+-- Run these SQL commands in your SQL editor
+
+-- First, modify the announcements table to add target fields
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_type VARCHAR(50) DEFAULT 'all';
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_roles TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_users TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS email_sent BOOLEAN DEFAULT FALSE;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP NULL;
+
+-- Create announcement_user_reads table to track who has read announcements
+CREATE TABLE IF NOT EXISTS announcement_user_reads (
+    id BIGSERIAL PRIMARY KEY,
+    announcement_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(announcement_id, user_id)
+);
+
+-- Create index for performance
+CREATE INDEX idx_announcement_user_reads_announcement ON announcement_user_reads(announcement_id);
+CREATE INDEX idx_announcement_user_reads_user ON announcement_user_reads(user_id);
+CREATE TABLE IF NOT EXISTS announcement_user_reads (
+    id BIGSERIAL PRIMARY KEY,
+    announcement_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    read_at TIMESTAMP DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(announcement_id, user_id)
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+

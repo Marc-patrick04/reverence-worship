@@ -9,6 +9,29 @@ use Illuminate\Support\Facades\Log;
 
 class SingerController extends Controller
 {
+    /**
+     * Get all singers with their details
+     */
+    public function getSingers()
+    {
+        try {
+            $singers = User::where('membership_type', 'Permanent')
+                ->where('is_active', true)
+                ->select('id', 'name', 'email', 'membership_type', 'voice_part', 'singer_level')
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'singers' => $singers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
     public function updateVoicePart(Request $request, $id)
     {
         try {
@@ -52,14 +75,6 @@ class SingerController extends Controller
         try {
             $updates = $request->input('updates', []);
             
-            if (!$updates && $request->has('user_id')) {
-                $updates = [[
-                    'user_id' => $request->user_id,
-                    'field' => $request->field,
-                    'value' => $request->value
-                ]];
-            }
-            
             if (empty($updates)) {
                 return response()->json([
                     'success' => false,
@@ -68,11 +83,17 @@ class SingerController extends Controller
             }
             
             $updatedCount = 0;
+            $errors = [];
             
             foreach ($updates as $update) {
                 $userId = $update['user_id'];
                 $field = $update['field'];
                 $value = $update['value'];
+                
+                // Skip if value is empty or field is not valid
+                if (empty($value)) {
+                    continue;
+                }
                 
                 if (!in_array($field, ['voice_part', 'singer_level'])) {
                     continue;
@@ -81,9 +102,11 @@ class SingerController extends Controller
                 $user = User::find($userId);
                 
                 if (!$user) {
+                    $errors[] = "User ID {$userId} not found";
                     continue;
                 }
                 
+                // Update the field
                 if ($field === 'voice_part') {
                     $user->voice_part = $value;
                 } elseif ($field === 'singer_level') {
@@ -92,12 +115,15 @@ class SingerController extends Controller
                 
                 $user->save();
                 $updatedCount++;
+                
+                Log::info("Updated {$field} for user {$user->name} to {$value}");
             }
             
             return response()->json([
                 'success' => true,
                 'message' => "Successfully updated {$updatedCount} settings",
-                'updated_count' => $updatedCount
+                'updated_count' => $updatedCount,
+                'errors' => $errors
             ]);
             
         } catch (\Exception $e) {

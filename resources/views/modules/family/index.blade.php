@@ -4,402 +4,751 @@
 @section('page-title', $userFamily->name ?? 'My Family')
 
 @section('content')
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 
     @if($userFamily)
-    <!-- Family Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg overflow-hidden">
-        <div class="px-6 py-6">
-            <div>
-                <h1 class="text-2xl font-bold text-white">{{ $userFamily->name }}</h1>
-                <div class="flex items-center gap-2 mt-2">
-                    <i class="fas fa-users text-blue-200 text-sm"></i>
-                    <span class="text-blue-100 text-sm">{{ $familyMembers->count() }} Members</span>
-                    @if($userFamily->parent_name)
-                    <span class="text-blue-200 mx-1">•</span>
-                    <i class="fas fa-user-check text-blue-200 text-sm"></i>
-                    <span class="text-blue-100 text-sm">Parent: {{ $userFamily->parent_name }}</span>
+    <!-- Compact Family Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
+        <div class="px-4 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-home text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-800">{{ $userFamily->name }}</h1>
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <span><i class="fas fa-users mr-1"></i> {{ $familyMembers->count() }} members</span>
+                        @if(isset($userFamily->parent_name) && $userFamily->parent_name)
+                        <span>•</span>
+                        <span><i class="fas fa-user-check mr-1"></i> {{ $userFamily->parent_name }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <!-- Export Button -->
+            @if(auth()->check() && auth()->user()->canAccess('family', 'export'))
+            <button onclick="exportMembersToCSV()" class="bg-gray-50 hover:bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5 border border-gray-200 self-start sm:self-center">
+                <i class="fas fa-download text-xs"></i> Export
+            </button>
+            @endif
+        </div>
+    </div>
+
+    <!-- Mobile: Toggle between Members and Tasks -->
+    <div class="sm:hidden mb-4">
+        <div class="bg-gray-100 rounded-lg p-1 flex gap-1">
+            <button id="showMembersBtn" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all bg-white text-blue-600 shadow-sm">
+                <i class="fas fa-users mr-1"></i> Members ({{ $familyMembers->count() }})
+            </button>
+            <button id="showTasksBtn" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all text-gray-600">
+                <i class="fas fa-tasks mr-1"></i> Tasks ({{ ($taskStats['completed'] ?? 0) + ($taskStats['in_progress'] ?? 0) + ($taskStats['pending'] ?? 0) }})
+            </button>
+        </div>
+    </div>
+
+    <!-- Two Column Layout - Desktop -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        
+        <!-- LEFT: Members List -->
+        <div id="membersPanel" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-base font-semibold text-gray-800">
+                        <i class="fas fa-users text-blue-500 mr-2"></i> Family Members
+                        <span class="text-sm font-normal text-gray-500 ml-1">({{ $familyMembers->count() }})</span>
+                    </h2>
+                    @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
+                    <button onclick="openAddMemberModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-lg text-xs transition flex items-center gap-1">
+                        <i class="fas fa-plus-circle"></i> Add
+                    </button>
                     @endif
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-3 gap-4">
-        <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-gray-100">
-            <p class="text-3xl font-bold text-blue-600">{{ $familyMembers->count() }}</p>
-            <p class="text-sm text-gray-500 mt-1">Total Members</p>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-gray-100">
-            <p class="text-3xl font-bold text-green-600">{{ $taskStats['completed'] ?? 0 }}</p>
-            <p class="text-sm text-gray-500 mt-1">Completed Tasks</p>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-gray-100">
-            <p class="text-3xl font-bold text-yellow-600">{{ ($taskStats['in_progress'] ?? 0) + ($taskStats['pending'] ?? 0) }}</p>
-            <p class="text-sm text-gray-500 mt-1">Pending/In-Progress</p>
-        </div>
-    </div>
-
-    <!-- Family Members Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h2 class="text-lg font-semibold text-gray-800">Family Members</h2>
-        </div>
-
-        <div class="p-4">
-            <!-- Avatar Circles -->
-            <div class="flex flex-wrap gap-3 mb-4">
-                @foreach($familyMembers->take(8) as $member)
-                <div class="relative group">
-                    <div class="w-14 h-14 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center cursor-pointer hover:from-gray-700 hover:to-gray-800 transition shadow-sm"
-                        onclick="showMemberDetails({{ $member->user_id }}, '{{ addslashes($member->name) }}')">
-                        <span class="text-white text-base font-bold">{{ substr($member->name, 0, 2) }}</span>
-                    </div>
-                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                        {{ $member->name }}
+            
+            <div class="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                @forelse($familyMembers as $member)
+                @php
+                $isParent = strtolower($member->role ?? '') === 'parent';
+                $isChild = strtolower($member->role ?? '') === 'child';
+                @endphp
+                
+                <div class="p-3 hover:bg-gray-50 transition" id="member-{{ $member->id }}">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm
+                                {{ $isParent ? 'bg-purple-500' : ($isChild ? 'bg-green-500' : 'bg-blue-500') }}">
+                                {{ strtoupper(substr($member->name, 0, 2)) }}
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-medium text-gray-900 text-sm">{{ $member->name }}</span>
+                                @if($isParent)
+                                <span class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded">Parent</span>
+                                @elseif($isChild)
+                                <span class="text-xs px-1.5 py-0.5 bg-green-100 text-green-600 rounded">Child</span>
+                                @endif
+                            </div>
+                            <div class="mt-1 space-y-0.5">
+                                @if($member->phone)
+                                <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                                    <i class="fas fa-phone text-gray-400 text-xs w-3"></i>
+                                    <span>{{ $member->phone }}</span>
+                                </div>
+                                @endif
+                                @if($member->email)
+                                <div class="flex items-center gap-1.5 text-xs text-gray-500">
+                                    <i class="fas fa-envelope text-gray-400 text-xs w-3"></i>
+                                    <span class="truncate">{{ $member->email }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
+                            
+                            @endif
+                            
+                        </div>
                     </div>
                 </div>
-                @endforeach
-                @if($familyMembers->count() > 8)
-                <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
-                    <span class="text-gray-500 text-sm font-medium">+{{ $familyMembers->count() - 8 }}</span>
+                @empty
+                <div class="p-8 text-center text-gray-400 text-sm">
+                    <i class="fas fa-users text-3xl mb-2 block"></i>
+                    No members found
                 </div>
-                @endif
-            </div>
-
-            <!-- View All Button -->
-            <button id="viewAllMembersBtn" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                View All {{ $familyMembers->count() }} Members
-                <i class="fas fa-arrow-right text-xs"></i>
-            </button>
-
-            <p class="text-xs text-gray-400 mt-3">Tap to see contact details and roles</p>
-        </div>
-    </div>
-
-    <!-- Task Board -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h2 class="text-lg font-semibold text-gray-800">Task Board</h2>
-        </div>
-
-        <!-- Filter Buttons -->
-        <div class="px-6 py-3 bg-gray-50 border-b border-gray-100">
-            <div class="flex gap-2">
-                <button class="task-filter active px-4 py-1.5 text-sm rounded-lg bg-blue-600 text-white transition" data-filter="all">All</button>
-                <button class="task-filter px-4 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition" data-filter="pending">Pending</button>
-                <button class="task-filter px-4 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition" data-filter="in-progress">In Progress</button>
-                <button class="task-filter px-4 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition" data-filter="completed">Completed</button>
+                @endforelse
             </div>
         </div>
 
-        <!-- Tasks List -->
-        <div id="tasks-container" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-            @forelse($familyTasks as $task)
-            <div class="task-item p-4 hover:bg-gray-50 transition-all" data-status="{{ $task->status }}">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-medium text-gray-800">{{ $task->title }}</h3>
-                            <span class="px-2 py-0.5 text-xs rounded-full 
-                                {{ $task->status == 'completed' ? 'bg-green-100 text-green-700' : 
-                                   ($task->status == 'in-progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600') }}">
-                                {{ ucfirst($task->status == 'in-progress' ? 'In Progress' : $task->status) }}
+        <!-- RIGHT: Tasks List -->
+        <div id="tasksPanel" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-base font-semibold text-gray-800">
+                            <i class="fas fa-tasks text-green-500 mr-2"></i> Tasks
+                        </h2>
+                        <div class="flex gap-1.5">
+                            <span class="px-2 py-0.5 text-xs bg-green-100 text-green-600 rounded-full">
+                                ✓ {{ $taskStats['completed'] ?? 0 }}
+                            </span>
+                            <span class="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 rounded-full">
+                                ⏳ {{ ($taskStats['in_progress'] ?? 0) + ($taskStats['pending'] ?? 0) }}
                             </span>
                         </div>
-                        @if($task->description)
-                        <p class="text-sm text-gray-500">{{ Str::limit($task->description, 100) }}</p>
-                        @endif
-                        @if($task->due_date)
-                        <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                            <i class="fas fa-calendar-alt text-xs"></i> Due: {{ \Carbon\Carbon::parse($task->due_date)->format('d M Y') }}
-                        </p>
-                        @endif
                     </div>
-                    
+                    @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
+                    <button onclick="openAddTaskModal()" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-lg text-xs transition flex items-center gap-1">
+                        <i class="fas fa-plus-circle"></i> Add Task
+                    </button>
+                    @endif
                 </div>
             </div>
-            @empty
-            <div class="text-center py-12 text-gray-500">
-                <i class="fas fa-check-circle text-4xl text-gray-300 mb-3"></i>
-                <p>No tasks assigned to your family yet</p>
+
+            <!-- Task Filters -->
+            <div class="px-4 pt-2 pb-1 border-b border-gray-100 bg-white">
+                <div class="flex gap-1.5 overflow-x-auto">
+                    <button class="task-filter active px-2.5 py-1 text-xs rounded-md bg-blue-600 text-white whitespace-nowrap" data-filter="all">
+                        All
+                    </button>
+                    <button class="task-filter px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600 whitespace-nowrap" data-filter="pending">
+                        Pending
+                    </button>
+                    <button class="task-filter px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600 whitespace-nowrap" data-filter="in-progress">
+                        In Progress
+                    </button>
+                    <button class="task-filter px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600 whitespace-nowrap" data-filter="completed">
+                        Completed
+                    </button>
+                </div>
             </div>
-            @endforelse
+
+            <!-- Tasks List -->
+            <div class="divide-y divide-gray-100 max-h-[500px] overflow-y-auto" id="tasksList">
+                @forelse($familyTasks as $task)
+                <div class="task-item p-3 hover:bg-gray-50 transition" data-status="{{ $task->status }}" id="task-{{ $task->id }}">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                                <span class="font-medium text-gray-800 text-sm">{{ $task->title }}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full font-medium
+                                    {{ $task->status == 'completed' ? 'bg-green-100 text-green-600' : 
+                                       ($task->status == 'in-progress' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-500') }}">
+                                    @if($task->status == 'in-progress')
+                                        <i class="fas fa-spinner fa-pulse text-xs mr-0.5"></i> 
+                                    @elseif($task->status == 'completed')
+                                        <i class="fas fa-check-circle text-xs mr-0.5"></i> 
+                                    @else
+                                        <i class="fas fa-clock text-xs mr-0.5"></i> 
+                                    @endif
+                                    {{ $task->status == 'in-progress' ? 'Progress' : ucfirst($task->status) }}
+                                </span>
+                            </div>
+                            
+                            @if(isset($task->description) && $task->description)
+                            <p class="text-xs text-gray-500 mt-1">{{ Str::limit($task->description, 100) }}</p>
+                            @endif
+                            
+                            @if(isset($task->due_date) && $task->due_date)
+                            <div class="flex items-center gap-1 mt-1 text-xs {{ \Carbon\Carbon::parse($task->due_date)->isPast() && $task->status != 'completed' ? 'text-red-500' : 'text-gray-400' }}">
+                                <i class="fas fa-calendar-alt text-xs"></i>
+                                <span>{{ \Carbon\Carbon::parse($task->due_date)->format('d M Y') }}</span>
+                            </div>
+                            @endif
+                        </div>
+                        
+                        <!-- Task action buttons -->
+                        @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
+                        <div class="flex items-center gap-1.5">
+                            @if($task->status != 'completed')
+                            <button onclick="updateTaskStatus({{ $task->id }}, 'completed')" 
+                                    class="px-2 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-600 rounded transition" title="Mark Complete">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            @endif
+                            @if($task->status == 'pending')
+                            <button onclick="updateTaskStatus({{ $task->id }}, 'in-progress')" 
+                                    class="px-2 py-1 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded transition" title="Start Progress">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            @endif
+                           
+                            
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @empty
+                <div class="p-8 text-center text-gray-400 text-sm">
+                    <i class="fas fa-check-circle text-3xl mb-2 block"></i>
+                    No tasks assigned
+                </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Add Family Member</h3>
+                <button onclick="closeModal('addMemberModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <form id="addMemberForm" onsubmit="submitAddMember(event)">
+                @csrf
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Name *</label>
+                        <input type="text" name="name" id="memberName" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Role</label>
+                        <select name="role" id="memberRole" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="member">Member</option>
+                            <option value="parent">Parent</option>
+                            <option value="child">Child</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Phone</label>
+                        <input type="text" name="phone" id="memberPhone" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email</label>
+                        <input type="email" name="email" id="memberEmail" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+                    <button type="button" onclick="closeModal('addMemberModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Add Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="editMemberModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Edit Family Member</h3>
+                <button onclick="closeModal('editMemberModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <form id="editMemberForm" onsubmit="submitEditMember(event)">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="member_id" id="editMemberId">
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Name *</label>
+                        <input type="text" name="name" id="editMemberName" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Role</label>
+                        <select name="role" id="editMemberRole" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="member">Member</option>
+                            <option value="parent">Parent</option>
+                            <option value="child">Child</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Phone</label>
+                        <input type="text" name="phone" id="editMemberPhone" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email</label>
+                        <input type="email" name="email" id="editMemberEmail" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+                    <button type="button" onclick="closeModal('editMemberModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Add New Task</h3>
+                <button onclick="closeModal('addTaskModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <form id="addTaskForm" onsubmit="submitAddTask(event)">
+                @csrf
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Title *</label>
+                        <input type="text" name="title" id="taskTitle" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Description</label>
+                        <textarea name="description" id="taskDescription" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Due Date</label>
+                        <input type="date" name="due_date" id="taskDueDate" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Assigned To</label>
+                        <select name="assigned_to" id="taskAssignedTo" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="">-- Select Member --</option>
+                            @foreach($familyMembers as $member)
+                            <option value="{{ $member->id }}">{{ $member->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+                    <button type="button" onclick="closeModal('addTaskModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Edit Task</h3>
+                <button onclick="closeModal('editTaskModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <form id="editTaskForm" onsubmit="submitEditTask(event)">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="task_id" id="editTaskId">
+                <div class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Title *</label>
+                        <input type="text" name="title" id="editTaskTitle" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Description</label>
+                        <textarea name="description" id="editTaskDescription" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Due Date</label>
+                        <input type="date" name="due_date" id="editTaskDueDate" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <select name="status" id="editTaskStatus" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Assigned To</label>
+                        <select name="assigned_to" id="editTaskAssignedTo" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="">-- Select Member --</option>
+                            @foreach($familyMembers as $member)
+                            <option value="{{ $member->id }}">{{ $member->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+                    <button type="button" onclick="closeModal('editTaskModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Task</button>
+                </div>
+            </form>
         </div>
     </div>
 
     @else
-    <!-- No Family Assigned -->
-    <div class="bg-white rounded-2xl shadow-sm p-12 text-center border border-gray-100">
-        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-home text-gray-400 text-3xl"></i>
+    <!-- Empty State -->
+    <div class="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-home text-gray-400 text-2xl"></i>
         </div>
-        <h2 class="text-xl font-bold text-gray-800 mb-2">No Family Assigned</h2>
-        <p class="text-gray-500 mb-4">You are not yet assigned to any family.</p>
-        <a href="{{ route('social-fellowship.index') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm transition">
-            Go to Social Fellowship
-        </a>
+        <h2 class="text-lg font-semibold text-gray-800 mb-1">No Family Assigned</h2>
+        <p class="text-gray-500 text-sm mb-4">You are not yet assigned to any family.</p>
     </div>
     @endif
 
 </div>
 
-<!-- Member Details Modal -->
-<div id="memberModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: white; max-width: 500px; width: 90%; margin: auto; border-radius: 16px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
-            <h3 id="memberModalTitle" style="font-size: 20px; font-weight: bold; color: #1f2937;">Member Details</h3>
-            <button onclick="closeModal('memberModal')" style="color: #9ca3af; font-size: 24px; background: none; border: none; cursor: pointer;">&times;</button>
-        </div>
-        <div id="memberModalContent" style="margin-top: 16px;"></div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-            <button onclick="closeModal('memberModal')" style="background: #4b5563; color: white; padding: 8px 20px; border-radius: 12px; font-size: 14px; border: none; cursor: pointer;">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- All Members Modal -->
-<div id="allMembersModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; overflow-y: auto; padding: 20px;">
-    <div style="max-width: 1000px; width: 100%; margin: 0 auto; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #4f46e5, #4f46e5, #4f46e5); padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white;">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div>
-                    <h3 style="color: white; font-size: 20px; font-weight: bold; margin: 0;">Family Members</h3>
-                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 4px 0 0 0;">All members in {{ $userFamily->name }}</p>
-                </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <button onclick="exportMembersToCSV()" style="color: white; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px;">
-                    <i class="fas fa-download"></i> Export
-                </button>
-                <button onclick="closeModal('allMembersModal')" style="color: white; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-            </div>
-        </div>
-
-        <!-- Members Grid -->
-        <div style="background: #f3f4f6; padding: 20px; max-height: 400px; overflow-y: auto;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;">
-                @foreach($familyMembers as $member)
-                @php
-                $locationParts = array_filter([
-                    $member->village ?? '',
-                    $member->sector ?? '',
-                    $member->district ?? '',
-                    $member->province ?? ''
-                ]);
-                $location = !empty($locationParts) ? implode(', ', array_reverse($locationParts)) : '';
-                $firstLetter = strtoupper(substr($member->name, 0, 1));
-                $isParent = strtolower($member->role ?? '') === 'parent';
-                @endphp
-
-                <div onclick="showMemberDetails({{ $member->user_id }}, '{{ addslashes($member->name) }}'); closeModal('allMembersModal')"
-                    style="background: white; border-radius: 16px; padding: 16px; cursor: pointer; border: 1px solid #e5e7eb; transition: all 0.2s;"
-                    onmouseover="this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <div style="display: flex; gap: 12px;">
-                        <!-- Avatar -->
-                        <div style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; flex-shrink: 0; background: {{ $isParent ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'linear-gradient(135deg, #3b82f6, #2563eb)' }};">
-                            {{ $firstLetter }}
-                        </div>
-
-                        <!-- Content -->
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div>
-                                    <h4 style="font-weight: bold; color: #1f2937; font-size: 16px; margin: 0;">{{ $member->name }}</h4>
-                                    <p style="font-size: 12px; margin: 4px 0 0 0; color: {{ $isParent ? '#7c3aed' : '#3b82f6' }};">
-                                        {{ ucfirst($member->role ?? 'Member') }}
-                                    </p>
-                                </div>
-                                @if($isParent)
-                                <div style="width: 24px; height: 24px; background: #f3e8ff; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-star" style="color: #8b5cf6; font-size: 10px;"></i>
-                                </div>
-                                @endif
-                            </div>
-
-                            @if($member->phone)
-                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; color: #6b7280; font-size: 12px;">
-                                <i class="fas fa-phone" style="width: 12px;"></i>
-                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ $member->phone }}</span>
-                            </div>
-                            @endif
-
-                            @if($location)
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; color: #6b7280; font-size: 12px;">
-                                <i class="fas fa-map-marker-alt" style="width: 12px; margin-top: 2px;"></i>
-                                <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ Str::limit($location, 60) }}</span>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-
-            @if($familyMembers->isEmpty())
-            <div style="text-align: center; padding: 48px;">
-                <i class="fas fa-users" style="font-size: 48px; color: #9ca3af; margin-bottom: 12px;"></i>
-                <p style="color: #6b7280;">No members found in this family</p>
-            </div>
-            @endif
-        </div>
-
-        <!-- Footer -->
-        <div style="background: white; padding: 12px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 12px; color: #6b7280;">
-                Total: <span style="font-weight: 600; color: #374151;">{{ $familyMembers->count() }}</span> members
-            </div>
-            <button onclick="closeModal('allMembersModal')" style="background: #4b5563; color: white; padding: 6px 16px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer;">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
 <script>
-    function showModal(modalId) {
-        var modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex';
+    // Mobile toggle between members and tasks
+    const membersPanel = document.getElementById('membersPanel');
+    const tasksPanel = document.getElementById('tasksPanel');
+    const showMembersBtn = document.getElementById('showMembersBtn');
+    const showTasksBtn = document.getElementById('showTasksBtn');
+    
+    function showMembers() {
+        if (membersPanel) membersPanel.style.display = 'block';
+        if (tasksPanel) tasksPanel.style.display = 'none';
+        if (showMembersBtn) {
+            showMembersBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            showMembersBtn.classList.remove('text-gray-600');
+        }
+        if (showTasksBtn) {
+            showTasksBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            showTasksBtn.classList.add('text-gray-600');
         }
     }
+    
+    function showTasks() {
+        if (membersPanel) membersPanel.style.display = 'none';
+        if (tasksPanel) tasksPanel.style.display = 'block';
+        if (showTasksBtn) {
+            showTasksBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            showTasksBtn.classList.remove('text-gray-600');
+        }
+        if (showMembersBtn) {
+            showMembersBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            showMembersBtn.classList.add('text-gray-600');
+        }
+    }
+    
+    if (window.innerWidth < 768) {
+        showMembers();
+        if (showMembersBtn) showMembersBtn.addEventListener('click', showMembers);
+        if (showTasksBtn) showTasksBtn.addEventListener('click', showTasks);
+    } else {
+        if (membersPanel) membersPanel.style.display = 'block';
+        if (tasksPanel) tasksPanel.style.display = 'block';
+    }
+    
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 768) {
+            if (membersPanel) membersPanel.style.display = 'block';
+            if (tasksPanel) tasksPanel.style.display = 'block';
+        } else {
+            if (membersPanel.style.display !== 'none' && tasksPanel.style.display !== 'none') {
+                showMembers();
+            }
+        }
+    });
 
     function closeModal(modalId) {
-        var modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'none';
-        }
+        document.getElementById(modalId).classList.add('hidden');
     }
 
+    function showNotification(type, message) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in`;
+        notification.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+        notification.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-white"></i>
+            <span class="text-white text-sm">${message}</span>
+            <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
+
+    @if(auth()->check() && auth()->user()->canAccess('family', 'export'))
     function exportMembersToCSV() {
         var members = @json($familyMembers);
         var csv = [];
-
-        csv.push(['Name', 'Role', 'Phone', 'Province', 'District', 'Sector', 'Village', 'Email'].join(','));
-
+        csv.push(['Name', 'Role', 'Phone', 'Email'].join(','));
+        
         members.forEach(function(member) {
             var row = [];
             row.push('"' + (member.name || '').replace(/"/g, '""') + '"');
             row.push('"' + (member.role || 'Member').replace(/"/g, '""') + '"');
             row.push('"' + (member.phone || '').replace(/"/g, '""') + '"');
-            row.push('"' + (member.province || '').replace(/"/g, '""') + '"');
-            row.push('"' + (member.district || '').replace(/"/g, '""') + '"');
-            row.push('"' + (member.sector || '').replace(/"/g, '""') + '"');
-            row.push('"' + (member.village || '').replace(/"/g, '""') + '"');
             row.push('"' + (member.email || '').replace(/"/g, '""') + '"');
             csv.push(row.join(','));
         });
-
-        var blob = new Blob(["\uFEFF" + csv.join('\n')], {
-            type: 'text/csv;charset=utf-8;'
-        });
+        
+        var blob = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
         var link = document.createElement('a');
         var url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', 'family_members_{{ $userFamily->name }}.csv');
+        link.setAttribute('download', 'family_members_{{ $userFamily->name ?? 'family' }}.csv');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        showNotification('success', 'Export completed!');
+    }
+    @endif
+
+    @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
+    function openAddMemberModal() {
+        document.getElementById('addMemberModal').classList.remove('hidden');
     }
 
-    function showMemberDetails(userId, name) {
-        fetch('/my-family/member/' + userId + '/details', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                if (data.success) {
-                    var address = '';
-                    if (data.member.province) address += data.member.province;
-                    if (data.member.district) address += (address ? ', ' : '') + data.member.district;
-                    if (data.member.sector) address += (address ? ', ' : '') + data.member.sector;
-                    if (data.member.village) address += (address ? ', ' : '') + data.member.village;
+    function submitAddMember(event) {
+        event.preventDefault();
+        const formData = new FormData();
+        formData.append('name', document.getElementById('memberName').value);
+        formData.append('role', document.getElementById('memberRole').value);
+        formData.append('phone', document.getElementById('memberPhone').value);
+        formData.append('email', document.getElementById('memberEmail').value);
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-                    document.getElementById('memberModalTitle').textContent = name;
-                    document.getElementById('memberModalContent').innerHTML =
-                        '<div style="space-y: 4;">' +
-                        '<div style="display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">' +
-                        '<div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">' + name.substring(0, 2) + '</div>' +
-                        '<div>' +
-                        '<p style="font-weight: 600; color: #1f2937; margin: 0;">' + (data.member.email || 'No email') + '</p>' +
-                        '<p style="font-size: 14px; color: #6b7280; margin: 4px 0 0 0; text-transform: capitalize;">' + (data.role || 'Member') + '</p>' +
-                        '</div>' +
-                        '</div>' +
-                        '<div style="space-y: 2;">' +
-                        '<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">' +
-                        '<i class="fas fa-phone" style="color: #9ca3af; width: 16px;"></i>' +
-                        '<span>' + (data.member.phone || 'Not provided') + '</span>' +
-                        '</div>' +
-                        '<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">' +
-                        '<i class="fas fa-map-marker-alt" style="color: #9ca3af; width: 16px;"></i>' +
-                        '<span>' + (address || 'Not provided') + '</span>' +
-                        '</div>' +
-                        '<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">' +
-                        '<i class="fas fa-birthday-cake" style="color: #9ca3af; width: 16px;"></i>' +
-                        '<span>' + (data.member.date_of_birth || 'Not provided') + '</span>' +
-                        '</div>' +
-                        '</div>' +
-                        '</div>';
-                    showModal('memberModal');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('Error loading member details');
+        fetch('/my-family/member', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('addMemberModal');
+                showNotification('success', 'Member added successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('error', data.message || 'Failed to add member');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Network error');
+        });
+    }
+
+    function openAddTaskModal() {
+        document.getElementById('addTaskModal').classList.remove('hidden');
+    }
+
+    function submitAddTask(event) {
+        event.preventDefault();
+        const formData = new FormData();
+        formData.append('title', document.getElementById('taskTitle').value);
+        formData.append('description', document.getElementById('taskDescription').value);
+        formData.append('due_date', document.getElementById('taskDueDate').value);
+        formData.append('assigned_to', document.getElementById('taskAssignedTo').value);
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+        fetch('/my-family/task', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('addTaskModal');
+                showNotification('success', 'Task added successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('error', data.message || 'Failed to add task');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Network error');
+        });
+    }
+    @endif
+
+    @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
+    function editMember(memberId) {
+        fetch(`/my-family/member/${memberId}/json`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('editMemberId').value = data.id;
+                document.getElementById('editMemberName').value = data.name;
+                document.getElementById('editMemberRole').value = data.role || 'member';
+                document.getElementById('editMemberPhone').value = data.phone || '';
+                document.getElementById('editMemberEmail').value = data.email || '';
+                document.getElementById('editMemberModal').classList.remove('hidden');
             });
+    }
+
+    function submitEditMember(event) {
+        event.preventDefault();
+        const memberId = document.getElementById('editMemberId').value;
+        const formData = new FormData();
+        formData.append('name', document.getElementById('editMemberName').value);
+        formData.append('role', document.getElementById('editMemberRole').value);
+        formData.append('phone', document.getElementById('editMemberPhone').value);
+        formData.append('email', document.getElementById('editMemberEmail').value);
+        formData.append('_method', 'PUT');
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+        fetch(`/my-family/member/${memberId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('editMemberModal');
+                showNotification('success', 'Member updated successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('error', data.message || 'Failed to update member');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Network error');
+        });
     }
 
     function updateTaskStatus(taskId, status) {
-        fetch('/my-family/task/' + taskId + '/status', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    status: status
-                })
-            })
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error updating task status');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('Error updating task status');
+        fetch(`/my-family/task/${taskId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('success', 'Task updated successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('error', data.message || 'Failed to update task');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Network error');
+        });
+    }
+
+    function editTask(taskId) {
+        fetch(`/my-family/task/${taskId}/json`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('editTaskId').value = data.id;
+                document.getElementById('editTaskTitle').value = data.title;
+                document.getElementById('editTaskDescription').value = data.description || '';
+                document.getElementById('editTaskDueDate').value = data.due_date || '';
+                document.getElementById('editTaskStatus').value = data.status;
+                document.getElementById('editTaskAssignedTo').value = data.assigned_to || '';
+                document.getElementById('editTaskModal').classList.remove('hidden');
             });
     }
 
-    // Set up event listeners when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        var viewAllBtn = document.getElementById('viewAllMembersBtn');
-        if (viewAllBtn) {
-            viewAllBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showModal('allMembersModal');
+    function submitEditTask(event) {
+        event.preventDefault();
+        const taskId = document.getElementById('editTaskId').value;
+        const formData = new FormData();
+        formData.append('title', document.getElementById('editTaskTitle').value);
+        formData.append('description', document.getElementById('editTaskDescription').value);
+        formData.append('due_date', document.getElementById('editTaskDueDate').value);
+        formData.append('status', document.getElementById('editTaskStatus').value);
+        formData.append('assigned_to', document.getElementById('editTaskAssignedTo').value);
+        formData.append('_method', 'PUT');
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+        fetch(`/my-family/task/${taskId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('editTaskModal');
+                showNotification('success', 'Task updated successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('error', data.message || 'Failed to update task');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Network error');
+        });
+    }
+    @endif
+
+    @if(auth()->check() && auth()->user()->canAccess('family', 'delete'))
+    function deleteMember(memberId, memberName) {
+        if (confirm(`Are you sure you want to delete "${memberName}" from the family?`)) {
+            fetch(`/my-family/member/${memberId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('success', 'Member deleted successfully!');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification('error', data.message || 'Failed to delete member');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('error', 'Network error');
             });
         }
+    }
 
-        // Task filter functionality
+    function deleteTask(taskId, taskTitle) {
+        if (confirm(`Are you sure you want to delete task "${taskTitle}"?`)) {
+            fetch(`/my-family/task/${taskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('success', 'Task deleted successfully!');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification('error', data.message || 'Failed to delete task');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('error', 'Network error');
+            });
+        }
+    }
+    @endif
+
+    // Task filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
         var filterBtns = document.querySelectorAll('.task-filter');
         if (filterBtns.length > 0) {
             filterBtns.forEach(function(btn) {
@@ -407,15 +756,13 @@
                     var filterValue = this.getAttribute('data-filter');
                     var tasks = document.querySelectorAll('.task-item');
                     
-                    // Update active button styling
                     filterBtns.forEach(function(b) {
                         b.classList.remove('bg-blue-600', 'text-white');
-                        b.classList.add('bg-gray-200', 'text-gray-700');
+                        b.classList.add('bg-gray-100', 'text-gray-600');
                     });
-                    this.classList.remove('bg-gray-200', 'text-gray-700');
+                    this.classList.remove('bg-gray-100', 'text-gray-600');
                     this.classList.add('bg-blue-600', 'text-white');
                     
-                    // Filter tasks
                     tasks.forEach(function(task) {
                         var taskStatus = task.getAttribute('data-status');
                         if (filterValue === 'all' || taskStatus === filterValue) {
@@ -429,4 +776,11 @@
         }
     });
 </script>
+
+<style>
+    .modal { display: none; }
+    .modal:not(.hidden) { display: block !important; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .animate-slide-in { animation: slideIn 0.3s ease-out; }
+</style>
 @endsection

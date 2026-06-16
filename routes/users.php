@@ -17,6 +17,14 @@ Route::middleware('auth')->prefix('users')->group(function () {
     Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('/{id}', [UserController::class, 'show'])->name('users.show');
+
+
+    // Add these routes inside the auth middleware group
+Route::post('/users/{id}/approve', [UserController::class, 'approve'])->name('users.approve');
+Route::post('/users/{id}/activate', [UserController::class, 'activate'])->name('users.activate');
+Route::post('/users/{id}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+
+    
 });
 
 Route::put('/users/{user}/roles', [UserController::class, 'updateRoles'])->name('users.update-roles');

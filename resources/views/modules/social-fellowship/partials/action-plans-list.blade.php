@@ -3,11 +3,6 @@
     $planCount = isset($actionPlans) ? $actionPlans->count() : 0;
 @endphp
 
-@if($planCount > 0)
-    <div class="bg-green-100 text-green-700 p-2 rounded mb-2 text-xs">
-        Found {{ $planCount }} action plan(s) in database
-    </div>
-@endif
 
 <div class="bg-white rounded-xl shadow-md p-6">
     

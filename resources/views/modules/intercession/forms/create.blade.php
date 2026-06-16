@@ -65,9 +65,7 @@
             <button onclick="addTitleSection()" class="hover:text-indigo-600" title="Add title and description">
                 <i class="fas fa-heading"></i>
             </button>
-            <button onclick="addImage()" class="hover:text-indigo-600" title="Add image">
-                <i class="fas fa-image"></i>
-            </button>
+            
             <button onclick="addSection()" class="hover:text-indigo-600" title="Add section">
                 <i class="fas fa-layer-group"></i>
             </button>
@@ -318,24 +316,7 @@ function addTitleSection() {
     selectedQuestionId = null;
 }
 
-function addImage() {
-    const url = prompt('Enter image URL:', 'https://via.placeholder.com/800x200?text=Image');
-    if (url) {
-        let insertIndex = questions.length;
-        if (selectedQuestionId !== null) {
-            const selectedIndex = questions.findIndex(q => q.id === selectedQuestionId);
-            if (selectedIndex !== -1) {
-                insertIndex = selectedIndex;
-            }
-        }
-        const id = questionCount++;
-        const newImage = { id, type: 'image', imageUrl: url, altText: 'Image' };
-        questions.splice(insertIndex, 0, newImage);
-        renderAllQuestions();
-        autoSave();
-        selectedQuestionId = null;
-    }
-}
+
 
 function addSection() {
     let insertIndex = questions.length;
@@ -443,7 +424,7 @@ function renderQuestion(q) {
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" style="top: 30px;"></div>
             <div class="p-5"><div class="grid grid-cols-12 gap-4 items-start">
                 <div class="col-span-7"><input type="text" value="${escapeHtml(q.text)}" placeholder="Question" onchange="updateAndAutoSave('questionText', ${q.id}, null, this.value)" class="w-full text-xl border-0 border-b border-gray-300 focus:ring-0 focus:border-gray-500 bg-gray-50 px-3 py-2"></div>
-                <div class="col-span-1 flex justify-center pt-2"><i class="fas fa-image text-gray-500 cursor-pointer hover:text-indigo-600" onclick="event.stopPropagation(); addImageToQuestion(${q.id})"></i></div>
+             
                 <div class="col-span-4"><select onchange="changeQuestionType(${q.id}, this.value)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">${questionTypes.map(t => `<option value="${t.value}" ${q.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
             </div>
             ${isQuizMode ? `<div class="mt-3 flex items-center gap-3 bg-gray-50 p-2 rounded-lg"><div class="flex items-center gap-2"><span class="text-xs text-gray-600">Points:</span><input type="number" value="${q.points || 1}" min="0" max="100" onchange="updateAndAutoSave('points', ${q.id}, null, this.value)" class="w-16 px-2 py-1 border rounded-md text-sm text-center"></div></div>` : ''}
@@ -559,7 +540,6 @@ function addColumn(id) { const q = questions.find(q => q.id === id); if (q) { if
 function removeColumn(id, i) { const q = questions.find(q => q.id === id); if (q && q.columns && q.columns.length > 1) { q.columns.splice(i, 1); renderAllQuestions(); autoSave(); } }
 function addOption(id) { const q = questions.find(q => q.id === id); if (q && q.options) { q.options.push(`Option ${q.options.length + 1}`); renderAllQuestions(); autoSave(); } }
 function removeOption(id, i) { const q = questions.find(q => q.id === id); if (q && q.options && q.options.length > 1) { q.options.splice(i, 1); renderAllQuestions(); autoSave(); } }
-function addImageToQuestion(id) { const url = prompt('Enter image URL:'); if (url) { const q = questions.find(q => q.id === id); if (q) q.imageUrl = url; renderAllQuestions(); autoSave(); } }
 function changeQuestionType(id, type) { const q = questions.find(q => q.id === id); if (q) { q.type = type; if (!q.options && (type === 'multiple_choice' || type === 'checkboxes' || type === 'dropdown')) q.options = ['Option 1']; if (type === 'multiple_choice_grid' || type === 'checkbox_grid') { if (!q.rows) q.rows = ['Row 1']; if (!q.columns) q.columns = ['Column 1']; } renderAllQuestions(); autoSave(); } }
 function duplicateQuestion(id) { const o = questions.find(q => q.id === id); if (o) { const nid = questionCount++; const newQuestion = JSON.parse(JSON.stringify({...o, id: nid})); const index = questions.findIndex(q => q.id === id) + 1; questions.splice(index, 0, newQuestion); renderAllQuestions(); autoSave(); } }
 function deleteQuestion(id) { const i = questions.findIndex(q => q.id === id); if (i !== -1) { questions.splice(i, 1); renderAllQuestions(); autoSave(); } }
@@ -624,7 +604,7 @@ function saveForm(isAutoSave = false) {
                 showAutoSaveIndicator();
             } else {
                 if (confirm('Form saved successfully! Click OK to go back to Manage Forms.')) {
-                    window.location.href = '{{ route("forms.manage.index") }}';
+                    window.location.href = '{{ route("forms.index") }}';
                 }
             }
         } else { 

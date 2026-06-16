@@ -2,13 +2,12 @@
     <div class="relative top-20 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Edit Announcement</h3>
-            <button onclick="closeModal('editAnnouncementModal')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="window.closeModal('editAnnouncementModal')" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
-        <form id="editAnnouncementForm" onsubmit="updateAnnouncement(event)">
+        <form id="editAnnouncementForm" onsubmit="window.submitEditAnnouncement(event)">
             @csrf
-            @method('PUT')
             <input type="hidden" id="editAnnouncementId" name="id">
             <div class="mt-4 space-y-4 max-h-96 overflow-y-auto">
                 <div>
@@ -67,6 +66,7 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                     <div id="currentImagePreview" class="mt-2 hidden">
                         <img id="editImagePreview" src="" class="w-32 h-32 object-cover rounded-lg">
+                        <p class="text-xs text-gray-500 mt-1">Current image. Upload new to replace.</p>
                     </div>
                 </div>
                 <div>
@@ -80,15 +80,16 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('editAnnouncementModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Update Announcement</button>
+                <button type="button" onclick="window.closeModal('editAnnouncementModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Update Announcement</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function editAnnouncement(id) {
+window.editAnnouncement = function(id) {
+    console.log('Editing announcement:', id);
     fetch(`/announcements/${id}/edit`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -114,12 +115,17 @@ function editAnnouncement(id) {
             }
             
             document.getElementById('editAnnouncementModal').classList.remove('hidden');
+        } else {
+            alert('Error loading announcement: ' + (data.message || 'Unknown error'));
         }
     })
-    .catch(error => console.error('Error:', error));
-}
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error loading announcement');
+    });
+};
 
-function updateAnnouncement(event) {
+window.submitEditAnnouncement = function(event) {
     event.preventDefault();
     
     const id = document.getElementById('editAnnouncementId').value;
@@ -136,22 +142,36 @@ function updateAnnouncement(event) {
     
     const imageFile = document.getElementById('editAnnouncementImage').files[0];
     if (imageFile) {
+        if (imageFile.size > 2 * 1024 * 1024) {
+            alert('Image size must be less than 2MB');
+            return;
+        }
         formData.append('image', imageFile);
     }
+    
+    const submitBtn = event.submitter;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Updating...';
+    submitBtn.disabled = true;
     
     fetch(`/announcements/${id}`, {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            closeModal('editAnnouncementModal');
-            filterAnnouncements();
-            if (typeof loadOverviewStats === 'function') loadOverviewStats();
+            window.closeModal('editAnnouncementModal');
+            if (typeof window.refreshAnnouncementsList === 'function') {
+                window.refreshAnnouncementsList();
+            }
+            if (typeof window.refreshOverviewStats === 'function') {
+                window.refreshOverviewStats();
+            }
             alert('Announcement updated successfully!');
         } else {
             alert('Error: ' + (data.message || 'Failed to update announcement'));
@@ -160,6 +180,10 @@ function updateAnnouncement(event) {
     .catch(error => {
         console.error('Error:', error);
         alert('Network error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     });
-}
+};
 </script>

@@ -11,27 +11,38 @@ Route::middleware('auth')->prefix('discipline')->name('discipline.')->group(func
     Route::get('/', [DisciplineController::class, 'index'])->name('index');
     Route::get('/overview', [DisciplineController::class, 'getOverview'])->name('overview');
     
-    // Attendance
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::get('/', [AttendanceController::class, 'index'])->name('index');
-        Route::post('/store', [AttendanceController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [AttendanceController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [AttendanceController::class, 'update'])->name('update');
-        Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('destroy');
-        Route::delete('/session', [AttendanceController::class, 'deleteSession'])->name('delete-session');
-        Route::get('/stats', [AttendanceController::class, 'getStats'])->name('stats');
-    });
+    // Attendance Routes
+// Attendance Routes
+Route::prefix('attendance')->name('attendance.')->group(function () {
+    Route::get('/', [AttendanceController::class, 'index'])->name('index');
+    Route::get('/session-check', [AttendanceController::class, 'checkSessionExists'])->name('session-check');
     
-    // Permission
-    Route::prefix('permission')->name('permission.')->group(function () {
-        Route::get('/', [PermissionController::class, 'index'])->name('index');
-        Route::post('/store', [PermissionController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [PermissionController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [PermissionController::class, 'update'])->name('update');
-        Route::delete('/{id}', [PermissionController::class, 'destroy'])->name('destroy');
-        Route::get('/stats', [PermissionController::class, 'getStats'])->name('stats');
-    });
+    // Parameterized routes FIRST (more specific)
+    Route::get('/session/{date}/{sessionType}', [AttendanceController::class, 'getSessionDetails'])->name('session-details')->where('sessionType', '.*');
+    Route::get('/session-summary', [AttendanceController::class, 'getSessionSummary'])->name('session-summary');
     
+    // Then the static routes
+    Route::delete('/session', [AttendanceController::class, 'deleteSession'])->name('delete-session');
+    
+    Route::post('/store', [AttendanceController::class, 'store'])->name('store');
+    Route::post('/bulk-update', [AttendanceController::class, 'bulkUpdate'])->name('bulk-update');
+    Route::post('/complete-session', [AttendanceController::class, 'completeSession'])->name('complete-session');
+    Route::get('/{id}/edit', [AttendanceController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [AttendanceController::class, 'update'])->name('update');
+    Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('destroy');
+    Route::get('/stats', [AttendanceController::class, 'getStats'])->name('stats');
+});
+    
+    // Permission Routes
+Route::prefix('permission')->name('permission.')->group(function () {
+    Route::get('/', [PermissionController::class, 'index'])->name('index');
+    Route::get('/search-users', [PermissionController::class, 'searchUsers'])->name('search-users'); // ADD THIS LINE
+    Route::post('/store', [PermissionController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [PermissionController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [PermissionController::class, 'update'])->name('update');
+    Route::delete('/{id}', [PermissionController::class, 'destroy'])->name('destroy');
+    Route::get('/stats', [PermissionController::class, 'getStats'])->name('stats');
+});
     // Records
     Route::prefix('records')->name('records.')->group(function () {
         Route::get('/', [DisciplineRecordController::class, 'index'])->name('index');
@@ -56,9 +67,15 @@ Route::middleware('auth')->prefix('discipline')->name('discipline.')->group(func
     });
     
     // Reports
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/generate', [ReportController::class, 'generate'])->name('generate');
-        Route::get('/export', [ReportController::class, 'export'])->name('export');
-    });
+Route::prefix('reports')->name('reports.')->group(function () {
+    Route::get('/', [ReportController::class, 'index'])->name('index');
+    Route::get('/generate', function() {
+        return response()->json([
+            'success' => true,
+            'html' => '<div class="p-4 text-center">Reports module is being configured. Please check back soon.</div>',
+            'csv' => ''
+        ]);
+    })->name('generate');
+    Route::get('/export', [ReportController::class, 'export'])->name('export');
+});
 });

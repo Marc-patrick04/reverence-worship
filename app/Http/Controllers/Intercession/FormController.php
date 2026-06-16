@@ -7,11 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\User\User;
+
 class FormController extends Controller
 {
     // Display manage forms index
     public function index()
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'manage-forms')) {
+            abort(403, 'You do not have permission to manage forms.');
+        }
+        
         $forms = DB::table('forms')->orderBy('created_at', 'desc')->get();
         return view('modules.intercession.forms.index', compact('forms'));
     }
@@ -19,12 +25,22 @@ class FormController extends Controller
     // Display create form page
     public function create()
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'create-forms')) {
+            abort(403, 'You do not have permission to create forms.');
+        }
+        
         return view('modules.intercession.forms.create');
     }
     
-    // Store new form - FIXED to handle your data structure properly
+    // Store new form
     public function store(Request $request)
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'create-forms')) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+        }
+        
         try {
             // Get JSON data from your form builder
             if ($request->isJson()) {
@@ -134,6 +150,11 @@ class FormController extends Controller
     // Display edit form page
     public function edit($id)
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'edit-forms')) {
+            abort(403, 'You do not have permission to edit forms.');
+        }
+        
         $form = DB::table('forms')->where('id', $id)->first();
         
         if (!$form) {
@@ -150,6 +171,11 @@ class FormController extends Controller
     // Update existing form
     public function update(Request $request, $id)
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'edit-forms')) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+        }
+        
         try {
             if ($request->isJson()) {
                 $data = $request->json()->all();
@@ -230,6 +256,14 @@ class FormController extends Controller
     // Delete form
     public function destroy($id)
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'delete-forms')) {
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+            }
+            abort(403, 'You do not have permission to delete forms.');
+        }
+        
         try {
             DB::table('form_submissions')->where('form_id', $id)->delete();
             DB::table('forms')->where('id', $id)->delete();
@@ -247,6 +281,11 @@ class FormController extends Controller
     // Toggle publish status
     public function togglePublish($id)
     {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'publish-forms')) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+        }
+        
         try {
             $form = DB::table('forms')->where('id', $id)->first();
             $settings = json_decode($form->settings, true);
@@ -265,116 +304,184 @@ class FormController extends Controller
         }
     }
     
-    // Other methods (take, submit, etc.) remain the same...
+    // Take a form (view and fill)
     public function take($id)
     {
+        // Check permission - must have view-forms permission
+        if (!auth()->user()->canAccess('intercession', 'view-forms')) {
+            abort(403, 'You do not have permission to view forms.');
+        }
+        
         $form = DB::table('forms')->where('id', $id)->first();
         if (!$form) abort(404);
+        
         $questions = json_decode($form->questions, true);
         $settings = json_decode($form->settings, true);
+        
+        // Check if user has already submitted (if limit_one_response is enabled)
+        $hasSubmitted = DB::table('form_submissions')
+            ->where('form_id', $id)
+            ->where('user_id', auth()->id())
+            ->exists();
+        
+        if ($hasSubmitted && isset($settings['limit_one_response']) && $settings['limit_one_response']) {
+            return redirect()->route('intercession.index')
+                ->with('error', 'You have already submitted this form. Only one response is allowed.');
+        }
+        
         return view('modules.intercession.forms.take', compact('form', 'questions', 'settings'));
     }
     
+    // Submit form answers
     public function submit(Request $request, $id)
-{
-    try {
-        $answers = json_encode($request->except('_token'));
+    {
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'view-forms')) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+            }
+            abort(403, 'You do not have permission to submit forms.');
+        }
         
-        $form = DB::table('forms')->where('id', $id)->first();
-        $settings = json_decode($form->settings, true);
-        $questions = json_decode($form->questions, true);
-        
-        // Calculate score with partial grading for checkboxes
-        $score = 0;
-        $totalPoints = 0;
-        $earnedPoints = 0;
-        
-        if (isset($settings['is_quiz']) && $settings['is_quiz']) {
-            foreach ($questions as $index => $question) {
-                $points = $question['points'] ?? 1;
-                $totalPoints += $points;
-                $userAnswer = $request->input('question_' . $index);
-                
-                // Handle different question types
-                if (isset($question['correctAnswer']) && !empty($question['correctAnswer'])) {
-                    // Single correct answer (multiple choice, dropdown, etc.)
-                    if ($userAnswer == $question['correctAnswer']) {
-                        $earnedPoints += $points;
-                    }
-                } elseif (isset($question['correctAnswers']) && is_array($question['correctAnswers']) && !empty($question['correctAnswers'])) {
-                    // Multiple correct answers (checkboxes) - PARTIAL GRADING
-                    $userAnswers = is_array($userAnswer) ? $userAnswer : [];
-                    $correctAnswers = $question['correctAnswers'];
-                    
-                    if (count($userAnswers) > 0) {
-                        $totalCorrectCount = count($correctAnswers);
-                        $userCorrectCount = 0;
-                        
-                        // Count how many correct answers the user selected
-                        foreach ($userAnswers as $answer) {
-                            if (in_array($answer, $correctAnswers)) {
-                                $userCorrectCount++;
-                            }
-                        }
-                        
-                        // Calculate points: each correct selection gives points/totalCorrect
-                        $pointsPerCorrect = $points / $totalCorrectCount;
-                        $earnedPoints += $userCorrectCount * $pointsPerCorrect;
-                    }
-                }
+        try {
+            $answers = json_encode($request->except('_token'));
+            
+            $form = DB::table('forms')->where('id', $id)->first();
+            if (!$form) {
+                return response()->json(['success' => false, 'message' => 'Form not found'], 404);
             }
             
-            $score = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100, 1) : 100;
-        } else {
-            $score = 100;
-        }
-        
-        DB::table('form_submissions')->insert([
-            'form_id' => $id,
-            'user_id' => auth()->id(),
-            'answers' => $answers,
-            'score' => $score,
-            'submitted_at' => now()
-        ]);
-        
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Form submitted successfully',
+            $settings = json_decode($form->settings, true);
+            $questions = json_decode($form->questions, true);
+            
+            // Check if already submitted
+            $hasSubmitted = DB::table('form_submissions')
+                ->where('form_id', $id)
+                ->where('user_id', auth()->id())
+                ->exists();
+            
+            if ($hasSubmitted && isset($settings['limit_one_response']) && $settings['limit_one_response']) {
+                return response()->json(['success' => false, 'message' => 'You have already submitted this form'], 400);
+            }
+            
+            // Calculate score with partial grading for checkboxes
+            $score = 0;
+            $totalPoints = 0;
+            $earnedPoints = 0;
+            
+            if (isset($settings['is_quiz']) && $settings['is_quiz']) {
+                foreach ($questions as $index => $question) {
+                    $points = $question['points'] ?? 1;
+                    $totalPoints += $points;
+                    $userAnswer = $request->input('question_' . $index);
+                    
+                    // Handle different question types
+                    if (isset($question['correctAnswer']) && !empty($question['correctAnswer'])) {
+                        // Single correct answer (multiple choice, dropdown, etc.)
+                        if ($userAnswer == $question['correctAnswer']) {
+                            $earnedPoints += $points;
+                        }
+                    } elseif (isset($question['correctAnswers']) && is_array($question['correctAnswers']) && !empty($question['correctAnswers'])) {
+                        // Multiple correct answers (checkboxes) - PARTIAL GRADING
+                        $userAnswers = is_array($userAnswer) ? $userAnswer : [];
+                        $correctAnswers = $question['correctAnswers'];
+                        
+                        if (count($userAnswers) > 0) {
+                            $totalCorrectCount = count($correctAnswers);
+                            $userCorrectCount = 0;
+                            
+                            // Count how many correct answers the user selected
+                            foreach ($userAnswers as $answer) {
+                                if (in_array($answer, $correctAnswers)) {
+                                    $userCorrectCount++;
+                                }
+                            }
+                            
+                            // Calculate points: each correct selection gives points/totalCorrect
+                            $pointsPerCorrect = $points / $totalCorrectCount;
+                            $earnedPoints += $userCorrectCount * $pointsPerCorrect;
+                        }
+                    }
+                }
+                
+                $score = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100, 1) : 100;
+            } else {
+                $score = 100;
+            }
+            
+            DB::table('form_submissions')->insert([
+                'form_id' => $id,
+                'user_id' => auth()->id(),
+                'answers' => $answers,
                 'score' => $score,
-                'form_id' => $id
+                'submitted_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Form submitted successfully',
+                    'score' => $score,
+                    'form_id' => $id
+                ]);
+            }
+            
+            return redirect()->route('forms.results', $id)->with('success', 'Form submitted successfully! Your score: ' . $score . '%');
+            
+        } catch (\Exception $e) {
+            Log::error('Form submission error: ' . $e->getMessage());
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('error', 'Error submitting form: ' . $e->getMessage());
         }
-        
-        return redirect()->route('forms.results', $id)->with('success', 'Form submitted successfully! Your score: ' . $score . '%');
-        
-    } catch (\Exception $e) {
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-        return redirect()->back()->with('error', 'Error submitting form: ' . $e->getMessage());
     }
-}
     
+    // View submissions for a form (admin)
     public function submissions($id)
     {
-        $submissions = DB::table('form_submissions')->where('form_id', $id)->orderBy('submitted_at', 'desc')->get();
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'view-results')) {
+            abort(403, 'You do not have permission to view submissions.');
+        }
+        
+        $submissions = DB::table('form_submissions')
+            ->where('form_id', $id)
+            ->leftJoin('users', 'form_submissions.user_id', '=', 'users.id')
+            ->select('form_submissions.*', 'users.name as user_name', 'users.email')
+            ->orderBy('submitted_at', 'desc')
+            ->get();
+        
         $form = DB::table('forms')->where('id', $id)->first();
         return view('modules.intercession.forms.submissions', compact('submissions', 'form'));
     }
     
+    // View results for a specific submission (user)
     public function results($id)
     {
-        $submission = DB::table('form_submissions')->where('form_id', $id)->where('user_id', auth()->id())->first();
+        // Check permission
+        if (!auth()->user()->canAccess('intercession', 'view-results')) {
+            abort(403, 'You do not have permission to view results.');
+        }
+        
+        $submission = DB::table('form_submissions')
+            ->where('form_id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+        
         if (!$submission) {
             return redirect()->route('intercession.index')->with('error', 'No submission found');
         }
+        
         $form = DB::table('forms')->where('id', $id)->first();
         $questions = json_decode($form->questions, true);
         $answers = json_decode($submission->answers, true);
+        
         return view('modules.intercession.forms.results', compact('form', 'questions', 'answers', 'submission'));
     }
 }

@@ -51,34 +51,59 @@ Route::middleware('auth')->prefix('music')->group(function () {
     Route::delete('/action-plan/{id}', [MusicController::class, 'deleteActionPlan'])->name('music.action-plan.delete');
     
     // Service Team / Generation Routes
-    Route::get('/teams/{id}/export', [MusicController::class, 'exportGeneration'])->name('music.teams.export');
-    Route::post('/teams/{id}/restore', [MusicController::class, 'restoreGeneration'])->name('music.teams.restore');
-Route::post('/teams/generate', [MusicController::class, 'generateBalancedGroups'])->name('music.teams.generate');
-Route::get('/teams/{id}/details', [MusicController::class, 'getGenerationDetails'])->name('music.teams.details');
-Route::get('/teams/generation/{id}/export', [MusicController::class, 'exportGeneration'])->name('music.teams.export');
-Route::post('/teams/generation/{id}/restore', [MusicController::class, 'restoreGeneration'])->name('music.teams.restore');
-Route::delete('/teams/service/{id}', [MusicController::class, 'deleteServiceTeam'])->name('music.teams.delete');
-Route::post('/singers/update-settings', [SingerController::class, 'updateSettings'])->name('music.singers.update-settings');
-
-
-
-// Landing Page Content Routes
-Route::prefix('landing')->group(function () {
-    // YouTube Videos
-    Route::post('/youtube', [MusicController::class, 'storeYouTubeVideo'])->name('music.landing.youtube.store');
-    Route::put('/youtube/{id}', [MusicController::class, 'updateYouTubeVideo'])->name('music.landing.youtube.update');
-    Route::get('/youtube/{id}/edit', [MusicController::class, 'editYouTubeVideo'])->name('music.landing.youtube.edit');
-    Route::delete('/youtube/{id}', [MusicController::class, 'deleteYouTubeVideo'])->name('music.landing.youtube.delete');
-    Route::post('/youtube/{id}/toggle-publish', [MusicController::class, 'toggleYouTubePublish'])->name('music.landing.youtube.toggle-publish');
+    Route::prefix('teams')->group(function () {
+        // Generation
+        Route::post('/generate', [MusicController::class, 'generateBalancedGroups'])->name('music.teams.generate');
+        
+        // Details
+        Route::get('/{id}/details', [MusicController::class, 'getGenerationDetails'])->name('music.teams.details');
+        
+        // Export single generation
+        Route::get('/{id}/export', [MusicController::class, 'exportGeneration'])->name('music.teams.export');
+        
+        // Export all generations
+        Route::get('/export-all', [MusicController::class, 'exportAllGenerations'])->name('music.teams.export-all');
+        
+        // Restore generation
+        Route::post('/{id}/restore', [MusicController::class, 'restoreGeneration'])->name('music.teams.restore');
+        
+        // Delete generation
+        Route::delete('/{id}', [MusicController::class, 'deleteServiceTeam'])->name('music.teams.delete');
+    });
     
-    // Featured Images
-    Route::post('/featured', [MusicController::class, 'storeFeaturedImage'])->name('music.landing.featured.store');
-    Route::post('/featured/{id}', [MusicController::class, 'updateFeaturedImage'])->name('music.landing.featured.update');
-    Route::get('/featured/{id}/edit', [MusicController::class, 'editFeaturedImage'])->name('music.landing.featured.edit');
-    Route::delete('/featured/{id}', [MusicController::class, 'deleteFeaturedImage'])->name('music.landing.featured.delete');
-    Route::post('/featured/{id}/toggle-publish', [MusicController::class, 'toggleFeaturedPublish'])->name('music.landing.featured.toggle-publish');
+    // Singer settings update
+    Route::post('/singers/update-settings', [SingerController::class, 'updateSettings'])->name('music.singers.update-settings');
     
-    // Update order
-    Route::post('/update-order', [MusicController::class, 'updateLandingOrder'])->name('music.landing.update-order');
+    // Landing Page Content Routes
+    Route::prefix('landing')->group(function () {
+        // YouTube Videos
+        Route::post('/youtube', [MusicController::class, 'storeYouTubeVideo'])->name('music.landing.youtube.store');
+        Route::put('/youtube/{id}', [MusicController::class, 'updateYouTubeVideo'])->name('music.landing.youtube.update');
+        Route::get('/youtube/{id}/edit', [MusicController::class, 'editYouTubeVideo'])->name('music.landing.youtube.edit');
+        Route::delete('/youtube/{id}', [MusicController::class, 'deleteYouTubeVideo'])->name('music.landing.youtube.delete');
+        Route::post('/youtube/{id}/toggle-publish', [MusicController::class, 'toggleYouTubePublish'])->name('music.landing.youtube.toggle-publish');
+        
+        // Featured Images
+        Route::post('/featured', [MusicController::class, 'storeFeaturedImage'])->name('music.landing.featured.store');
+        Route::post('/featured/{id}', [MusicController::class, 'updateFeaturedImage'])->name('music.landing.featured.update');
+        Route::get('/featured/{id}/edit', [MusicController::class, 'editFeaturedImage'])->name('music.landing.featured.edit');
+        Route::delete('/featured/{id}', [MusicController::class, 'deleteFeaturedImage'])->name('music.landing.featured.delete');
+        Route::post('/featured/{id}/toggle-publish', [MusicController::class, 'toggleFeaturedPublish'])->name('music.landing.featured.toggle-publish');
+        
+        // Update order
+        Route::post('/update-order', [MusicController::class, 'updateLandingOrder'])->name('music.landing.update-order');
+    });
 });
-});
+
+Route::get('/debug/singers', function() {
+    $singers = \App\Models\User\User::where('is_singer', true)
+        ->select('id', 'name', 'email', 'membership_type', 'voice_part', 'singer_level')
+        ->get();
+    
+    return response()->json([
+        'total' => $singers->count(),
+        'permanent' => $singers->where('membership_type', 'Permanent')->count(),
+        'other_types' => $singers->groupBy('membership_type')->map->count(),
+        'sample' => $singers->first()
+    ]);
+})->middleware('auth');

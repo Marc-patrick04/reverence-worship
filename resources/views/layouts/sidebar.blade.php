@@ -11,142 +11,159 @@
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         @auth
             @if(auth()->user()->isSuperAdmin())
-                <!-- Dashboard -->
+                <!-- Super Admin Full Menu -->
                 <a href="{{ route('super-admin.dashboard') }}" class="nav-item {{ request()->routeIs('super-admin.dashboard') ? 'active' : '' }}">
                     <i class="fas fa-tachometer-alt w-5"></i>
                     <span class="nav-text text-sm font-medium">Dashboard</span>
                 </a>
-                
-                <!-- User Management -->
                 <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <i class="fas fa-users w-5"></i>
                     <span class="nav-text text-sm font-medium">User Management</span>
                 </a>
-                
-                
-                <!-- My Family -->
                 <a href="{{ route('family.index') }}" class="nav-item {{ request()->routeIs('family.*') ? 'active' : '' }}">
                     <i class="fas fa-home w-5"></i>
                     <span class="nav-text text-sm font-medium">My Family</span>
                 </a>
-                
-                <!-- My Contributions -->
                 <a href="{{ route('financial.my-contributions') }}" class="nav-item {{ request()->routeIs('financial.*') ? 'active' : '' }}">
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="nav-text text-sm font-medium">My Contributions</span>
                 </a>
-                
-                <!-- Music and Evangelism DPT -->
                 <a href="{{ route('music.index') }}" class="nav-item {{ request()->routeIs('music.*') ? 'active' : '' }}">
                     <i class="fas fa-music w-5"></i>
                     <span class="nav-text text-sm font-medium">Music and Evangelism DPT</span>
                 </a>
-                
-                <!-- Intercession and spiritual growth -->
                 <a href="{{ route('intercession.index') }}" class="nav-item {{ request()->routeIs('intercession.*') ? 'active' : '' }}">
                     <i class="fas fa-pray w-5"></i>
                     <span class="nav-text text-sm font-medium">Intercession and spiritual growth</span>
                 </a>
-                
-                <!-- Social Fellowship DPT -->
                 <a href="{{ route('social-fellowship.index') }}" class="nav-item {{ request()->routeIs('social-fellowship.*') ? 'active' : '' }}">
                     <i class="fas fa-hand-holding-heart w-5"></i>
                     <span class="nav-text text-sm font-medium">Social Fellowship DPT</span>
                 </a>
-                
-                <!-- Discipline Management DPT -->
                 <a href="{{ route('discipline.index') }}" class="nav-item {{ request()->routeIs('discipline.*') ? 'active' : '' }}">
                     <i class="fas fa-gavel w-5"></i>
                     <span class="nav-text text-sm font-medium">Discipline Management DPT</span>
                 </a>
-                
-                <!-- Financial Management DPT -->
                 <a href="{{ route('finance.index') }}" class="nav-item {{ request()->routeIs('finance.*') ? 'active' : '' }}">
                     <i class="fas fa-chart-line w-5"></i>
                     <span class="nav-text text-sm font-medium">Financial Management DPT</span>
                 </a>
-                
-                <!-- Admin Announcements -->
                 <a href="{{ route('announcements.index') }}" class="nav-item {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
                     <i class="fas fa-bullhorn w-5"></i>
                     <span class="nav-text text-sm font-medium">Admin Announcements</span>
                 </a>
-                
-                <!-- Settings -->
-                <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                    <i class="fas fa-cog w-5"></i>
-                    <span class="nav-text text-sm font-medium">Settings</span>
-                </a>
-                
-                <!-- System Logs -->
-                <a href="{{ route('logs.activity') }}" class="nav-item {{ request()->routeIs('logs.*') ? 'active' : '' }}">
-                    <i class="fas fa-chart-line w-5"></i>
-                    <span class="nav-text text-sm font-medium">System Logs</span>
-                </a>
-                
-                <!-- Reports -->
                 <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                     <i class="fas fa-file-alt w-5"></i>
                     <span class="nav-text text-sm font-medium">Reports</span>
                 </a>
                 
-                <!-- Roles Management -->
-                <a href="{{ route('roles.index') }}" class="nav-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                    <i class="fas fa-tags w-5"></i>
-                    <span class="nav-text text-sm font-medium">Roles Management</span>
-                </a>
-                
-                <!-- Permission Manager -->
                 <a href="{{ route('permission-manager.index') }}" class="nav-item {{ request()->routeIs('permission-manager.*') ? 'active' : '' }}">
                     <i class="fas fa-lock w-5"></i>
                     <span class="nav-text text-sm font-medium">Permission Manager</span>
                 </a>
                 
-                <!-- Page Assignment -->
-                <a href="{{ route('page-assignment.index') }}" class="nav-item {{ request()->routeIs('page-assignment.*') ? 'active' : '' }}">
-                    <i class="fas fa-tasks w-5"></i>
-                    <span class="nav-text text-sm font-medium">Page Assignment</span>
+                <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                    <i class="fas fa-cog w-5"></i>
+                    <span class="nav-text text-sm font-medium">Settings</span>
+                </a>
+                <a href="{{ route('logs.activity') }}" class="nav-item {{ request()->routeIs('logs.*') ? 'active' : '' }}">
+                    <i class="fas fa-history w-5"></i>
+                    <span class="nav-text text-sm font-medium">System Logs</span>
                 </a>
                 
-                <!-- Pages & Features -->
-                <a href="{{ route('pages.index') }}" class="nav-item {{ request()->routeIs('pages.*') ? 'active' : '' }}">
-                    <i class="fas fa-file-alt w-5"></i>
-                    <span class="nav-text text-sm font-medium">Pages & Features</span>
-                </a>
             @else
-                <!-- Regular User Menu -->
-                <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                            
+                <!-- Dashboard - Always visible -->
+                <a href="{{ route('user.dashboard') }}" class="nav-item {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
                     <i class="fas fa-tachometer-alt w-5"></i>
                     <span class="nav-text text-sm font-medium">Dashboard</span>
                 </a>
                 
-                @if(auth()->user()->canAccess('user-management', 'view'))
-                <a href="{{ route('users.index') }}" class="nav-item">
+                <!-- User Management - Check for 'view' permission on 'users' page -->
+                @if(auth()->user()->canAccess('users', 'view'))
+                <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <i class="fas fa-users w-5"></i>
                     <span class="nav-text text-sm font-medium">User Management</span>
                 </a>
                 @endif
                 
-                @if(auth()->user()->canAccess('music-ministry', 'access'))
-                <a href="{{ route('music.index') }}" class="nav-item">
-                    <i class="fas fa-music w-5"></i>
-                    <span class="nav-text text-sm font-medium">Music and Evangelism DPT</span>
+                <!-- My Family - Check permission for 'family' page -->
+                @if(auth()->user()->canAccess('family', 'view'))
+                <a href="{{ route('family.index') }}" class="nav-item {{ request()->routeIs('family.*') ? 'active' : '' }}">
+                    <i class="fas fa-home w-5"></i>
+                    <span class="nav-text text-sm font-medium">My Family</span>
                 </a>
                 @endif
                 
-                @if(auth()->user()->canAccess('intercession', 'view'))
-                <a href="{{ route('intercession.index') }}" class="nav-item">
-                    <i class="fas fa-pray w-5"></i>
-                    <span class="nav-text text-sm font-medium">Intercession and spiritual growth</span>
-                </a>
-                @endif
-                
+                <!-- My Contributions - Check permission for 'financial' page -->
                 @if(auth()->user()->canAccess('financial', 'view'))
-                <a href="{{ route('financial.my-contributions') }}" class="nav-item">
+                <a href="{{ route('financial.my-contributions') }}" class="nav-item {{ request()->routeIs('financial.*') ? 'active' : '' }}">
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="nav-text text-sm font-medium">My Contributions</span>
                 </a>
                 @endif
+                
+                <!-- Music Ministry - Check permission for 'music-ministry' page -->
+                @if(auth()->user()->canAccess('music-ministry', 'view'))
+                <a href="{{ route('music.index') }}" class="nav-item {{ request()->routeIs('music.*') ? 'active' : '' }}">
+                    <i class="fas fa-music w-5"></i>
+                    <span class="nav-text text-sm font-medium">Music and Evangelism</span>
+                </a>
+                @endif
+                
+                <!-- Intercession - Check permission for 'intercession' page -->
+                @if(auth()->user()->canAccess('intercession', 'view'))
+                <a href="{{ route('intercession.index') }}" class="nav-item {{ request()->routeIs('intercession.*') ? 'active' : '' }}">
+                    <i class="fas fa-pray w-5"></i>
+                    <span class="nav-text text-sm font-medium">Intercession</span>
+                </a>
+                @endif
+                
+                <!-- Social Fellowship - Check permission for 'social-fellowship' page -->
+                @if(auth()->user()->canAccess('social-fellowship', 'view'))
+                <a href="{{ route('social-fellowship.index') }}" class="nav-item {{ request()->routeIs('social-fellowship.*') ? 'active' : '' }}">
+                    <i class="fas fa-hand-holding-heart w-5"></i>
+                    <span class="nav-text text-sm font-medium">Social Fellowship</span>
+                </a>
+                @endif
+                
+                <!-- Discipline - Check permission for 'discipline' page -->
+                @if(auth()->user()->canAccess('discipline', 'view'))
+                <a href="{{ route('discipline.index') }}" class="nav-item {{ request()->routeIs('discipline.*') ? 'active' : '' }}">
+                    <i class="fas fa-gavel w-5"></i>
+                    <span class="nav-text text-sm font-medium">Discipline Management</span>
+                </a>
+                @endif
+                
+                <!-- Finance - Check permission for 'finance' page -->
+                @if(auth()->user()->canAccess('finance', 'view'))
+                <a href="{{ route('finance.index') }}" class="nav-item {{ request()->routeIs('finance.*') ? 'active' : '' }}">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span class="nav-text text-sm font-medium">Financial Management</span>
+                </a>
+                @endif
+                
+                <!-- Announcements - Check permission for 'announcements' page -->
+                @if(auth()->user()->canAccess('announcements', 'view'))
+                <a href="{{ route('announcements.index') }}" class="nav-item {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
+                    <i class="fas fa-bullhorn w-5"></i>
+                    <span class="nav-text text-sm font-medium">Announcements</span>
+                </a>
+                @endif
+                
+                <!-- Reports - Check permission for 'reports' page -->
+                @if(auth()->user()->canAccess('reports', 'view'))
+                <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span class="nav-text text-sm font-medium">Reports</span>
+                </a>
+                @endif
+                
+                <!-- My Profile - Always visible -->
+                <a href="{{ route('profile.index') }}" class="nav-item {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                    <i class="fas fa-user w-5"></i>
+                    <span class="nav-text text-sm font-medium">My Profile</span>
+                </a>
             @endif
         @else
             <a href="{{ route('login') }}" class="nav-item">
@@ -160,7 +177,7 @@
         @endauth
     </nav>
     
-    <!-- User Info Footer - Fixed at bottom on white background -->
+    <!-- User Info Footer -->
     @auth
     <div class="user-info-footer pt-4 pb-4 border-t border-gray-200 flex-shrink-0 px-3">
         <div class="flex items-center space-x-3">
@@ -230,7 +247,7 @@
     font-weight: 600;
 }
 
-/* Collapsed Sidebar Styles - Applied from parent */
+/* Collapsed Sidebar Styles */
 .sidebar.collapsed .nav-item {
     justify-content: center;
     padding: 12px;

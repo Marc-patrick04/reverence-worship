@@ -47,6 +47,50 @@ class AnnouncementController extends Controller
             'announcements', 'stats', 'types', 'priorities', 'statuses', 'users'
         ));
     }
+    /**
+ * Get all roles for selection
+ */
+public function getRoles()
+{
+    try {
+        $roles = \App\Models\User\Role::where('name', '!=', 'super-admin')
+            ->select('id', 'name', 'display_name')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'roles' => $roles
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Get all active users for selection
+ */
+public function getUsers()
+{
+    try {
+        $users = \App\Models\User\User::where('is_active', true)
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'users' => $users
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
     
     public function filter(Request $request)
     {
@@ -88,23 +132,15 @@ class AnnouncementController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'type' => 'nullable|string',
             'status' => 'nullable|string',
             'scheduled_date' => 'nullable|date',
-            'expiry_date' => 'nullable|date|after_or_equal:scheduled_date',
-            'priority' => 'nullable|string',
-            'target_audience' => 'nullable|string'
+            'target_type' => 'required|in:all,roles,users',
+            'target_roles' => 'nullable|string',
+            'target_users' => 'nullable|string',
+            'send_email' => 'nullable|boolean'
         ]);
         
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $filename = time() . '_' . uniqid() . '_' . $image->getClientOriginalName();
-            $image->move(public_path('uploads/announcements'), $filename);
-            $imagePath = 'uploads/announcements/' . $filename;
-        }
-        
-        $status = $validated['status'] ?? 'draft';
+        $status = $validated['status'] ?? 'active';
         $publishedBy = null;
         $publishedAt = null;
         
@@ -113,29 +149,317 @@ class AnnouncementController extends Controller
             $publishedAt = now();
         }
         
+        $targetRoles = isset($validated['target_roles']) && $validated['target_roles'] ? $validated['target_roles'] : null;
+        $targetUsers = isset($validated['target_users']) && $validated['target_users'] ? $validated['target_users'] : null;
+        
         $id = DB::table('announcements')->insertGetId([
             'title' => $validated['title'],
             'content' => $validated['content'],
-            'type' => $validated['type'] ?? 'general',
+            'type' => 'general',
             'status' => $status,
             'scheduled_date' => $validated['scheduled_date'] ?? null,
-            'expiry_date' => $validated['expiry_date'] ?? null,
-            'target_audience' => $validated['target_audience'] ?? null,
-            'priority' => $validated['priority'] ?? 'normal',
-            'image_path' => $imagePath,
+            'expiry_date' => null,
+            'target_audience' => null,
+            'priority' => 'normal',
+            'image_path' => null,
             'created_by' => auth()->id(),
             'published_by' => $publishedBy,
             'published_at' => $publishedAt,
+            'target_type' => $validated['target_type'],
+            'target_roles' => $targetRoles,
+            'target_users' => $targetUsers,
+            'email_sent' => false,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
-        return response()->json(['success' => true, 'message' => 'Announcement created successfully', 'id' => $id]);
+        // Send emails immediately if status is active and send_email is true
+        if ($status === 'active' && ($request->send_email == '1' || $request->send_email === true)) {
+            $this->sendAnnouncementEmails($id);
+        }
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Announcement created successfully',
+            'id' => $id
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Store announcement error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false, 
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function sendAnnouncementEmails($announcementId)
+{
+    try {
+        // Get announcement with all data
+        $announcement = DB::table('announcements')->where('id', $announcementId)->first();
+        
+        if (!$announcement) {
+            \Log::error("Announcement #{$announcementId} not found");
+            return;
+        }
+        
+        if ($announcement->email_sent) {
+            \Log::info("Emails already sent for announcement #{$announcementId}");
+            return;
+        }
+        
+        // Get target users based on target_type
+        $targetUsers = [];
+        
+        if ($announcement->target_type === 'all') {
+            // Get all active users
+            $targetUsers = DB::table('users')
+                ->where('is_active', true)
+                ->select('id', 'name', 'email')
+                ->get();
+            \Log::info("Sending to ALL users: " . count($targetUsers) . " users");
+            
+        } elseif ($announcement->target_type === 'roles') {
+            // Get users by roles
+            $roleIds = json_decode($announcement->target_roles, true);
+            if (!empty($roleIds)) {
+                $targetUsers = DB::table('users')
+                    ->join('role_user', 'users.id', '=', 'role_user.user_id')
+                    ->whereIn('role_user.role_id', $roleIds)
+                    ->where('users.is_active', true)
+                    ->select('users.id', 'users.name', 'users.email')
+                    ->distinct()
+                    ->get();
+                \Log::info("Sending to users with roles: " . json_encode($roleIds) . " - " . count($targetUsers) . " users");
+            }
+            
+        } elseif ($announcement->target_type === 'users') {
+            // Get specific users
+            $userIds = json_decode($announcement->target_users, true);
+            if (!empty($userIds)) {
+                $targetUsers = DB::table('users')
+                    ->whereIn('id', $userIds)
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'email')
+                    ->get();
+                \Log::info("Sending to specific users: " . json_encode($userIds) . " - " . count($targetUsers) . " users");
+            }
+        }
+        
+        if ($targetUsers->isEmpty()) {
+            \Log::warning("No target users found for announcement #{$announcementId}");
+            return;
+        }
+        
+        $sentCount = 0;
+        $failedCount = 0;
+        
+        foreach ($targetUsers as $user) {
+            try {
+                // Send email using Laravel's mail system
+                \Mail::send('emails.announcement', [
+                    'user' => $user,
+                    'announcement' => $announcement
+                ], function ($message) use ($user, $announcement) {
+                    $message->to($user->email, $user->name)
+                            ->subject($announcement->title)
+                            ->from(config('mail.from.address'), config('mail.from.name'));
+                });
+                $sentCount++;
+                \Log::info("Email sent to: {$user->email}");
+            } catch (\Exception $e) {
+                $failedCount++;
+                \Log::error("Failed to send email to {$user->email}: " . $e->getMessage());
+            }
+        }
+        
+        // Update email_sent flag
+        DB::table('announcements')
+            ->where('id', $announcementId)
+            ->update([
+                'email_sent' => true,
+                'email_sent_at' => now()
+            ]);
+        
+        \Log::info("Announcement #{$announcementId} emails sent: {$sentCount} sent, {$failedCount} failed");
+        
+    } catch (\Exception $e) {
+        \Log::error("sendAnnouncementEmails error: " . $e->getMessage());
+    }
+}
+   /**
+ * Get recipients for an announcement (actual users who received/will receive it)
+ */
+public function getRecipients($id)
+{
+    try {
+        $announcement = DB::table('announcements')->where('id', $id)->first();
+        
+        if (!$announcement) {
+            return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
+        }
+        
+        $recipients = [];
+        
+        if ($announcement->target_type === 'all') {
+            $recipients = DB::table('users')
+                ->where('is_active', true)
+                ->select('id', 'name', 'email')
+                ->orderBy('name')
+                ->get();
+        } elseif ($announcement->target_type === 'roles') {
+            $roleIds = json_decode($announcement->target_roles, true);
+            if (!empty($roleIds)) {
+                $recipients = DB::table('users')
+                    ->join('role_user', 'users.id', '=', 'role_user.user_id')
+                    ->whereIn('role_user.role_id', $roleIds)
+                    ->where('users.is_active', true)
+                    ->select('users.id', 'users.name', 'users.email')
+                    ->distinct()
+                    ->orderBy('users.name')
+                    ->get();
+            }
+        } elseif ($announcement->target_type === 'users') {
+            $userIds = json_decode($announcement->target_users, true);
+            if (!empty($userIds)) {
+                $recipients = DB::table('users')
+                    ->whereIn('id', $userIds)
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'email')
+                    ->orderBy('name')
+                    ->get();
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'recipients' => $recipients,
+            'count' => count($recipients)
+        ]);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
 }
-    
+
+/**
+ * Get recipient counts and preview for multiple announcements
+ */
+public function getBatchRecipients(Request $request)
+{
+    try {
+        $announcementIds = $request->input('announcement_ids', []);
+        
+        if (empty($announcementIds)) {
+            return response()->json(['success' => true, 'recipients' => []]);
+        }
+        
+        $results = [];
+        
+        foreach ($announcementIds as $id) {
+            $announcement = DB::table('announcements')->where('id', $id)->first();
+            
+            if (!$announcement) {
+                $results[$id] = ['count' => 0, 'preview' => [], 'type' => 'error'];
+                continue;
+            }
+            
+            $recipients = [];
+            
+            if ($announcement->target_type === 'all') {
+                $recipients = DB::table('users')
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'email')
+                    ->orderBy('name')
+                    ->limit(5)
+                    ->get();
+                $totalCount = DB::table('users')->where('is_active', true)->count();
+            } elseif ($announcement->target_type === 'roles') {
+                $roleIds = json_decode($announcement->target_roles, true);
+                if (!empty($roleIds)) {
+                    $recipients = DB::table('users')
+                        ->join('role_user', 'users.id', '=', 'role_user.user_id')
+                        ->whereIn('role_user.role_id', $roleIds)
+                        ->where('users.is_active', true)
+                        ->select('users.id', 'users.name', 'users.email')
+                        ->distinct()
+                        ->orderBy('users.name')
+                        ->limit(5)
+                        ->get();
+                    $totalCount = DB::table('users')
+                        ->join('role_user', 'users.id', '=', 'role_user.user_id')
+                        ->whereIn('role_user.role_id', $roleIds)
+                        ->where('users.is_active', true)
+                        ->distinct()
+                        ->count('users.id');
+                } else {
+                    $totalCount = 0;
+                }
+            } elseif ($announcement->target_type === 'users') {
+                $userIds = json_decode($announcement->target_users, true);
+                if (!empty($userIds)) {
+                    $recipients = DB::table('users')
+                        ->whereIn('id', $userIds)
+                        ->where('is_active', true)
+                        ->select('id', 'name', 'email')
+                        ->orderBy('name')
+                        ->limit(5)
+                        ->get();
+                    $totalCount = DB::table('users')
+                        ->whereIn('id', $userIds)
+                        ->where('is_active', true)
+                        ->count();
+                } else {
+                    $totalCount = 0;
+                }
+            } else {
+                $totalCount = 0;
+            }
+            
+            $results[$id] = [
+                'count' => $totalCount,
+                'preview' => $recipients,
+                'type' => $announcement->target_type
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'recipients' => $results
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+} 
+/**
+ * Get role names by IDs for batch display
+ */
+public function getRolesBatch(Request $request)
+{
+    try {
+        $roleIds = $request->input('role_ids', []);
+        
+        if (empty($roleIds)) {
+            return response()->json(['success' => true, 'roles' => []]);
+        }
+        
+        $roles = DB::table('roles')
+            ->whereIn('id', $roleIds)
+            ->select('id', 'name', 'display_name')
+            ->get()
+            ->keyBy('id');
+        
+        return response()->json([
+            'success' => true,
+            'roles' => $roles
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
    public function update(Request $request, $id)
 {
     try {

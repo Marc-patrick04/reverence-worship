@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>All Users Personal Information Report</title>
+    <title>Users Report</title>
     <style>
         * {
             margin: 0;
@@ -12,31 +12,31 @@
         
         body {
             font-family: 'DejaVu Sans', 'Arial', sans-serif;
-            font-size: 9px;
-            padding: 15px;
+            font-size: 11px;
+            padding: 20px;
             color: #333;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #2563eb;
-            padding-bottom: 8px;
+            padding-bottom: 10px;
         }
         
         .header h1 {
-            font-size: 16px;
+            font-size: 18px;
             color: #1e40af;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         
         .header p {
-            font-size: 8px;
+            font-size: 10px;
             color: #666;
         }
         
         .summary {
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
@@ -44,18 +44,18 @@
         
         .summary-box {
             background: #f3f4f6;
-            padding: 6px 12px;
+            padding: 8px 15px;
             border-radius: 6px;
             border-left: 3px solid #2563eb;
         }
         
         .summary-box span {
-            font-size: 8px;
+            font-size: 10px;
             color: #666;
         }
         
         .summary-box strong {
-            font-size: 12px;
+            font-size: 14px;
             color: #1e40af;
             margin-left: 8px;
         }
@@ -63,22 +63,24 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 7px;
+            margin-top: 10px;
         }
         
         th {
             background: #2563eb;
             color: white;
-            padding: 6px 3px;
+            padding: 8px 6px;
             text-align: left;
             font-weight: bold;
+            font-size: 10px;
             border: 1px solid #1e40af;
         }
         
         td {
-            padding: 5px 3px;
+            padding: 6px;
             border: 1px solid #d1d5db;
             vertical-align: top;
+            font-size: 9px;
         }
         
         tr:nth-child(even) {
@@ -86,36 +88,48 @@
         }
         
         .footer {
-            margin-top: 15px;
+            margin-top: 20px;
             text-align: center;
-            font-size: 7px;
+            font-size: 8px;
             color: #666;
             border-top: 1px solid #d1d5db;
-            padding-top: 8px;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 2px 5px;
-            border-radius: 10px;
-            font-size: 6px;
-            font-weight: bold;
+            padding-top: 10px;
         }
         
         .badge-active {
             background: #dcfce7;
             color: #16a34a;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 8px;
+            font-weight: bold;
+            display: inline-block;
         }
         
         .badge-inactive {
             background: #fee2e2;
             color: #dc2626;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 8px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .badge-pending {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 8px;
+            font-weight: bold;
+            display: inline-block;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>All Users Personal Information Report</h1>
+        <h1>Users Report</h1>
         <p>Generated on: {{ $generated_date }}</p>
     </div>
     
@@ -125,15 +139,15 @@
             <strong>{{ $total_users }}</strong>
         </div>
         <div class="summary-box">
-            <span>Active Users:</span>
+            <span>Active:</span>
             <strong>{{ $active_users }}</strong>
         </div>
         <div class="summary-box">
-            <span>Inactive Users:</span>
+            <span>Inactive:</span>
             <strong>{{ $inactive_users }}</strong>
         </div>
         <div class="summary-box">
-            <span>Pending Users:</span>
+            <span>Pending:</span>
             <strong>{{ $pending_users }}</strong>
         </div>
     </div>
@@ -141,24 +155,20 @@
     <table>
         <thead>
             <tr>
-                <th width="25">#</th>
+                <th>#</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>DOB</th>
                 <th>Gender</th>
-                <th>Marital Status</th>
-                <th>Residence</th>
-                <th>Family</th>
                 <th>Occupation</th>
             </tr>
         </thead>
         <tbody>
             @forelse($users as $index => $user)
             <tr>
-                <td style="text-align: center;">{{ $index + 1 }}</td>
+                <td>{{ $index + 1 }}</td>
                 <td>{{ $user->name }}</td>
                 <td>{{ $user->email }}</td>
                 <td>{{ $user->phone ?? '-' }}</td>
@@ -166,48 +176,22 @@
                     @foreach($user->roles as $role)
                         {{ $role->display_name }}{{ !$loop->last ? ', ' : '' }}
                     @endforeach
-                    @if($user->roles->isEmpty())
-                        -
-                    @endif
                 </td>
                 <td>
                     @if($user->is_active)
-                        <span class="badge badge-active">Active</span>
+                        <span class="badge-active">Active</span>
+                    @elseif($user->created_by === null && $user->email_verified_at === null)
+                        <span class="badge-pending">Pending</span>
                     @else
-                        <span class="badge badge-inactive">Inactive</span>
+                        <span class="badge-inactive">Inactive</span>
                     @endif
                 </td>
-                <td>{{ $user->date_of_birth ? date('d/m/y', strtotime($user->date_of_birth)) : '-' }}</td>
                 <td>{{ $user->gender ?? '-' }}</td>
-                <td>{{ $user->marital_status ?? '-' }}</td>
-                <td>
-                    @php
-                        $residence = [];
-                        if ($user->province) $residence[] = $user->province;
-                        if ($user->district) $residence[] = $user->district;
-                        if ($user->sector) $residence[] = $user->sector;
-                        if ($user->village) $residence[] = $user->village;
-                        echo implode(', ', $residence) ?: '-';
-                    @endphp
-                </td>
-               <td class="px-6 py-4 text-sm">
-    @php
-        if (isset($user->family_name) && $user->family_name && $user->family_name != '-') {
-            $familyDisplay = $user->family_name;
-            if (isset($user->family_role) && $user->family_role && $user->family_role != '-') {
-                $familyDisplay .= ' (' . ucfirst($user->family_role) . ')';
-            }
-            echo $familyDisplay;
-        } else {
-            echo '-';
-        }
-    @endphp
-</td>
                 <td>{{ $user->occupation ?? '-' }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="12" style="text-align: center;">No users found</td>
+                <td colspan="8" style="text-align: center;">No users found</td>
             </tr>
             @endforelse
         </tbody>
@@ -215,7 +199,6 @@
     
     <div class="footer">
         <p>Reverence Worship Team - User Management Report</p>
-        <p>This report is system generated and contains all user information based on current filters.</p>
     </div>
 </body>
 </html>

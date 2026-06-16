@@ -94,10 +94,9 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Membership Type</label>
             <select name="membership_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                <option value="Regular">Regular</option>
                 <option value="Permanent">Permanent</option>
-                <option value="Visitor">Visitor</option>
-                <option value="Associate">Associate</option>
+                <option value="Temporary Member">Temporary Member</option>
+                <option value="Partner">Partner</option>
             </select>
         </div>
         
@@ -107,48 +106,7 @@
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg">
         </div>
         
-        <!-- Singer Information -->
-        <div class="md:col-span-2">
-            <h4 class="text-md font-bold text-black-700 mb-2 border-b pb-1 mt-2">Singer</h4>
-        </div>
         
-        <div class="md:col-span-2">
-            <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" name="is_singer" value="1" id="isSingerCheckbox"
-                       onclick="document.getElementById('singerFields').style.display = this.checked ? 'block' : 'none'"
-                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                <span class="text-sm font-medium text-gray-700">This user is a singer in the worship team</span>
-            </label>
-        </div>
-        
-        <div id="singerFields" class="md:col-span-2" style="display: none;">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-3 bg-purple-50 rounded-lg">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Voice Part</label>
-                    <select name="voice_part" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                        <option value="">Select Voice Part</option>
-                        <option value="Soprano">Soprano</option>
-                        <option value="Alto">Alto</option>
-                        <option value="Tenor">Tenor</option>
-                        <option value="Bass">Bass</option>
-                        <option value="Lead">Lead Vocalist</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Singer Level</label>
-                    <select name="singer_level" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                        <option value="">Select Level</option>
-                        <option value="Normal">Normal</option>
-                        <option value="Good">Good</option>
-                    </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Singer Notes</label>
-                    <textarea name="singer_notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                              placeholder="Special skills, available days, etc..."></textarea>
-                </div>
-            </div>
-        </div>
         
         <!-- Additional Information -->
         <div class="md:col-span-2">

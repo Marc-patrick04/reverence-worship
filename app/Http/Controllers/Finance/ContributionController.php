@@ -7,185 +7,231 @@ use Illuminate\Http\Request;
 use App\Models\Finance\Contribution;
 use App\Models\Finance\ContributionSetting;
 use App\Models\System\ActivityLog;
+use Illuminate\Support\Facades\DB;  
 
 class ContributionController extends Controller
 {
     // Show my contributions page
-    public function myContributions()
-    {
-        $user = auth()->user();
-        $currentYear = date('Y');
-        
-        // Get settings for current year
-        $settings = ContributionSetting::where('year', $currentYear)->first();
-        if (!$settings) {
-            $settings = ContributionSetting::create([
-                'year' => $currentYear,
-                'term1_amount' => 48000,
-                'term2_amount' => 36000,
-                'term3_amount' => 36000,
-                'term4_amount' => 0,
-                'is_active' => true
-            ]);
-        }
-        
-        // Get user's contributions
-        $contributions = [];
-        $totalPaid = 0;
-        $totalRequired = 0;
-        
-        for ($term = 1; $term <= 4; $term++) {
-            $termAmount = $settings->getTermAmount($term);
-            if ($termAmount > 0) {
-                $totalRequired += $termAmount;
-                
-                $contribution = Contribution::where('user_id', $user->id)
-                    ->where('term', $term)
-                    ->where('year', $currentYear)
-                    ->first();
-                
-                if (!$contribution) {
-                    $contribution = new Contribution();
-                    $contribution->user_id = $user->id;
-                    $contribution->term = $term;
-                    $contribution->year = $currentYear;
-                    $contribution->amount = 0;
-                    $contribution->status = 'pending';
-                    $contribution->save();
-                }
-                
-                $totalPaid += $contribution->amount;
-                $contributions[$term] = $contribution;
-            }
-        }
-        
-        $progressPercent = $totalRequired > 0 ? ($totalPaid / $totalRequired) * 100 : 0;
-        
-        return view('modules.financial.my-contributions', compact(
-            'user', 'settings', 'contributions', 'totalPaid', 'totalRequired', 'progressPercent', 'currentYear'
-        ));
+  public function myContributions(Request $request)
+{
+    $userId = auth()->id();
+    $year = $request->get('year', date('Y'));
+    $currentYear = $year;
+    
+    // Get available years for dropdown
+    $availableYears = DB::table('contributions')
+        ->where('user_id', $userId)
+        ->select('year')
+        ->distinct()
+        ->orderBy('year', 'desc')
+        ->pluck('year')
+        ->toArray();
+    
+    if (empty($availableYears)) {
+        $availableYears = [date('Y')];
     }
+    
+    // Get contribution
+    $contribution = DB::table('contributions')
+        ->where('user_id', $userId)
+        ->where('year', $year)
+        ->first();
+    
+    // Get payments
+    $payments = DB::table('payments')
+        ->where('user_id', $userId)
+        ->where('year', $year)
+        ->orderBy('payment_date', 'desc')
+        ->get();
+    
+    // Get term settings
+    $termSettings = DB::table('finance_term_settings')->first();
+    $numberOfTerms = $termSettings->number_of_terms ?? 3;
+    
+    // Get term percentages - ensure it's associative array with term numbers as keys
+    $termPercentages = [];
+    if ($termSettings && $termSettings->term_percentages) {
+        $termPercentages = json_decode($termSettings->term_percentages, true);
+        // If it's indexed array (0,1,2), convert to associative (1,2,3)
+        if (is_array($termPercentages) && !isset($termPercentages[1]) && isset($termPercentages[0])) {
+            $assoc = [];
+            foreach ($termPercentages as $index => $percentage) {
+                $assoc[$index + 1] = $percentage;
+            }
+            $termPercentages = $assoc;
+        }
+    }
+    
+    // If no percentages, create default distribution
+    if (empty($termPercentages)) {
+        $equalPercent = 100 / $numberOfTerms;
+        for ($i = 1; $i <= $numberOfTerms; $i++) {
+            $termPercentages[$i] = round($equalPercent, 2);
+        }
+        // Adjust first term to make total 100
+        $termPercentages[1] = 100 - (($numberOfTerms - 1) * round($equalPercent, 2));
+    }
+    
+    // Calculate term targets and paid amounts based on annual amount
+    $annualAmount = $contribution->annual_amount ?? 0;
+    $termTargets = [];
+    $termPaidAmounts = [];
+    $totalRequired = 0;
+    $totalPaid = 0;
+    
+    for ($i = 1; $i <= $numberOfTerms; $i++) {
+        $percentage = isset($termPercentages[$i]) ? $termPercentages[$i] : (100 / $numberOfTerms);
+        $termTargets[$i] = ($annualAmount * $percentage) / 100;
+        $totalRequired += $termTargets[$i];
+        
+        // Get paid amount for this term
+        $termPaid = DB::table('payments')
+            ->where('user_id', $userId)
+            ->where('term', $i)
+            ->where('year', $year)
+            ->sum('amount');
+        
+        $termPaidAmounts[$i] = $termPaid ?? 0;
+        $totalPaid += $termPaidAmounts[$i];
+    }
+    
+    $remainingAmount = $totalRequired - $totalPaid;
+    $progressPercent = $totalRequired > 0 ? round(($totalPaid / $totalRequired) * 100, 1) : 0;
+    $progressPercentage = $progressPercent;
+    
+    // Get term statuses based on paid amounts vs targets
+    $termStatuses = [];
+    foreach ($termTargets as $termNum => $target) {
+        $paid = $termPaidAmounts[$termNum];
+        if ($paid >= $target && $target > 0) {
+            $termStatuses[$termNum] = 'completed';
+        } elseif ($paid > 0) {
+            $termStatuses[$termNum] = 'partial';
+        } else {
+            $termStatuses[$termNum] = 'pending';
+        }
+    }
+    
+    return view('modules.financial.my-contributions', compact(
+        'contribution', 
+        'payments', 
+        'termTargets', 
+        'termPaidAmounts',
+        'termStatuses',
+        'termPercentages',
+        'numberOfTerms', 
+        'annualAmount', 
+        'currentYear',
+        'availableYears',
+        'totalRequired',
+        'totalPaid',
+        'remainingAmount',
+        'progressPercent',
+        'progressPercentage'
+    ));
+}
     
     // Submit contribution payment
     public function submitPayment(Request $request)
-    {
+{
+    try {
         $request->validate([
-            'term' => 'required|integer|min:1|max:4',
             'amount' => 'required|numeric|min:0',
-            'payment_method' => 'required|string',
-            'transaction_id' => 'nullable|string',
-            'notes' => 'nullable|string'
+            'term' => 'required|integer|min:1'
         ]);
         
-        $user = auth()->user();
-        $currentYear = date('Y');
+        $userId = auth()->id();
+        $year = date('Y');
         
-        $contribution = Contribution::where('user_id', $user->id)
-            ->where('term', $request->term)
-            ->where('year', $currentYear)
+        // Check if contribution exists (no term condition)
+        $contribution = DB::table('contributions')
+            ->where('user_id', $userId)
+            ->where('year', $year)
             ->first();
         
         if (!$contribution) {
-            $contribution = new Contribution();
-            $contribution->user_id = $user->id;
-            $contribution->term = $request->term;
-            $contribution->year = $currentYear;
+            return redirect()->back()->with('error', 'Please set your annual contribution amount first.');
         }
         
-        // Get term required amount
-        $settings = ContributionSetting::where('year', $currentYear)->first();
-        $requiredAmount = $settings ? $settings->getTermAmount($request->term) : 0;
-        
-        $contribution->amount = $request->amount;
-        $contribution->payment_method = $request->payment_method;
-        $contribution->transaction_id = $request->transaction_id;
-        $contribution->notes = $request->notes;
-        $contribution->payment_date = now();
-        $contribution->submitted_by = $user->id;
-        
-        // Determine status
-        if ($contribution->amount >= $requiredAmount) {
-            $contribution->status = 'completed';
-        } elseif ($contribution->amount > 0) {
-            $contribution->status = 'partial';
-        } else {
-            $contribution->status = 'pending';
-        }
-        
-        $contribution->save();
-        
-        // Log activity
-        ActivityLog::create([
-            'user_id' => $user->id,
-            'action' => 'contribution_submitted',
-            'description' => 'Submitted contribution for Term ' . $request->term . ': ' . number_format($request->amount, 0) . ' RWF',
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent()
+        // Record payment
+        DB::table('payments')->insert([
+            'user_id' => $userId,
+            'term' => $request->term,
+            'amount' => $request->amount,
+            'payment_method' => $request->payment_method ?? 'cash',
+            'payment_date' => now(),
+            'year' => $year,
+            'notes' => $request->notes,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now()
         ]);
         
         return redirect()->back()->with('success', 'Payment submitted successfully!');
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
     }
+}
     
     // Edit annual amount (Super Admin only)
     public function updateAnnualAmount(Request $request)
-    {
-        if (!auth()->user()->isSuperAdmin()) {
-            abort(403, 'Only Super Admin can update annual amount.');
-        }
-        
+{
+    try {
         $request->validate([
-            'annual_amount' => 'required|numeric|min:0',
-            'year' => 'required|integer'
+            'annual_amount' => 'required|numeric|min:0'
         ]);
         
-        // Calculate term amounts (e.g., Term1 = 40%, Term2 = 30%, Term3 = 30%)
-        $annualAmount = $request->annual_amount;
-        $term1Amount = round($annualAmount * 0.4);
-        $term2Amount = round($annualAmount * 0.3);
-        $term3Amount = round($annualAmount * 0.3);
+        $userId = auth()->id();
+        $year = date('Y');
         
-        $settings = ContributionSetting::updateOrCreate(
-            ['year' => $request->year],
-            [
-                'term1_amount' => $term1Amount,
-                'term2_amount' => $term2Amount,
-                'term3_amount' => $term3Amount,
-                'term4_amount' => 0,
-                'is_active' => true,
-                'updated_by' => auth()->id()
-            ]
-        );
+        // Check if contribution exists (no term condition)
+        $existing = DB::table('contributions')
+            ->where('user_id', $userId)
+            ->where('year', $year)
+            ->first();
+        
+        if ($existing) {
+            DB::table('contributions')
+                ->where('user_id', $userId)
+                ->where('year', $year)
+                ->update([
+                    'annual_amount' => $request->annual_amount,
+                    'updated_at' => now()
+                ]);
+        } else {
+            DB::table('contributions')->insert([
+                'user_id' => $userId,
+                'annual_amount' => $request->annual_amount,
+                'year' => $year,
+                'created_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
         
         return redirect()->back()->with('success', 'Annual amount updated successfully!');
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
     }
+}
     
     // Admin view all contributions
     public function adminIndex(Request $request)
-    {
-        if (!auth()->user()->canAccess('financial', 'view')) {
-            abort(403, 'You do not have permission to access this page.');
-        }
-        
-        $query = Contribution::with('user')->orderBy('created_at', 'desc');
-        
-        if ($request->has('term') && $request->term) {
-            $query->where('term', $request->term);
-        }
-        
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
-        }
-        
-        $contributions = $query->paginate(20);
-        $stats = [
-            'total_contributions' => Contribution::sum('amount'),
-            'total_completed' => Contribution::where('status', 'completed')->count(),
-            'total_pending' => Contribution::where('status', 'pending')->count(),
-            'total_members' => Contribution::distinct('user_id')->count('user_id')
-        ];
-        
-        return view('super-admin.financial.index', compact('contributions', 'stats'));
+{
+    $query = DB::table('contributions')
+        ->join('users', 'contributions.user_id', '=', 'users.id')
+        ->select('contributions.*', 'users.name as user_name', 'users.email');
+    
+    // Remove any 'term' conditions
+    if ($request->has('year') && $request->year) {
+        $query->where('contributions.year', $request->year);
     }
+    
+    $contributions = $query->orderBy('users.name')->paginate(20);
+    $years = DB::table('contributions')->select('year')->distinct()->orderBy('year', 'desc')->get();
+    
+    return view('modules.financial.admin-contributions', compact('contributions', 'years'));
+}
     
     // Approve contribution
     public function approveContribution($id)

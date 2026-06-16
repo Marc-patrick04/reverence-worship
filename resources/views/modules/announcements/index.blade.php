@@ -6,11 +6,7 @@
 @section('content')
 <div class="container mx-auto px-4 py-8">
     
-    <!-- Page Header -->
-    <div class="mb-8">
-        <p class="text-gray-600 text-sm">Create and manage system announcements</p>
-    </div>
-    
+ 
     <!-- Tabs Navigation -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
         <div class="border-b border-gray-200 overflow-x-auto">
@@ -42,6 +38,40 @@
 @include('modules.announcements.partials.edit-modal')
 
 <script>
+// Global functions that need to be available everywhere
+window.openCreateModal = function() {
+    console.log('Opening create modal');
+    const modal = document.getElementById('createAnnouncementModal');
+    if (modal) {
+        const form = document.getElementById('createAnnouncementForm');
+        if (form) form.reset();
+        modal.classList.remove('hidden');
+    } else {
+        console.error('Create modal not found');
+    }
+};
+
+window.closeModal = function(modalId) {
+    console.log('Closing modal:', modalId);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+};
+
+window.refreshAnnouncementsList = function() {
+    if (typeof window.loadAnnouncements === 'function') {
+        window.loadAnnouncements();
+    }
+};
+
+window.refreshOverviewStats = function() {
+    if (typeof window.loadOverviewStats === 'function') {
+        window.loadOverviewStats();
+    }
+};
+
+// Tab switching
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('.tab-btn');
     const STORAGE_KEY = 'announcements_active_tab';
@@ -50,6 +80,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const activeTab = savedTab && ['overview', 'announcements'].includes(savedTab) ? savedTab : 'overview';
     
     function switchTab(tabName) {
+        console.log('Switching to tab:', tabName);
+        
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.add('hidden');
         });
@@ -70,11 +102,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         localStorage.setItem(STORAGE_KEY, tabName);
         
-        if (tabName === 'overview' && typeof loadOverviewStats === 'function') {
-            loadOverviewStats();
+        // Refresh data when switching tabs
+        if (tabName === 'overview') {
+            if (typeof window.loadOverviewStats === 'function') {
+                window.loadOverviewStats();
+            }
         }
-        if (tabName === 'announcements' && typeof loadAnnouncements === 'function') {
-            loadAnnouncements();
+        if (tabName === 'announcements') {
+            if (typeof window.loadAnnouncements === 'function') {
+                window.loadAnnouncements();
+            }
         }
     }
     
@@ -84,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Initial load
     switchTab(activeTab);
 });
 </script>

@@ -1,225 +1,188 @@
-<div>
-    <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xl font-bold text-gray-800">Attendance Management</h3>
-        <button onclick="openAttendanceModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-            <i class="fas fa-plus"></i> Mark Attendance
-        </button>
-    </div>
-    
-    <!-- Quick Actions Card -->
-    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 mb-8 text-white">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-                <label class="block text-sm font-medium mb-2 opacity-90">Select Date for Attendance</label>
-                <input type="date" id="quick_date" value="{{ date('Y-m-d') }}" class="w-full px-3 py-2 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-white">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-2 opacity-90">Session Name</label>
-                <input type="text" id="quick_session_type" placeholder="e.g., Sunday Service" class="w-full px-3 py-2 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-white">
-            </div>
-            <div class="flex items-end">
-                <button onclick="quickMarkAttendance()" class="w-full bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-100 transition">
-                    <i class="fas fa-check-circle mr-2"></i> Quick Mark
-                </button>
-            </div>
+<div class="space-y-6">
+    <!-- Header with Title Only -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-800">Attendance Management</h3>
+            <p class="text-sm text-gray-500 mt-1">Track and manage member attendance</p>
         </div>
-    </div>
-    
-    <!-- Stats Cards Row -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
+           </div>
+
+    <!-- Stats Cards - Clean and Minimal -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm mb-1">Total Sessions</p>
-                    <p class="text-4xl font-bold text-gray-800" id="total_sessions">0</p>
+                    <p class="text-2xl font-bold text-gray-800" id="total_sessions">0</p>
+                    <p class="text-xs text-gray-500">Total Sessions</p>
                 </div>
-                <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-calendar-check text-blue-600 text-2xl"></i>
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calendar-alt text-blue-600"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm mb-1">Average Attendance</p>
-                    <p class="text-4xl font-bold text-gray-800" id="avg_attendance">0%</p>
+                    <p class="text-2xl font-bold text-green-600" id="present_count">0</p>
+                    <p class="text-xs text-gray-500">Present</p>
                 </div>
-                <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-green-600 text-2xl"></i>
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-yellow-600" id="late_count">0</p>
+                    <p class="text-xs text-gray-500">Late</p>
+                </div>
+                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-clock text-yellow-600"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-2xl font-bold text-red-600" id="absent_count">0</p>
+                    <p class="text-xs text-gray-500">Absent</p>
+                </div>
+                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times-circle text-red-600"></i>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Detailed Stats Row -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-blue-600" id="present_count">0</p>
-            <p class="text-xs text-gray-600">Present</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-red-600" id="absent_count">0</p>
-            <p class="text-xs text-gray-600">Absent</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-yellow-600" id="late_count">0</p>
-            <p class="text-xs text-gray-600">Late</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-purple-600" id="excused_count">0</p>
-            <p class="text-xs text-gray-600">Excused</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-indigo-600" id="total_members">0</p>
-            <p class="text-xs text-gray-600">Total Members</p>
+
+    <!-- Quick Session Start - Simplified -->
+    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg p-5 text-white">
+        <div class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="flex-1">
+                <label class="block text-xs font-medium mb-1 opacity-80">Session Date</label>
+                <input type="date" id="quick_date" value="{{ date('Y-m-d') }}" class="w-full px-3 py-2 rounded-lg text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white">
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-medium mb-1 opacity-80">Session Name</label>
+                <input type="text" id="quick_session_type" placeholder="Sunday Service" class="w-full px-3 py-2 rounded-lg text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white">
+            </div>
+            <button onclick="quickMarkAttendance()" class="bg-white text-blue-600 px-6 py-2 rounded-lg text-sm font-semibold hover:bg-gray-100 transition shadow-md">
+                <i class="fas fa-play mr-2"></i> Start Session
+            </button>
         </div>
     </div>
-    
-    <!-- Filters -->
-    <div class="bg-gray-50 rounded-lg p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-                <input type="date" id="attendance_start_date" value="{{ date('Y-m-01') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-                <input type="date" id="attendance_end_date" value="{{ date('Y-m-t') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
-                <select id="attendance_session_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">All Sessions</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">&nbsp;</label>
-                <button onclick="filterAttendance()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
-                    <i class="fas fa-search"></i> Apply Filter
-                </button>
-            </div>
+
+    <!-- Filters - Simple Row -->
+    <div class="flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">From</label>
+            <input type="date" id="attendance_start_date" value="{{ date('Y-m-01') }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
         </div>
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">To</label>
+            <input type="date" id="attendance_end_date" value="{{ date('Y-m-t') }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Session</label>
+            <select id="attendance_session_filter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                <option value="">All Sessions</option>
+            </select>
+        </div>
+        <button onclick="applyFilter()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition">
+            <i class="fas fa-search mr-1"></i> Filter
+        </button>
     </div>
-    
-    <!-- Recent Attendance Sessions Table -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="bg-gray-50 px-6 py-4 border-b">
-            <h4 class="font-semibold text-gray-800">Recent Attendance Sessions</h4>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">DATE</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SESSION</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">PRESENT</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">ABSENT</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">ATTENDANCE %</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">STATUS</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">ACTIONS</th>
-                    </tr>
-                </thead>
-                <tbody id="attendance-table-body">
-                    <tr>
-                        <td colspan="7" class="text-center py-12 text-gray-500">
-                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                            <p>Loading attendance records...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+
+    <!-- Sessions Table - Clean -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50 border-b">
+                <tr>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">DATE</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SESSION</th>
+                    <th class="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase">PRESENT</th>
+                    <th class="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase">ABSENT</th>
+                    <th class="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase">RATE</th>
+                    <th class="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody id="attendance-table-body">
+                <tr>
+                    <td colspan="6" class="text-center py-12 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Loading sessions...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-function quickMarkAttendance() {
-    const sessionDate = document.getElementById('quick_date').value;
-    const sessionType = document.getElementById('quick_session_type').value;
-    
-    if (!sessionDate || !sessionType) {
-        alert('Please fill in both date and session name');
-        return;
-    }
-    
-    // Open modal with pre-filled data
-    document.getElementById('attendance_modal_title').textContent = 'Mark Attendance';
-    document.getElementById('attendance_id').value = '';
-    document.getElementById('attendance_user_id').value = '';
-    document.getElementById('attendance_session_date').value = sessionDate;
-    document.getElementById('attendance_session_type').value = sessionType;
-    document.getElementById('attendance_status').value = 'present';
-    document.getElementById('attendance_check_in_time').value = '';
-    document.getElementById('attendance_check_out_time').value = '';
-    document.getElementById('attendance_late_minutes').value = '0';
-    document.getElementById('attendance_notes').value = '';
-    document.getElementById('attendanceModal').classList.remove('hidden');
-}
+var currentAttendanceData = [];
 
-function openAttendanceModal(attendanceId = null) {
-    if (attendanceId) {
-        fetch(`/discipline/attendance/${attendanceId}/edit`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('attendance_modal_title').textContent = 'Edit Attendance';
-                document.getElementById('attendance_id').value = data.attendance.id;
-                document.getElementById('attendance_user_id').value = data.attendance.user_id;
-                document.getElementById('attendance_session_date').value = data.attendance.session_date;
-                document.getElementById('attendance_session_type').value = data.attendance.session_type;
-                document.getElementById('attendance_status').value = data.attendance.status;
-                document.getElementById('attendance_check_in_time').value = data.attendance.check_in_time;
-                document.getElementById('attendance_check_out_time').value = data.attendance.check_out_time;
-                document.getElementById('attendance_late_minutes').value = data.attendance.late_minutes;
-                document.getElementById('attendance_notes').value = data.attendance.notes;
-                document.getElementById('attendanceModal').classList.remove('hidden');
-            }
-        });
-    } else {
-        document.getElementById('attendance_modal_title').textContent = 'Mark Attendance';
-        document.getElementById('attendance_id').value = '';
-        document.getElementById('attendance_user_id').value = '';
-        document.getElementById('attendance_session_date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('attendance_session_type').value = '';
-        document.getElementById('attendance_status').value = 'present';
-        document.getElementById('attendance_check_in_time').value = '';
-        document.getElementById('attendance_check_out_time').value = '';
-        document.getElementById('attendance_late_minutes').value = '0';
-        document.getElementById('attendance_notes').value = '';
-        document.getElementById('attendanceModal').classList.remove('hidden');
-    }
-}
+document.addEventListener('DOMContentLoaded', function() {
+    loadAttendanceData();
+    loadTotalMembers();
+});
 
-function filterAttendance() {
-    const startDate = document.getElementById('attendance_start_date').value;
-    const endDate = document.getElementById('attendance_end_date').value;
-    const sessionType = document.getElementById('attendance_session_filter').value;
-    
-    fetch(`/discipline/attendance?start_date=${startDate}&end_date=${endDate}&session_type=${sessionType}`, {
+function loadTotalMembers() {
+    fetch('/users/list', {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
     .then(data => {
+        if (data.success && data.users) {
+            const totalMembersEl = document.getElementById('total_members');
+            if (totalMembersEl) totalMembersEl.textContent = data.users.length;
+        }
+    })
+    .catch(error => console.error('Error loading members:', error));
+}
+
+function loadAttendanceData() {
+    const startDate = document.getElementById('attendance_start_date')?.value || '';
+    const endDate = document.getElementById('attendance_end_date')?.value || '';
+    const sessionType = document.getElementById('attendance_session_filter')?.value || '';
+    
+    const url = `/discipline/attendance?start_date=${startDate}&end_date=${endDate}&session_type=${sessionType}`;
+    
+    fetch(url, {
+        headers: { 
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
         if (data.success) {
-            updateAttendanceTable(data.attendances);
-            updateAttendanceStats(data.attendances);
-            updateSessionFilter(data.attendances);
+            currentAttendanceData = data.attendances || [];
+            renderAttendanceTable(currentAttendanceData);
+            renderAttendanceStats(currentAttendanceData);
+            renderSessionFilter(currentAttendanceData);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading attendance:', error);
+        const tbody = document.getElementById('attendance-table-body');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-red-400">Failed to load data</td></tr>`;
         }
     });
 }
 
-function updateAttendanceTable(attendances) {
+function renderAttendanceTable(attendances) {
     const tbody = document.getElementById('attendance-table-body');
+    if (!tbody) return;
     
     if (!attendances || attendances.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-500">No attendance records found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400">No attendance records found</td></tr>`;
         return;
     }
     
-    // Group by session date and type
     const groupedSessions = {};
     attendances.forEach(att => {
         const key = `${att.session_date}_${att.session_type}`;
@@ -234,41 +197,36 @@ function updateAttendanceTable(attendances) {
                 total: 0
             };
         }
-        groupedSessions[key][att.status]++;
+        if (att.status === 'present') groupedSessions[key].present++;
+        else if (att.status === 'absent') groupedSessions[key].absent++;
+        else if (att.status === 'late') groupedSessions[key].late++;
+        else if (att.status === 'excused') groupedSessions[key].excused++;
         groupedSessions[key].total++;
     });
     
     tbody.innerHTML = Object.values(groupedSessions).map(session => {
-        const attendanceRate = session.total > 0 ? ((session.present + session.late) / session.total * 100).toFixed(1) : 0;
-        const status = attendanceRate >= 75 ? 'Completed' : (attendanceRate >= 50 ? 'Partial' : 'Low');
-        const statusColor = attendanceRate >= 75 ? 'text-green-600 bg-green-50' : (attendanceRate >= 50 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50');
+        const totalPresent = session.present + session.late;
+        const totalAbsent = session.absent + session.excused;
+        const attendanceRate = session.total > 0 ? ((totalPresent / session.total) * 100).toFixed(0) : 0;
+        const rateColor = attendanceRate >= 75 ? 'text-green-600' : (attendanceRate >= 50 ? 'text-yellow-600' : 'text-red-600');
+        const formattedDate = session.date.split('-').reverse().join('/');
         
         return `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm text-gray-600">${session.date}</td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-800">${escapeHtml(session.session)}</td>
-                <td class="px-6 py-4 text-center text-sm font-semibold text-green-600">${session.present + session.late}</td>
-                <td class="px-6 py-4 text-center text-sm text-red-600">${session.absent + session.excused}</td>
-                <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center gap-2">
-                                        <span class="text-sm font-semibold ${attendanceRate >= 75 ? 'text-green-600' : (attendanceRate >= 50 ? 'text-yellow-600' : 'text-red-600')}">
-                            ${attendanceRate}%
-                        </span>
-                        <div class="w-16 bg-gray-200 rounded-full h-1.5">
-                            <div class="h-1.5 rounded-full ${attendanceRate >= 75 ? 'bg-green-500' : (attendanceRate >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${attendanceRate}%"></div>
-                        </div>
-                    </div>
+            <tr class="border-b hover:bg-gray-50 transition">
+                <td class="px-5 py-3 text-sm text-gray-600">${escapeHtml(formattedDate)}</td>
+                <td class="px-5 py-3 text-sm font-medium text-gray-800">${escapeHtml(session.session)}</td>
+                <td class="px-5 py-3 text-center text-sm font-semibold text-green-600">${totalPresent}</td>
+                <td class="px-5 py-3 text-center text-sm text-red-500">${totalAbsent}</td>
+                <td class="px-5 py-3 text-center">
+                    <span class="text-sm font-semibold ${rateColor}">${attendanceRate}%</span>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    <span class="px-2 py-1 rounded-full text-xs ${statusColor}">${status}</span>
-                </td>
-                <td class="px-6 py-4 text-center">
+                <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="viewSessionDetails('${session.date}', '${escapeHtml(session.session)}')" class="text-blue-500 hover:text-blue-700">
+                        <button onclick="window.viewSession('${session.date}', '${escapeHtml(session.session)}')" class="text-blue-500 hover:text-blue-700 transition" title="View">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button onclick="deleteSession('${session.date}', '${escapeHtml(session.session)}')" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-trash"></i>
+                        <button onclick="window.deleteSessionRecord('${session.date}', '${escapeHtml(session.session)}')" class="text-red-400 hover:text-red-600 transition" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </td>
@@ -277,32 +235,30 @@ function updateAttendanceTable(attendances) {
     }).join('');
 }
 
-function updateAttendanceStats(attendances) {
+function renderAttendanceStats(attendances) {
     const total = attendances.length;
     const present = attendances.filter(a => a.status === 'present').length;
     const absent = attendances.filter(a => a.status === 'absent').length;
     const late = attendances.filter(a => a.status === 'late').length;
-    const excused = attendances.filter(a => a.status === 'excused').length;
     
-    // Get unique users
-    const uniqueUsers = [...new Set(attendances.map(a => a.user_id))];
-    const totalMembers = uniqueUsers.length;
+    const uniqueSessions = new Set(attendances.map(a => `${a.session_date}_${a.session_type}`));
+    const totalSessions = uniqueSessions.size;
     
-    // Calculate average attendance rate
-    const presentRate = total > 0 ? ((present + late) / total * 100).toFixed(1) : 0;
+    const totalSessionsEl = document.getElementById('total_sessions');
+    const presentCountEl = document.getElementById('present_count');
+    const absentCountEl = document.getElementById('absent_count');
+    const lateCountEl = document.getElementById('late_count');
     
-    document.getElementById('total_sessions').textContent = total;
-    document.getElementById('avg_attendance').textContent = `${presentRate}%`;
-    document.getElementById('present_count').textContent = present;
-    document.getElementById('absent_count').textContent = absent;
-    document.getElementById('late_count').textContent = late;
-    document.getElementById('excused_count').textContent = excused;
-    document.getElementById('total_members').textContent = totalMembers;
+    if (totalSessionsEl) totalSessionsEl.textContent = totalSessions;
+    if (presentCountEl) presentCountEl.textContent = present;
+    if (absentCountEl) absentCountEl.textContent = absent;
+    if (lateCountEl) lateCountEl.textContent = late;
 }
 
-function updateSessionFilter(attendances) {
+function renderSessionFilter(attendances) {
     const sessionTypes = [...new Set(attendances.map(a => a.session_type))];
     const filterSelect = document.getElementById('attendance_session_filter');
+    if (!filterSelect) return;
     
     const currentValue = filterSelect.value;
     filterSelect.innerHTML = '<option value="">All Sessions</option>';
@@ -312,59 +268,123 @@ function updateSessionFilter(attendances) {
     filterSelect.value = currentValue;
 }
 
-function viewSessionDetails(date, sessionType) {
-    // Open modal or navigate to session details
-    window.location.href = `/discipline/attendance/session?date=${date}&type=${encodeURIComponent(sessionType)}`;
+function quickMarkAttendance() {
+    const sessionDate = document.getElementById('quick_date')?.value;
+    const sessionType = document.getElementById('quick_session_type')?.value;
+    
+    if (!sessionDate || !sessionType) {
+        alert('Please enter session date and name');
+        return;
+    }
+    
+    if (typeof window.openSessionDetailsModal === 'function') {
+        // Encode the session type for URL
+        const encodedType = encodeURIComponent(sessionType);
+        window.openSessionDetailsModal(sessionDate, encodedType);
+    } else {
+        alert('Please use the "Mark Attendance" button');
+    }
 }
 
-function deleteSession(date, sessionType) {
-    if (confirm(`Delete all attendance records for "${sessionType}" on ${date}?`)) {
-        fetch(`/discipline/attendance/session?date=${date}&type=${encodeURIComponent(sessionType)}`, {
+function openAttendanceModal(attendanceIdParam = null) {
+    const modal = document.getElementById('attendanceModal');
+    if (!modal) {
+        alert('Form not ready. Please refresh.');
+        return;
+    }
+    
+    const modalTitle = document.getElementById('attendance_modal_title');
+    const attendanceIdField = document.getElementById('attendance_id');
+    const userIdField = document.getElementById('attendance_user_id');
+    const sessionDateField = document.getElementById('attendance_session_date');
+    const sessionTypeField = document.getElementById('attendance_session_type');
+    const statusField = document.getElementById('attendance_status');
+    const checkInTime = document.getElementById('attendance_check_in_time');
+    const lateMinutes = document.getElementById('attendance_late_minutes');
+    const notes = document.getElementById('attendance_notes');
+    
+    if (attendanceIdParam) {
+        fetch(`/discipline/attendance/${attendanceIdParam}/edit`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.attendance) {
+                if (modalTitle) modalTitle.textContent = 'Edit Attendance';
+                if (attendanceIdField) attendanceIdField.value = data.attendance.id;
+                if (userIdField) userIdField.value = data.attendance.user_id;
+                if (sessionDateField) sessionDateField.value = data.attendance.session_date;
+                if (sessionTypeField) sessionTypeField.value = data.attendance.session_type;
+                if (statusField) statusField.value = data.attendance.status;
+                if (checkInTime) checkInTime.value = data.attendance.check_in_time || '';
+                if (lateMinutes) lateMinutes.value = data.attendance.late_minutes || 0;
+                if (notes) notes.value = data.attendance.notes || '';
+                modal.classList.remove('hidden');
+            }
+        });
+    } else {
+        if (modalTitle) modalTitle.textContent = 'Mark Attendance';
+        if (attendanceIdField) attendanceIdField.value = '';
+        if (userIdField) userIdField.value = '';
+        if (sessionDateField) sessionDateField.value = new Date().toISOString().split('T')[0];
+        if (sessionTypeField) sessionTypeField.value = '';
+        if (statusField) statusField.value = 'present';
+        if (checkInTime) checkInTime.value = '';
+        if (lateMinutes) lateMinutes.value = '0';
+        if (notes) notes.value = '';
+        modal.classList.remove('hidden');
+    }
+}
+
+function viewSession(date, sessionType) {
+    if (typeof window.openSessionDetailsModal === 'function') {
+        // Encode the session type for URL
+        const encodedType = encodeURIComponent(sessionType);
+        window.openSessionDetailsModal(date, encodedType);
+    } else {
+        // Use the correct URL format with slashes
+        const encodedType = encodeURIComponent(sessionType);
+        fetch(`/discipline/attendance/session-summary?date=${date}&type=${encodedType}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Session: ${sessionType}\nDate: ${date}\nPresent: ${data.present}\nAbsent: ${data.absent}\nRate: ${data.rate}%`);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+
+function deleteSessionRecord(date, sessionType) {
+    if (confirm(`Delete "${sessionType}" on ${date}?`)) {
+        const encodedType = encodeURIComponent(sessionType);
+        fetch(`/discipline/attendance/session?date=${date}&type=${encodedType}`, {
             method: 'DELETE',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                filterAttendance();
-            } else {
-                alert('Error deleting session records');
-            }
-        });
-    }
-}
-
-function deleteAttendance(id) {
-    if (confirm('Are you sure you want to delete this attendance record?')) {
-        fetch(`/discipline/attendance/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
+                loadAttendanceData();
+                alert('Session deleted');
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                filterAttendance();
-            } else {
-                alert('Error deleting attendance record');
-            }
-        });
+        .catch(error => console.error('Error:', error));
     }
 }
 
-function getStatusBadge(status) {
-    const badges = {
-        'present': 'bg-green-100 text-green-700',
-        'absent': 'bg-red-100 text-red-700',
-        'late': 'bg-yellow-100 text-yellow-700',
-        'excused': 'bg-blue-100 text-blue-700'
-    };
-    return badges[status] || 'bg-gray-100 text-gray-700';
+function applyFilter() {
+    loadAttendanceData();
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
 }
 
 function escapeHtml(text) {
@@ -374,12 +394,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-
-// Load initial data
-setTimeout(() => {
-    filterAttendance();
-}, 100);
+// Global exports
+window.loadAttendanceData = loadAttendanceData;
+window.applyFilter = applyFilter;
+window.viewSession = viewSession;
+window.deleteSessionRecord = deleteSessionRecord;
+window.openAttendanceModal = openAttendanceModal;
+window.quickMarkAttendance = quickMarkAttendance;
+window.closeModal = closeModal;
 </script>

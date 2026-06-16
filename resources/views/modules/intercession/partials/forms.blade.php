@@ -1,6 +1,18 @@
 <div class="bg-white rounded-xl shadow-md p-6">
     
+    @php
+        $canViewForms = auth()->check() && auth()->user()->canAccess('intercession', 'view-forms');
+        $canCreateForms = auth()->check() && auth()->user()->canAccess('intercession', 'create-forms');
+        $canManageForms = auth()->check() && auth()->user()->canAccess('intercession', 'manage-forms');
+        $canEditForms = auth()->check() && auth()->user()->canAccess('intercession', 'edit-forms');
+        $canDeleteForms = auth()->check() && auth()->user()->canAccess('intercession', 'delete-forms');
+        $canPublishForms = auth()->check() && auth()->user()->canAccess('intercession', 'publish-forms');
+        $canViewResults = auth()->check() && auth()->user()->canAccess('intercession', 'view-results');
+        $isSuperAdmin = auth()->check() && auth()->user()->isSuperAdmin();
+    @endphp
+
     {{-- Stats --}}
+    @if($canViewForms)
     <div class="grid grid-cols-3 gap-4 mb-6">
         <div class="bg-blue-50 rounded-xl p-4 text-center">
             <p class="text-3xl font-bold text-blue-600">{{ $stats['total_forms'] ?? 0 }}</p>
@@ -15,25 +27,32 @@
             <p class="text-xs text-gray-600">BEST AVG</p>
         </div>
     </div>
+    @endif
 
     {{-- Form Actions --}}
     <div class="flex justify-between items-center mb-6">
         <div class="flex gap-2 flex-wrap">
+            @if($canViewForms)
             <button onclick="showFormSection('available')" id="form-section-available" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">
                 Available Forms
             </button>
+            @endif
+            
+            @if($canViewResults)
             <button onclick="showFormSection('results')" id="form-section-results" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
                 My Results
             </button>
-            @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'view-forms'))
+            @endif
+            
+            @if($canManageForms || $isSuperAdmin)
             <button onclick="showFormSection('manage')" id="form-section-manage" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
                 Manage Forms
             </button>
             @endif
         </div>
         
-        {{-- Create Form Button - Always Visible --}}
-        @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'create-forms'))
+        {{-- Create Form Button --}}
+        @if($canCreateForms || $isSuperAdmin)
         <a href="{{ route('forms.manage.create') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition">
             <i class="fas fa-plus mr-1"></i> Create Form
         </a>
@@ -41,6 +60,7 @@
     </div>
 
     {{-- Available Forms Section --}}
+    @if($canViewForms)
     <div id="available-forms-section" class="form-section">
         <h3 class="text-lg font-bold mb-4">Available Forms</h3>
         @forelse($availableForms ?? [] as $form)
@@ -94,7 +114,7 @@
         <div class="text-center py-12">
             <i class="fas fa-file-alt text-5xl text-gray-300 mb-3"></i>
             <p class="text-gray-500">No forms available</p>
-            @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'create-forms'))
+            @if($canCreateForms || $isSuperAdmin)
             <a href="{{ route('forms.manage.create') }}" class="inline-block mt-3 text-blue-600 hover:text-blue-800 text-sm">
                 <i class="fas fa-plus"></i> Create your first form
             </a>
@@ -102,8 +122,10 @@
         </div>
         @endforelse
     </div>
+    @endif
 
     {{-- My Results Section --}}
+    @if($canViewResults)
     <div id="results-section" class="form-section hidden">
         <h3 class="text-lg font-bold mb-4">My Results</h3>
         @forelse($mySubmissions ?? [] as $submission)
@@ -136,9 +158,10 @@
         </div>
         @endforelse
     </div>
+    @endif
 
     {{-- Manage Forms Section --}}
-    @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'view-forms'))
+    @if($canManageForms || $isSuperAdmin)
     <div id="manage-section" class="form-section hidden">
         <h3 class="text-lg font-bold mb-4">Manage Forms</h3>
         <div class="overflow-x-auto">
@@ -178,24 +201,38 @@
                         <td class="px-4 py-3 text-sm text-gray-500 text-center">{{ $submissionsCount }}</td>
                         <td class="px-4 py-3">
                             <div class="flex gap-2 flex-wrap">
+                                @if($canViewForms)
                                 <button onclick="viewForm({{ $form->id }})" class="text-green-600 hover:text-green-800" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @endif
+                                
+                                @if($canPublishForms || $isSuperAdmin)
                                 <button onclick="togglePublish({{ $form->id }})" 
                                     id="publish-btn-{{ $form->id }}"
                                     class="px-2 py-1 text-xs rounded transition
                                         {{ $isPublished ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
                                     {{ $isPublished ? 'Unpublish' : 'Publish' }}
                                 </button>
+                                @endif
+                                
+                                @if($canEditForms || $isSuperAdmin)
                                 <button onclick="editForm({{ $form->id }})" class="text-blue-600 hover:text-blue-800" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                @endif
+                                
+                                @if($canViewResults || $isSuperAdmin)
                                 <button onclick="viewSubmissions({{ $form->id }})" class="text-purple-600 hover:text-purple-800" title="Submissions">
                                     <i class="fas fa-users"></i>
                                 </button>
+                                @endif
+                                
+                                @if($canDeleteForms || $isSuperAdmin)
                                 <button onclick="deleteForm({{ $form->id }})" class="text-red-600 hover:text-red-800" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -207,12 +244,10 @@
     @endif
 
 </div>
+
 <script>
-// Function to show form section - NO REFRESH NEEDED
+// Function to show form section
 function showFormSection(section) {
-    console.log('=== showFormSection called ===');
-    console.log('Section requested:', section);
-    
     // Map section names to actual element IDs
     let elementId = '';
     if (section === 'available') {
@@ -222,8 +257,6 @@ function showFormSection(section) {
     } else if (section === 'manage') {
         elementId = 'manage-section';
     }
-    
-    console.log('Looking for element with ID:', elementId);
     
     // Get all sections
     const availableSection = document.getElementById('available-forms-section');
@@ -239,10 +272,6 @@ function showFormSection(section) {
     const activeSection = document.getElementById(elementId);
     if (activeSection) {
         activeSection.classList.remove('hidden');
-        console.log('Showing section:', elementId);
-    } else {
-        console.error('Section not found! Make sure there is an element with id:', elementId);
-        return;
     }
     
     // Update button styles
@@ -250,7 +279,7 @@ function showFormSection(section) {
     const resultsBtn = document.getElementById('form-section-results');
     const manageBtn = document.getElementById('form-section-manage');
     
-    // Reset all buttons to gray
+    // Reset all buttons
     if (availableBtn) {
         availableBtn.classList.remove('bg-blue-600', 'text-white');
         availableBtn.classList.add('bg-gray-200', 'text-gray-700');
@@ -269,12 +298,10 @@ function showFormSection(section) {
     if (activeButton) {
         activeButton.classList.remove('bg-gray-200', 'text-gray-700');
         activeButton.classList.add('bg-blue-600', 'text-white');
-        console.log('Active button set for:', section);
     }
     
     // Save to localStorage
     localStorage.setItem('activeFormSection', section);
-    console.log('=== showFormSection completed ===');
 }
 
 // Make functions globally available
@@ -373,22 +400,22 @@ window.showNotification = function(message, type) {
 
 // On page load, restore the last active section
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOMContentLoaded fired ===');
-    
     const savedSection = localStorage.getItem('activeFormSection');
-    console.log('Saved section from localStorage:', savedSection);
     
-    // Map section names to element IDs
-    let elementToShow = '';
-    if (savedSection === 'results') {
-        elementToShow = 'results-section';
-    } else if (savedSection === 'manage') {
-        elementToShow = 'manage-section';
-    } else {
-        elementToShow = 'available-forms-section';
-    }
+    // Check if the saved section is allowed based on permissions
+    let allowedSection = 'available';
     
-    console.log('Will show element with ID:', elementToShow);
+    @if($canViewForms)
+        allowedSection = 'available';
+    @elseif($canViewResults)
+        allowedSection = 'results';
+    @elseif($canManageForms || $isSuperAdmin)
+        allowedSection = 'manage';
+    @endif
+    
+    const sectionToShow = (savedSection === 'results' && {{ $canViewResults ? 'true' : 'false' }}) ? 'results' 
+        : (savedSection === 'manage' && ({{ $canManageForms ? 'true' : 'false' }} || {{ $isSuperAdmin ? 'true' : 'false' }})) ? 'manage' 
+        : allowedSection;
     
     // Hide all sections
     const availableSection = document.getElementById('available-forms-section');
@@ -399,16 +426,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (resultsSection) resultsSection.classList.add('hidden');
     if (manageSection) manageSection.classList.add('hidden');
     
-    // Show the saved section
-    const sectionToShow = document.getElementById(elementToShow);
-    if (sectionToShow) {
-        sectionToShow.classList.remove('hidden');
-        console.log('Showing section:', elementToShow);
+    // Show the appropriate section
+    if (sectionToShow === 'results' && resultsSection) {
+        resultsSection.classList.remove('hidden');
+    } else if (sectionToShow === 'manage' && manageSection) {
+        manageSection.classList.remove('hidden');
+    } else if (availableSection) {
+        availableSection.classList.remove('hidden');
     }
     
-    // Set button styles based on active section
-    const activeSection = savedSection === 'results' ? 'results' : (savedSection === 'manage' ? 'manage' : 'available');
-    
+    // Update button styles
     const availableBtn = document.getElementById('form-section-available');
     const resultsBtn = document.getElementById('form-section-results');
     const manageBtn = document.getElementById('form-section-manage');
@@ -426,11 +453,10 @@ document.addEventListener('DOMContentLoaded', function() {
         manageBtn.classList.add('bg-gray-200', 'text-gray-700');
     }
     
-    const activeButton = document.getElementById(`form-section-${activeSection}`);
+    const activeButton = document.getElementById(`form-section-${sectionToShow}`);
     if (activeButton) {
         activeButton.classList.remove('bg-gray-200', 'text-gray-700');
         activeButton.classList.add('bg-blue-600', 'text-white');
-        console.log('Active button set to:', activeSection);
     }
 });
 </script>

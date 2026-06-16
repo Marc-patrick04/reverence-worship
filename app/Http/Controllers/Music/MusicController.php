@@ -18,6 +18,7 @@ use App\Models\Music\ServiceTeam;
 use App\Models\Music\TeamMember;
 
 
+
 class MusicController extends Controller
 {
     // ==================== MAIN INDEX ====================
@@ -30,8 +31,11 @@ class MusicController extends Controller
     $playlists = Playlist::with('songs')->orderBy('created_at', 'desc')->get();
     $songs = Song::orderBy('title')->get();
     
-    // Only get users who are singers (is_singer = true)
-    $singers = User::where('is_singer', true)->orderBy('name')->get();
+    // CHANGE THIS: Use membership_type instead of is_singer
+    $singers = User::where('membership_type', 'Permanent')
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get();
     
     $gallery = Gallery::orderBy('created_at', 'desc')->get();
     $groups = WorshipGroup::with('leader', 'members')->get();
@@ -40,7 +44,7 @@ class MusicController extends Controller
     $users = User::where('is_active', true)->get();
     $serviceTeams = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
     $generations = ServiceTeam::with('members.user')->orderBy('created_at', 'desc')->get();
-    $voiceParts = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Lead'];
+    $voiceParts = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Musician'];
     $performanceLevels = ['Normal', 'Good'];
     $youtubeVideos = DB::table('landing_youtube_videos')
         ->orderBy('sort_order')
@@ -51,9 +55,7 @@ class MusicController extends Controller
         ->get();
 
     return view('modules.music.index', compact('playlists', 'songs', 'singers', 'gallery', 'groups', 'posts', 'tasks', 'users', 'serviceTeams', 'generations', 'voiceParts', 'performanceLevels','youtubeVideos', 'featuredImages'));
-    
-    
-    }
+}
 
     // ==================== PLAYLIST METHODS ====================
     
@@ -334,6 +336,85 @@ class MusicController extends Controller
         
         return redirect()->back()->with('success', 'Group created successfully!');
     }
+    /**
+ * Export all generations to CSV
+ */
+public function exportAllGenerations()
+{
+    try {
+        $generations = ServiceTeam::with('members.user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        if ($generations->isEmpty()) {
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No generations to export.'
+                ]);
+            }
+            return redirect()->back()->with('error', 'No generations to export.');
+        }
+        
+        $filename = 'all_generations_' . date('Y-m-d_His') . '.csv';
+        $handle = fopen('php://temp', 'w+');
+        
+        // Add UTF-8 BOM for Excel compatibility
+        fwrite($handle, "\xEF\xBB\xBF");
+        
+        // Headers
+        fputcsv($handle, [
+            'Generation ID',
+            'Service Name',
+            'Service Date',
+            'Generated At',
+            'Team',
+            'Name',
+            'Email',
+            'Voice Part',
+            'Performance Level'
+        ]);
+        
+        // Data
+        foreach ($generations as $gen) {
+            $teams = $gen->members->groupBy('team_number');
+            foreach ($teams as $teamNum => $members) {
+                $teamLetter = chr(64 + $teamNum);
+                foreach ($members as $member) {
+                    fputcsv($handle, [
+                        $gen->id,
+                        $gen->service_name,
+                        $gen->service_date ?? 'Not set',
+                        $gen->created_at->format('Y-m-d H:i:s'),
+                        'Service ' . $teamLetter,
+                        $member->user->name,
+                        $member->user->email,
+                        $member->voice_part,
+                        $member->performance_level
+                    ]);
+                }
+            }
+        }
+        
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+        
+        return response($csv, 200)
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+    } catch (\Exception $e) {
+        \Log::error('Export all generations error: ' . $e->getMessage());
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+        return redirect()->back()->with('error', 'Error exporting: ' . $e->getMessage());
+    }
+}
     
     public function deleteGroup($id)
     {
@@ -439,7 +520,7 @@ public function generateBalancedGroups(Request $request)
         ]);
         
         // Get all singers
-        $allSingers = User::where('is_singer', true)
+        $allSingers = User::where('membership_type', 'Permanent')
             ->whereNotNull('voice_part')
             ->whereNotNull('singer_level')
             ->get();
@@ -617,7 +698,7 @@ public function generateBalancedGroups(Request $request)
         }
         
         // Sort each team by voice part
-        $voicePriority = ['Soprano' => 1, 'Alto' => 2, 'Tenor' => 3, 'Bass' => 4, 'Lead' => 5];
+        $voicePriority = ['Soprano' => 1, 'Alto' => 2, 'Tenor' => 3, 'Bass' => 4, 'Musician' => 5];
         
         foreach ($teams as $teamNum => &$team) {
             usort($team, function($a, $b) use ($voicePriority) {

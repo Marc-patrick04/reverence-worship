@@ -18,7 +18,9 @@ class TeamController extends Controller
                 'number_of_teams' => 'required|integer|min:1|max:10'
             ]);
             
-            $singers = User::where('is_singer', true)
+            // Use membership_type instead of is_singer
+            $singers = User::where('membership_type', 'Permanent')
+                ->where('is_active', true)
                 ->whereNotNull('voice_part')
                 ->whereNotNull('singer_level')
                 ->get()
@@ -226,4 +228,58 @@ class TeamController extends Controller
         
         return redirect()->back()->with('success', 'Service team deleted successfully!');
     }
+    public function exportAllGenerations()
+{
+    try {
+        $generations = ServiceTeam::with('members.user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        if ($generations->isEmpty()) {
+            return redirect()->back()->with('error', 'No generations to export.');
+        }
+        
+        $filename = 'all_generations_' . date('Y-m-d') . '.csv';
+        $handle = fopen('php://temp', 'w+');
+        
+        // Add UTF-8 BOM
+        fwrite($handle, "\xEF\xBB\xBF");
+        
+        // Headers
+        fputcsv($handle, ['Generation ID', 'Service Name', 'Service Date', 'Generated At', 'Team', 'Name', 'Email', 'Voice Part', 'Performance Level']);
+        
+        // Data
+        foreach ($generations as $gen) {
+            $teams = $gen->members->groupBy('team_number');
+            foreach ($teams as $teamNum => $members) {
+                foreach ($members as $member) {
+                    fputcsv($handle, [
+                        $gen->id,
+                        $gen->service_name,
+                        $gen->service_date ?? 'Not set',
+                        $gen->created_at->format('Y-m-d H:i:s'),
+                        'Service ' . chr(64 + $teamNum),
+                        $member->user->name,
+                        $member->user->email,
+                        $member->voice_part,
+                        $member->performance_level
+                    ]);
+                }
+            }
+        }
+        
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+        
+        return response($csv, 200)
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+    } catch (\Exception $e) {
+        \Log::error('Export all generations error: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Error exporting: ' . $e->getMessage());
+    }
+}
+
 }

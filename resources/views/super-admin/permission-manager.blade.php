@@ -3,339 +3,340 @@
 @section('title', 'Permission Manager')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-800">Permission Manager</h1>
-            <p class="text-gray-600 mt-1">Create and manage pages and their features (permissions)</p>
-        </div>
-        <button onclick="openCreatePageModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition flex items-center">
-            <i class="fas fa-plus-circle mr-2"></i>
-            Create New Page
-        </button>
+<div class="max-w-full mx-auto px-4">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Role & Permission Manager</h1>
+        <p class="text-gray-500 text-sm mt-1">Manage user roles and assign page permissions</p>
     </div>
-    
+
+    <!-- Two Column Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Pages List -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Pages (Modules)</h3>
-            <div class="space-y-3 max-h-96 overflow-y-auto">
-                @foreach($pages as $page)
-                <div class="border rounded-lg p-4 hover:bg-gray-50">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <i class="fas {{ $page->icon }} text-blue-600"></i>
-                                <h4 class="font-bold text-gray-800">{{ $page->display_name }}</h4>
-                                @if(!$page->is_active)
-                                    <span class="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800">Inactive</span>
+        
+        <!-- Column 1: Roles List -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-5 py-4 bg-gradient-to-r from-purple-50 to-white border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-gray-800">Roles</h2>
+                        <p class="text-xs text-gray-500">Manage user roles</p>
+                    </div>
+                    <button onclick="openRoleModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+                        <i class="fas fa-plus"></i> New Role
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="space-y-2 max-h-[600px] overflow-y-auto">
+                    @forelse($roles as $role)
+                    <div class="border rounded-lg p-3 hover:bg-gray-50 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">{{ $role->display_name }}</h3>
+                                <p class="text-xs text-gray-500">{{ $role->name }}</p>
+                                @if($role->description)
+                                <p class="text-xs text-gray-400 mt-1">{{ $role->description }}</p>
                                 @endif
                             </div>
-                            <p class="text-sm text-gray-500 mt-1">{{ $page->name }}</p>
-                            <p class="text-xs text-gray-400 mt-1">
-                                <i class="fas fa-tag mr-1"></i> {{ $page->features->count() }} features
-                                <span class="mx-2">|</span>
-                                <i class="fas fa-sort-numeric-down mr-1"></i> Order: {{ $page->sort_order }}
-                            </p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button onclick="openEditPageModal({{ $page->id }}, '{{ $page->name }}', '{{ $page->display_name }}', '{{ $page->icon }}', '{{ $page->route }}', {{ $page->sort_order }}, {{ $page->is_active ? 'true' : 'false' }})" 
-                                    class="text-blue-600 hover:text-blue-800" title="Edit Page">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button onclick="openCreateFeatureModal({{ $page->id }}, '{{ $page->display_name }}')" 
-                                    class="text-green-600 hover:text-green-800" title="Add Feature">
-                                <i class="fas fa-plus-circle"></i>
-                            </button>
-                            <button onclick="deletePage({{ $page->id }})" 
-                                    class="text-red-600 hover:text-red-800" title="Delete Page">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Features under this page -->
-                    <div class="mt-3 ml-6 pl-3 border-l-2 border-gray-200">
-                        <p class="text-xs font-semibold text-gray-500 mb-2">FEATURES:</p>
-                        <div class="space-y-1">
-                            @foreach($features->where('page_id', $page->id) as $feature)
-                            <div class="flex justify-between items-center text-sm">
-                                <div>
-                                    <span class="text-gray-700">{{ $feature->display_name }}</span>
-                                    <span class="text-xs text-gray-400 ml-2">({{ $feature->name }})</span>
-                                    @if($feature->description)
-                                        <p class="text-xs text-gray-400">{{ $feature->description }}</p>
-                                    @endif
-                                </div>
-                                <div class="flex space-x-1">
-                                    <button onclick="openEditFeatureModal({{ $feature->id }}, {{ $feature->page_id }}, '{{ $feature->name }}', '{{ $feature->display_name }}', '{{ addslashes($feature->description) }}')" 
-                                            class="text-blue-600 hover:text-blue-800 text-xs" title="Edit Feature">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteFeature({{ $feature->id }})" 
-                                            class="text-red-600 hover:text-red-800 text-xs" title="Delete Feature">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
+                            <div class="flex gap-2">
+                                <button onclick="editRole({{ $role->id }})" class="text-blue-500 hover:text-blue-700">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                @if($role->name !== 'super-admin')
+                                <button onclick="deleteRole({{ $role->id }}, '{{ $role->display_name }}')" class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                @endif
                             </div>
-                            @endforeach
+                        </div>
+                        <div class="mt-2">
+                            <button onclick="assignPermissionsToRole({{ $role->id }}, '{{ $role->display_name }}')" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">
+                                <i class="fas fa-key"></i> Assign Permissions
+                            </button>
                         </div>
                     </div>
+                    @empty
+                    <div class="text-center py-8 text-gray-400 text-sm">No roles created yet</div>
+                    @endforelse
                 </div>
-                @endforeach
             </div>
         </div>
-        
-        <!-- Quick Guide -->
-        <div class="bg-gradient-to-r from-blue-900 to-black rounded-lg shadow-lg p-6 text-white">
-            <h3 class="text-lg font-bold mb-4">How Permissions Work</h3>
-            <div class="space-y-3 text-sm">
+
+        <!-- Column 2: Permissions Assignment -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-5 py-4 bg-gradient-to-r from-green-50 to-white border-b border-gray-200">
                 <div>
-                    <i class="fas fa-file-alt mr-2 text-blue-300"></i>
-                    <strong>Pages</strong> - Main modules (e.g., User Management, Music Ministry)
+                    <h2 class="font-bold text-gray-800">Assign Permissions</h2>
+                    <p class="text-xs text-gray-500">Select a role to assign page permissions</p>
                 </div>
-                <div>
-                    <i class="fas fa-tag mr-2 text-green-300"></i>
-                    <strong>Features</strong> - Specific actions within a page (e.g., View, Create, Edit, Delete)
-                </div>
-                <div class="border-t border-blue-700 my-3 pt-3">
-                    <i class="fas fa-lightbulb mr-2 text-yellow-300"></i>
-                    <strong>Naming Convention:</strong>
-                </div>
-                <ul class="list-disc list-inside space-y-1 ml-2 text-gray-300">
-                    <li>View features: <code class="bg-blue-800 px-1 rounded">view-users</code>, <code class="bg-blue-800 px-1 rounded">view-songs</code></li>
-                    <li>Create features: <code class="bg-blue-800 px-1 rounded">create-users</code>, <code class="bg-blue-800 px-1 rounded">create-playlists</code></li>
-                    <li>Edit features: <code class="bg-blue-800 px-1 rounded">edit-users</code>, <code class="bg-blue-800 px-1 rounded">edit-songs</code></li>
-                    <li>Delete features: <code class="bg-blue-800 px-1 rounded">delete-users</code>, <code class="bg-blue-800 px-1 rounded">delete-gallery</code></li>
-                    <li>Manage features: <code class="bg-blue-800 px-1 rounded">manage-playlists</code>, <code class="bg-blue-800 px-1 rounded">manage-groups</code></li>
-                </ul>
-                <div class="border-t border-blue-700 my-3 pt-3">
-                    <i class="fas fa-arrow-right mr-2 text-blue-300"></i>
-                    Then go to <strong>Page Assignment</strong> to assign these permissions to roles!
+            </div>
+            <div class="p-4">
+                <div id="permissionsAssignmentArea">
+                    <div class="text-center py-8 text-gray-400 text-sm">
+                        <i class="fas fa-hand-pointer text-3xl mb-2 block"></i>
+                        Click "Assign Permissions" on any role to set permissions
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Create Page Modal -->
-<div id="createPageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Create New Page</h3>
-            <button onclick="closeModal('createPageModal')" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+<!-- ==================== MODALS ==================== -->
+
+<!-- Role Modal -->
+<div id="roleModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="roleModalTitle" class="text-lg font-bold">Create New Role</h3>
+            <button onclick="closeModal('roleModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
         </div>
-        <form method="POST" action="{{ route('permission-manager.page.store') }}">
+        <form id="roleForm">
             @csrf
-            <div class="mt-4 space-y-4">
+            <input type="hidden" name="_method" id="roleMethod" value="POST">
+            <div class="space-y-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Page Name (slug) *</label>
-                    <input type="text" name="name" required placeholder="user-management" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <p class="text-xs text-gray-500 mt-1">Use lowercase with hyphens</p>
+                    <label class="block text-sm font-medium mb-1">Role Name *</label>
+                    <input type="text" name="name" id="roleName" required class="w-full px-3 py-2 border rounded-lg">
+                    <p class="text-xs text-gray-400">Example: admin, editor, viewer (use lowercase, no spaces)</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
-                    <input type="text" name="display_name" required placeholder="User Management" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <label class="block text-sm font-medium mb-1">Display Name *</label>
+                    <input type="text" name="display_name" id="roleDisplayName" required class="w-full px-3 py-2 border rounded-lg">
+                    <p class="text-xs text-gray-400">Example: Administrator, Editor, Viewer</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Font Awesome) *</label>
-                    <input type="text" name="icon" required placeholder="fa-users" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <p class="text-xs text-gray-500 mt-1">e.g., fa-users, fa-music, fa-cog</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
-                    <input type="text" name="route" placeholder="admin.users.index" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
-                    <input type="number" name="sort_order" value="999" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <label class="block text-sm font-medium mb-1">Description</label>
+                    <textarea name="description" id="roleDescription" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
+                    <p class="text-xs text-gray-400">What this role can do (optional)</p>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('createPageModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Create Page</button>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" onclick="closeModal('roleModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg">Save Role</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Page Modal -->
-<div id="editPageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Edit Page</h3>
-            <button onclick="closeModal('editPageModal')" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+<!-- Assign Permissions Modal -->
+<div id="assignPermissionsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4 pb-3 border-b">
+            <h3 id="assignModalTitle" class="text-lg font-bold">Assign Permissions</h3>
+            <button onclick="closeModal('assignPermissionsModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
         </div>
-        <form method="POST" action="" id="editPageForm">
-            @csrf
-            @method('PUT')
-            <div class="mt-4 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Page Name (slug) *</label>
-                    <input type="text" name="name" id="edit_page_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
-                    <input type="text" name="display_name" id="edit_page_display_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Font Awesome) *</label>
-                    <input type="text" name="icon" id="edit_page_icon" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
-                    <input type="text" name="route" id="edit_page_route" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
-                    <input type="number" name="sort_order" id="edit_page_sort_order" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" name="is_active" id="edit_page_is_active" value="1" class="rounded">
-                        <span class="text-sm text-gray-700">Active (visible in menu)</span>
-                    </label>
-                </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('editPageModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Page</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Create Feature Modal -->
-<div id="createFeatureModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Add Feature to <span id="featurePageName"></span></h3>
-            <button onclick="closeModal('createFeatureModal')" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+        <div id="assignPermissionsContent"></div>
+        <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+            <button onclick="closeModal('assignPermissionsModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
+            <button id="saveRolePermissionsBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Permissions</button>
         </div>
-        <form method="POST" action="{{ route('permission-manager.feature.store') }}">
-            @csrf
-            <input type="hidden" name="page_id" id="feature_page_id">
-            <div class="mt-4 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Feature Name (slug) *</label>
-                    <input type="text" name="name" required placeholder="view-users" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <p class="text-xs text-gray-500 mt-1">Use: view-, create-, edit-, delete-, manage-</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
-                    <input type="text" name="display_name" required placeholder="View Users" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="What this permission allows"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('createFeatureModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Add Feature</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Feature Modal -->
-<div id="editFeatureModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Edit Feature</h3>
-            <button onclick="closeModal('editFeatureModal')" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <form method="POST" action="" id="editFeatureForm">
-            @csrf
-            @method('PUT')
-            <div class="mt-4 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Feature Name (slug) *</label>
-                    <input type="text" name="name" id="edit_feature_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
-                    <input type="text" name="display_name" id="edit_feature_display_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea name="description" id="edit_feature_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('editFeatureModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Feature</button>
-            </div>
-        </form>
     </div>
 </div>
 
 <script>
-function openCreatePageModal() {
-    document.getElementById('createPageModal').classList.remove('hidden');
+// Store current role being edited
+let currentEditingRoleId = null;
+let currentEditingRoleName = null;
+let pagesData = @json($pages);
+let featuresData = @json($allFeatures);
+let roleAssignments = @json($allAssignments);
+
+// ==================== ROLE CRUD ====================
+function openRoleModal() {
+    document.getElementById('roleModalTitle').innerText = 'Create New Role';
+    document.getElementById('roleForm').action = '/permission-manager/role/store';
+    document.getElementById('roleMethod').value = 'POST';
+    document.getElementById('roleName').value = '';
+    document.getElementById('roleDisplayName').value = '';
+    document.getElementById('roleDescription').value = '';
+    document.getElementById('roleModal').classList.remove('hidden');
 }
 
-function openEditPageModal(id, name, displayName, icon, route, sortOrder, isActive) {
-    document.getElementById('editPageForm').action = `/permission-manager/page/${id}`;
-    document.getElementById('edit_page_name').value = name;
-    document.getElementById('edit_page_display_name').value = displayName;
-    document.getElementById('edit_page_icon').value = icon;
-    document.getElementById('edit_page_route').value = route || '';
-    document.getElementById('edit_page_sort_order').value = sortOrder;
-    document.getElementById('edit_page_is_active').checked = isActive;
-    document.getElementById('editPageModal').classList.remove('hidden');
+function editRole(id) {
+    fetch(`/permission-manager/role/${id}/edit`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('roleModalTitle').innerText = 'Edit Role';
+            document.getElementById('roleForm').action = `/permission-manager/role/${id}`;
+            document.getElementById('roleMethod').value = 'PUT';
+            document.getElementById('roleName').value = data.name;
+            document.getElementById('roleDisplayName').value = data.display_name;
+            document.getElementById('roleDescription').value = data.description || '';
+            document.getElementById('roleModal').classList.remove('hidden');
+        })
+        .catch(error => console.error('Error:', error));
 }
 
-function openCreateFeatureModal(pageId, pageName) {
-    document.getElementById('feature_page_id').value = pageId;
-    document.getElementById('featurePageName').innerText = pageName;
-    document.getElementById('createFeatureModal').classList.remove('hidden');
-}
-
-function openEditFeatureModal(id, pageId, name, displayName, description) {
-    document.getElementById('editFeatureForm').action = `/permission-manager/feature/${id}`;
-    document.getElementById('edit_feature_name').value = name;
-    document.getElementById('edit_feature_display_name').value = displayName;
-    document.getElementById('edit_feature_description').value = description;
-    document.getElementById('editFeatureModal').classList.remove('hidden');
-}
-
-function deletePage(id) {
-    if (confirm('Delete this page? All features under it will also need to be deleted first.')) {
-        window.location.href = `/permission-manager/page/${id}/delete`;
+function deleteRole(id, name) {
+    if (confirm(`Delete role "${name}"? This will remove all permissions for this role.`)) {
+        fetch(`/permission-manager/role/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        }).then(() => location.reload());
     }
 }
 
-function deleteFeature(id) {
-    if (confirm('Delete this feature?')) {
-        window.location.href = `/permission-manager/feature/${id}/delete`;
-    }
+// ==================== ASSIGN PERMISSIONS TO ROLE ====================
+function assignPermissionsToRole(roleId, roleName) {
+    currentEditingRoleId = roleId;
+    currentEditingRoleName = roleName;
+    
+    document.getElementById('assignModalTitle').innerHTML = `Assign Permissions to "${roleName}"`;
+    
+    const assignedFeatures = roleAssignments[roleId] || [];
+    const assignedFeatureIds = assignedFeatures.map(a => a.feature_id);
+    
+    let html = '<div class="space-y-4">';
+    
+    pagesData.forEach(page => {
+        const pageFeatures = featuresData.filter(f => f.page_id === page.id);
+        if (pageFeatures.length === 0) return;
+        
+        // Check if all features are assigned
+        const allAssigned = pageFeatures.every(f => assignedFeatureIds.includes(f.id));
+        
+        html += `
+            <div class="border rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b">
+                    <i class="fas ${page.icon} text-blue-600"></i>
+                    <span class="font-semibold text-gray-800">${page.display_name}</span>
+                    <label class="ml-auto flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" class="select-all-page" data-page-id="${page.id}" ${allAssigned ? 'checked' : ''}>
+                        <span class="text-xs text-gray-500">Select All</span>
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+        `;
+        
+        // Sort features in order: view, create, edit, delete
+        const sortedFeatures = [...pageFeatures].sort((a, b) => {
+            const order = { view: 1, create: 2, edit: 3, delete: 4 };
+            return (order[a.name] || 5) - (order[b.name] || 5);
+        });
+        
+        sortedFeatures.forEach(feature => {
+            const isChecked = assignedFeatureIds.includes(feature.id);
+            let icon = '';
+            let color = '';
+            
+            if (feature.name === 'view') {
+                icon = 'fa-eye';
+                color = 'text-green-600';
+            } else if (feature.name === 'create') {
+                icon = 'fa-plus-circle';
+                color = 'text-blue-600';
+            } else if (feature.name === 'edit') {
+                icon = 'fa-edit';
+                color = 'text-yellow-600';
+            } else if (feature.name === 'delete') {
+                icon = 'fa-trash-alt';
+                color = 'text-red-600';
+            } else {
+                icon = 'fa-tag';
+                color = 'text-gray-600';
+            }
+            
+            html += `
+                <label class="flex items-center gap-2 text-sm cursor-pointer p-2 rounded hover:bg-gray-50 transition">
+                    <input type="checkbox" class="feature-checkbox" data-feature-id="${feature.id}" data-page-id="${page.id}" ${isChecked ? 'checked' : ''}>
+                    <i class="fas ${icon} ${color} w-4"></i>
+                    <span>${feature.display_name}</span>
+                </label>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    document.getElementById('assignPermissionsContent').innerHTML = html;
+    document.getElementById('assignPermissionsModal').classList.remove('hidden');
+    
+    // Add select all functionality
+    document.querySelectorAll('.select-all-page').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const pageId = this.dataset.pageId;
+            const pageCheckboxes = document.querySelectorAll(`.feature-checkbox[data-page-id="${pageId}"]`);
+            pageCheckboxes.forEach(cb => cb.checked = this.checked);
+        });
+    });
 }
+
+// Save role permissions
+document.getElementById('saveRolePermissionsBtn').addEventListener('click', function() {
+    if (!currentEditingRoleId) return;
+    
+    const assignments = [];
+    document.querySelectorAll('.feature-checkbox:checked').forEach(cb => {
+        assignments.push({
+            page_id: parseInt(cb.dataset.pageId),
+            feature_id: parseInt(cb.dataset.featureId)
+        });
+    });
+    
+    fetch('/permission-manager/save-assignments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ 
+            role_id: currentEditingRoleId, 
+            assignments: assignments 
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Permissions saved for "${currentEditingRoleName}" successfully!`);
+            closeModal('assignPermissionsModal');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Network error. Please try again.');
+    });
+});
+
+// ==================== FORM SUBMISSIONS ====================
+document.getElementById('roleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch(this.action, { 
+        method: 'POST', 
+        body: formData, 
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } 
+    })
+    .then(res => res.json())
+    .then(data => { 
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => alert('Error: ' + error.message));
+});
 
 function closeModal(modalId) {
     document.getElementById(modalId).classList.add('hidden');
 }
 
-window.onclick = function(event) {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        if (event.target === modal) {
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
             modal.classList.add('hidden');
-        }
-    });
-}
+        });
+    }
+});
 </script>
-
-<style>
-.modal { display: none; }
-.modal:not(.hidden) { display: block !important; }
-</style>
 @endsection

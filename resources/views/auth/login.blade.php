@@ -110,6 +110,22 @@
             transform: translateY(-50%);
             color: #94a3b8;
         }
+        
+        .alert {
+            border-radius: 16px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -175,10 +191,46 @@
                             <p class="text-gray-500 text-sm">Sign in to your account</p>
                         </div>
                         
+                        <!-- Success Message (from registration redirect) -->
+                        @if(session('success'))
+                            <div class="alert bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-5 text-sm flex items-start gap-2">
+                                <i class="fas fa-check-circle mt-0.5"></i>
+                                <div class="flex-1">{{ session('success') }}</div>
+                                <button onclick="this.parentElement.remove()" class="text-green-500 hover:text-green-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endif
+                        
+                        <!-- Warning Message (pending approval) -->
+                        @if(session('warning'))
+                            <div class="alert bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-xl mb-5 text-sm flex items-start gap-2">
+                                <i class="fas fa-clock mt-0.5"></i>
+                                <div class="flex-1">{{ session('warning') }}</div>
+                                <button onclick="this.parentElement.remove()" class="text-yellow-500 hover:text-yellow-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endif
+                        
+                        <!-- Error Message -->
                         @if(session('error'))
-                            <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm">
+                            <div class="alert bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm flex items-start gap-2">
+                                <i class="fas fa-exclamation-circle mt-0.5"></i>
+                                <div class="flex-1">{{ session('error') }}</div>
+                                <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endif
+                        
+                        <!-- Validation Errors -->
+                        @if($errors->any())
+                            <div class="alert bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm">
                                 <i class="fas fa-exclamation-circle mr-2"></i>
-                                {{ session('error') }}
+                                @foreach($errors->all() as $error)
+                                    <p class="mb-1 last:mb-0">{{ $error }}</p>
+                                @endforeach
                             </div>
                         @endif
                         
@@ -190,12 +242,10 @@
                                 <div class="relative">
                                     <i class="fas fa-envelope input-icon"></i>
                                     <input type="email" name="email" required 
-                                           class="input-field pl-11"
-                                           placeholder="name@reverence.com">
+                                           class="input-field pl-11 @error('email') border-red-500 @enderror"
+                                           placeholder="name@reverence.com"
+                                           value="{{ old('email') }}">
                                 </div>
-                                @error('email')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
                             </div>
                             
                             <div class="mb-4">
@@ -203,16 +253,13 @@
                                 <div class="relative">
                                     <i class="fas fa-lock input-icon"></i>
                                     <input type="password" name="password" required 
-                                           class="input-field pl-11"
+                                           class="input-field pl-11 @error('password') border-red-500 @enderror"
                                            placeholder="••••••••">
                                 </div>
-                                @error('password')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
                             </div>
                             
                             <div class="flex justify-end mb-6">
-                                <a href="#" class="text-sm text-blue-600 hover:text-blue-700">Forgot password?</a>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-700 transition">Forgot password?</a>
                             </div>
                             
                             <button type="submit" class="btn-login w-full text-white py-3.5 transition">
@@ -224,15 +271,15 @@
                             <span>or continue with</span>
                         </div>
                         
-                        <a href="{{ route('google.login') }}" class="btn-google w-full flex items-center justify-center gap-2 py-3 rounded-xl text-gray-600 text-sm transition">
+                        <a href="{{ route('google.login') }}" class="btn-google w-full flex items-center justify-center gap-2 py-3 rounded-xl text-gray-600 text-sm transition hover:bg-gray-50">
                             <i class="fab fa-google text-red-500"></i>
-                            <span>Google</span>
+                            <span>Continue with Google</span>
                         </a>
                         
                         <div class="mt-6 text-center">
                             <p class="text-sm text-gray-500">
                                 Don't have an account? 
-                                <a href="{{ route('register') }}" class="text-blue-600 hover:text-blue-700 font-medium">Sign up</a>
+                                <a href="{{ route('register') }}" class="text-blue-600 hover:text-blue-700 font-medium transition">Create an account</a>
                             </p>
                         </div>
                     </div>
@@ -241,5 +288,18 @@
             </div>
         </div>
     </div>
+    
+    <!-- Auto-dismiss alerts after 5 seconds -->
+    <script>
+        setTimeout(function() {
+            document.querySelectorAll('.alert').forEach(function(alert) {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.3s ease';
+                setTimeout(function() {
+                    if (alert.parentElement) alert.remove();
+                }, 300);
+            });
+        }, 5000);
+    </script>
 </body>
 </html>

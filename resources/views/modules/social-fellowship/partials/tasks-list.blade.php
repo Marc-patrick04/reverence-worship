@@ -3,11 +3,7 @@
     $taskCount = isset($tasks) ? $tasks->count() : 0;
 @endphp
 
-@if($taskCount > 0)
-    <div class="bg-green-100 text-green-700 p-2 rounded mb-2 text-xs">
-        Found {{ $taskCount }} task(s) in database
-    </div>
-@endif
+
 <div class="bg-white rounded-xl shadow-md p-6">
     
     <div class="flex justify-between items-center mb-6">

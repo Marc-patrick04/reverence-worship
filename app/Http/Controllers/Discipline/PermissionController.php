@@ -121,7 +121,35 @@ class PermissionController extends Controller
             'permission' => $permission
         ]);
     }
-    
+    public function searchUsers(Request $request)
+{
+    try {
+        $search = $request->get('q', '');
+        
+        if (strlen($search) < 2) {
+            return response()->json(['success' => true, 'users' => []]);
+        }
+        
+        $users = DB::select("
+            SELECT id, name, email 
+            FROM users 
+            WHERE name ILIKE ? OR email ILIKE ?
+            ORDER BY name
+            LIMIT 10
+        ", ["%{$search}%", "%{$search}%"]);
+        
+        return response()->json([
+            'success' => true,
+            'users' => $users
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'users' => []
+        ], 500);
+    }
+}
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
