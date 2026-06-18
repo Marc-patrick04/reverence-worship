@@ -119,12 +119,7 @@
 
             <div class="bg-blue-50 rounded-lg p-3 text-sm">
                 <p class="text-blue-800 font-medium mb-1">How groups are formed:</p>
-                <ul class="text-xs text-blue-700 space-y-1">
-                    <li>✓ Balanced voice parts across all teams</li>
-                    <li>✓ Balanced Good/Normal levels across all teams</li>
-                    <li>✓ Avoids placing same singers together repeatedly</li>
-                    <li>✓ Fair distribution based on historical data</li>
-                </ul>
+                
             </div>
 
             <div class="flex justify-end gap-3 pt-3 border-t">
@@ -603,38 +598,370 @@
     }
     // ==================== VIEW TEAM DETAILS ====================
     function viewTeamDetails(id, teamNum) {
-        fetch(`/music/teams/${id}/details`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const teamLetter = String.fromCharCode(64 + teamNum);
-                    const team = data.teams[teamNum - 1];
-                    document.getElementById('teamDetailsTitle').innerHTML = `Service ${teamLetter} - ${data.service_name}`;
-
-                    let html = '<div class="space-y-2">';
-                    team.members.forEach(member => {
-                        html += `
-                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                            <div>
-                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(member.name)}</p>
-                                <p class="text-xs text-gray-500">${member.voice_part}</p>
-                            </div>
-                            <span class="px-2 py-0.5 text-xs rounded-full ${member.performance_level == 'Good' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-                                ${member.performance_level}
+    // Get modal elements
+    const modal = document.getElementById('teamDetailsModal');
+    const content = document.getElementById('teamDetailsContent');
+    const title = document.getElementById('teamDetailsTitle');
+    
+    // Show loading state
+    content.innerHTML = `
+        <div class="flex items-center justify-center py-8">
+            <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                <p class="mt-2 text-sm text-gray-500">Loading team details...</p>
+            </div>
+        </div>
+    `;
+    
+    // Show modal immediately with loading state
+    modal.classList.remove('hidden');
+    
+    // Close any existing notification
+    if (window.currentNotification) {
+        window.currentNotification.remove();
+    }
+    
+    fetch(`/music/teams/${id}/details`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const teamLetter = String.fromCharCode(64 + teamNum);
+                const team = data.teams[teamNum - 1];
+                
+                // Update title with badge and export button
+                title.innerHTML = `
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg font-semibold text-gray-800">Service ${teamLetter} - ${escapeHtml(data.service_name)}</span>
+                            <span class="px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                                ${team.members.length} Member${team.members.length > 1 ? 's' : ''}
                             </span>
                         </div>
+                        <button onclick="exportTeamMembers(${id}, ${teamNum}, '${escapeHtml(data.service_name)}', '${teamLetter}')" 
+                                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Export CSV
+                        </button>
+                    </div>
+                `;
+
+                // Build members list in table format with columns
+                let html = `
+                    <div class="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Voice</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Performance</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                `;
+                
+                if (team.members.length === 0) {
+                    html += `
+                        <tr>
+                            <td colspan="4" class="text-center py-8 text-gray-400">
+                                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <p class="text-sm">No members assigned to this team</p>
+                            </td>
+                        </tr>
                     `;
+                } else {
+                    team.members.forEach((member, index) => {
+                        // Determine performance level color
+                        let levelColor = 'bg-gray-100 text-gray-700';
+                        let levelIcon = '';
+                        if (member.performance_level === 'Good') {
+                            levelColor = 'bg-gray-100 text-gray-700';
+                          
+                        } else if (member.performance_level === 'Excellent') {
+                            levelColor = 'bg-blue-100 text-blue-700';
+                           
+                        } else if (member.performance_level === 'Needs Improvement') {
+                            levelColor = 'bg-yellow-100 text-yellow-700';
+                            
+                        }
+                        
+                        html += `
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-4 py-3 text-sm text-gray-400">${index + 1}</td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                                            ${escapeHtml(member.name.charAt(0).toUpperCase())}
+                                        </div>
+                                        <span class="font-medium text-gray-800 text-sm">${escapeHtml(member.name)}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="text-sm text-gray-600 flex items-center gap-1">
+                                        
+                                        ${escapeHtml(member.voice_part)}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2.5 py-1 text-xs font-medium rounded-full ${levelColor}">
+                                        ${levelIcon}${escapeHtml(member.performance_level)}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
                     });
-                    html += '</div>';
-                    document.getElementById('teamDetailsContent').innerHTML = html;
-                    document.getElementById('teamDetailsModal').classList.remove('hidden');
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error loading team details');
-            });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                content.innerHTML = html;
+                
+                // Add a subtle animation
+                content.classList.add('fade-in');
+                setTimeout(() => content.classList.remove('fade-in'), 300);
+                
+            } else {
+                throw new Error(data.message || 'Failed to load team details');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Show error state with retry option
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm text-gray-600 mb-2">Unable to load team details</p>
+                    <p class="text-xs text-gray-400 mb-3">${escapeHtml(error.message || 'Please try again')}</p>
+                    <button onclick="viewTeamDetails(${id}, ${teamNum})" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Retry
+                    </button>
+                </div>
+            `;
+            
+            // Show user-friendly notification
+            showFriendlyNotification('error', 'Could not load team details. Please check your connection and try again.');
+        });
+}
+
+// Export team members to CSV
+function exportTeamMembers(id, teamNum, serviceName, teamLetter) {
+    // Show loading state on button
+    const exportBtn = document.querySelector('button[onclick*="exportTeamMembers"]');
+    const originalText = exportBtn ? exportBtn.innerHTML : '';
+    if (exportBtn) {
+        exportBtn.innerHTML = `
+            <svg class="inline w-3.5 h-3.5 animate-spin mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Exporting...
+        `;
+        exportBtn.disabled = true;
     }
+    
+    fetch(`/music/teams/${id}/details`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const team = data.teams[teamNum - 1];
+                
+                if (!team || team.members.length === 0) {
+                    showFriendlyNotification('error', 'No members to export');
+                    return;
+                }
+                
+                // Generate CSV
+                let csv = [];
+                
+                // Add BOM for UTF-8 and headers
+                const headers = ['#', 'Name', 'Voice', 'Performance'];
+                csv.push(headers.join(','));
+                
+                // Add member data
+                team.members.forEach((member, index) => {
+                    const row = [
+                        index + 1,
+                        `"${(member.name || '').replace(/"/g, '""')}"`,
+                        `"${(member.voice_part || '').replace(/"/g, '""')}"`,
+                        `"${(member.performance_level || '').replace(/"/g, '""')}"`
+                    ];
+                    csv.push(row.join(','));
+                });
+                
+                // Create and download CSV file
+                const blob = new Blob(['\uFEFF' + csv.join('\n')], { 
+                    type: 'text/csv;charset=utf-8;' 
+                });
+                
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `Service_${teamLetter}_${serviceName.replace(/[^a-zA-Z0-9]/g, '_')}_Team.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                showFriendlyNotification('success', `Exported ${team.members.length} members successfully!`);
+            } else {
+                throw new Error(data.message || 'Failed to export team details');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFriendlyNotification('error', 'Failed to export team members. Please try again.');
+        })
+        .finally(() => {
+            // Restore button state
+            if (exportBtn) {
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }
+        });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function for user-friendly notifications
+function showFriendlyNotification(type, message) {
+    // Remove any existing notification
+    if (window.currentNotification) {
+        window.currentNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-in max-w-md`;
+    notification.style.backgroundColor = type === 'error' ? '#ef4444' : '#10b981';
+    notification.style.border = '1px solid rgba(255,255,255,0.1)';
+    notification.style.backdropFilter = 'blur(8px)';
+    
+    const icon = type === 'error' ? '✕' : '✓';
+    
+    notification.innerHTML = `
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-xl font-bold">
+            ${icon}
+        </div>
+        <div class="flex-1">
+            <p class="text-white font-medium text-sm">${type === 'error' ? 'Error' : 'Success'}</p>
+            <p class="text-white/90 text-xs">${escapeHtml(message)}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    `;
+    
+    document.body.appendChild(notification);
+    window.currentNotification = notification;
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100px)';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
+
+// Add this CSS to your stylesheet if not already present
+const style = document.createElement('style');
+style.textContent = `
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+        transition: opacity 0.3s, transform 0.3s;
+    }
+    
+    button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    /* Table styles */
+    .sticky {
+        position: sticky;
+    }
+    
+    table {
+        border-collapse: collapse;
+    }
+    
+    tbody tr:hover {
+        background-color: #f9fafb;
+    }
+`;
+document.head.appendChild(style);
 
     // ==================== VIEW FULL GENERATION DETAILS ====================
     function viewFullGenerationDetails(id) {

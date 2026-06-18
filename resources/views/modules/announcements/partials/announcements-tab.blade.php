@@ -93,114 +93,146 @@
 // Store recipient data for each announcement
 let recipientCache = {};
 let roleCache = {};
+let isLoading = false;
+let loadTimeout = null;
 
 window.loadAnnouncements = function() {
+    // Prevent multiple simultaneous loads
+    if (isLoading) return;
+    isLoading = true;
+    
     const search = document.getElementById('searchInput')?.value || '';
     const status = document.getElementById('statusFilter')?.value || 'all';
     
-    console.log('Loading announcements with filters:', { search, status });
+    // Show loading state
+    const container = document.getElementById('announcementsList');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
+                <p class="text-gray-500">Loading messages...</p>
+            </div>
+        `;
+    }
     
-    fetch(`/announcements/filter?search=${encodeURIComponent(search)}&status=${status}`, {
+    // Use a single API call instead of multiple sequential calls
+    fetch(`/announcements/filter?search=${encodeURIComponent(search)}&status=${status}&limit=20`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.loadRolesForAnnouncements(data.announcements);
+            const announcements = data.announcements || [];
+            
+            // Load recipients in parallel
+            return Promise.all([
+                Promise.resolve(announcements),
+                window.loadRecipients(announcements)
+            ]);
         } else {
             console.error('Failed to load announcements:', data.message);
             window.showEmptyState();
+            return Promise.reject(data.message);
         }
+    })
+    .then(([announcements, recipients]) => {
+        window.renderAnnouncementsList(announcements, recipients);
     })
     .catch(error => {
         console.error('Error loading announcements:', error);
         window.showEmptyState();
+    })
+    .finally(() => {
+        isLoading = false;
     });
 };
 
-window.loadRolesForAnnouncements = function(announcements) {
-    if (!announcements || announcements.length === 0) {
-        window.renderAnnouncementsList(announcements, {}, {});
-        return;
-    }
-    
-    const roleAnnouncements = announcements.filter(a => a.target_type === 'roles');
-    
-    if (roleAnnouncements.length === 0) {
-        window.loadRecipientsForAnnouncements(announcements);
-        return;
-    }
-    
-    let allRoleIds = [];
-    roleAnnouncements.forEach(a => {
-        try {
-            const roleIds = JSON.parse(a.target_roles || '[]');
-            allRoleIds = allRoleIds.concat(roleIds);
-        } catch (e) {
-            console.error('Error parsing target_roles:', e);
+window.loadRecipients = function(announcements) {
+    return new Promise((resolve) => {
+        if (!announcements || announcements.length === 0) {
+            resolve({});
+            return;
         }
-    });
-    
-    allRoleIds = [...new Set(allRoleIds)];
-    
-    if (allRoleIds.length === 0) {
-        window.loadRecipientsForAnnouncements(announcements);
-        return;
-    }
-    
-    fetch(`/announcements/roles/batch`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ role_ids: allRoleIds })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            roleCache = data.roles || {};
+        
+        // Only fetch recipients for visible announcements (first 20)
+        const limitedAnnouncements = announcements.slice(0, 20);
+        const announcementIds = limitedAnnouncements.map(a => a.id);
+        
+        // First, load roles if needed
+        const roleAnnouncements = limitedAnnouncements.filter(a => a.target_type === 'roles');
+        let rolePromise = Promise.resolve({});
+        
+        if (roleAnnouncements.length > 0) {
+            let allRoleIds = [];
+            roleAnnouncements.forEach(a => {
+                try {
+                    const roleIds = JSON.parse(a.target_roles || '[]');
+                    allRoleIds = allRoleIds.concat(roleIds);
+                } catch (e) {
+                    console.error('Error parsing target_roles:', e);
+                }
+            });
+            
+            allRoleIds = [...new Set(allRoleIds)];
+            
+            if (allRoleIds.length > 0) {
+                rolePromise = fetch(`/announcements/roles/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ role_ids: allRoleIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        roleCache = data.roles || {};
+                    }
+                    return roleCache;
+                })
+                .catch(error => {
+                    console.error('Error loading roles:', error);
+                    return {};
+                });
+            }
         }
-        window.loadRecipientsForAnnouncements(announcements);
-    })
-    .catch(error => {
-        console.error('Error loading roles:', error);
-        window.loadRecipientsForAnnouncements(announcements);
+        
+        // Then load recipients
+        let recipientPromise = Promise.resolve({});
+        if (announcementIds.length > 0) {
+            recipientPromise = rolePromise.then(() => {
+                return fetch(`/announcements/recipients/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ announcement_ids: announcementIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        recipientCache = data.recipients || {};
+                    }
+                    return recipientCache;
+                })
+                .catch(error => {
+                    console.error('Error loading recipients:', error);
+                    return {};
+                });
+            });
+        }
+        
+        Promise.all([rolePromise, recipientPromise]).then(([roles, recipients]) => {
+            resolve(recipients);
+        });
     });
 };
 
-window.loadRecipientsForAnnouncements = function(announcements) {
-    if (!announcements || announcements.length === 0) {
-        window.renderAnnouncementsList(announcements, {}, {});
-        return;
-    }
-    
-    const announcementIds = announcements.map(a => a.id);
-    
-    fetch(`/announcements/recipients/batch`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ announcement_ids: announcementIds })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            recipientCache = data.recipients;
-        }
-        window.renderAnnouncementsList(announcements, recipientCache, roleCache);
-    })
-    .catch(error => {
-        console.error('Error loading recipients:', error);
-        window.renderAnnouncementsList(announcements, {}, {});
-    });
-};
-
-window.renderAnnouncementsList = function(announcements, recipients, roles) {
+window.renderAnnouncementsList = function(announcements, recipients) {
     const container = document.getElementById('announcementsList');
     
     if (!announcements || announcements.length === 0) {
@@ -210,10 +242,12 @@ window.renderAnnouncementsList = function(announcements, recipients, roles) {
     
     document.getElementById('messageCount').textContent = `(${announcements.length} messages)`;
     
-    container.innerHTML = announcements.map(announcement => {
-        // Get status config - FIXED: use getMessageStatusConfig instead of getStatusClass
+    // Limit to 20 for performance
+    const displayAnnouncements = announcements.slice(0, 20);
+    
+    container.innerHTML = displayAnnouncements.map(announcement => {
         const statusConfig = window.getMessageStatusConfig(announcement.status);
-        const recipientInfo = recipients[announcement.id] || { count: 0, preview: [], type: 'loading' };
+        const recipientInfo = (recipients && recipients[announcement.id]) || { count: 0, preview: [], type: 'loading' };
         const sentDate = announcement.published_at || announcement.created_at;
         const isScheduled = announcement.status === 'scheduled';
         const isDraft = announcement.status === 'draft';
@@ -221,7 +255,6 @@ window.renderAnnouncementsList = function(announcements, recipients, roles) {
         
         // Build recipient display
         let recipientDisplay = '';
-        let recipientNames = [];
         
         if (announcement.target_type === 'all') {
             recipientDisplay = 'All Users';
@@ -234,16 +267,16 @@ window.renderAnnouncementsList = function(announcements, recipients, roles) {
             }
             
             const roleNames = roleIds.map(id => {
-                const role = roles[id];
+                const role = roleCache[id];
                 return role ? role.display_name || role.name : 'Unknown Role';
             });
             
             recipientDisplay = roleNames.length > 0 ? roleNames.join(', ') : 'Roles';
         } else if (announcement.target_type === 'users') {
             if (recipientInfo.preview && recipientInfo.preview.length > 0) {
-                recipientNames = recipientInfo.preview.slice(0, 2).map(r => r.name);
+                const names = recipientInfo.preview.slice(0, 2).map(r => r.name);
                 const remainingCount = recipientInfo.count - 2;
-                recipientDisplay = recipientNames.join(', ');
+                recipientDisplay = names.join(', ');
                 if (remainingCount > 0) {
                     recipientDisplay += ` +${remainingCount} more`;
                 }
@@ -397,7 +430,7 @@ function refreshMessages() {
     window.loadAnnouncements();
 }
 
-// Status config function - this is the one being used
+// Status config function
 window.getMessageStatusConfig = function(status) {
     const configs = {
         active: {
@@ -697,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let timeout;
         searchInput.addEventListener('input', function() {
             clearTimeout(timeout);
-            timeout = setTimeout(() => window.applyFilters(), 500);
+            timeout = setTimeout(() => window.applyFilters(), 300);
         });
     }
     document.getElementById('statusFilter')?.addEventListener('change', window.applyFilters);

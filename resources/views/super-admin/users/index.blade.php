@@ -362,12 +362,30 @@
 
 <!-- Modals -->
 <div id="viewModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-10 mx-auto p-4 sm:p-5 border w-[95%] sm:w-full max-w-2xl shadow-lg rounded-lg bg-white">
+    <div class="relative top-10 mx-auto p-4 sm:p-5 border w-[95%] sm:w-full max-w-2xl shadow-xl rounded-xl bg-white">
+        <!-- Modal Header -->
         <div class="flex justify-between items-center border-b pb-3 mb-4">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">User Details</h3>
-            <button onclick="closeModal('viewModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-user-circle text-blue-600 text-xl"></i>
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-900">User Details</h3>
+            </div>
+            <button onclick="closeModal('viewModal')" class="text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-gray-100">
+                <i class="fas fa-times text-xl"></i>
+            </button>
         </div>
-        <div id="viewUserContent">Loading...</div>
+        
+        <!-- Content -->
+        <div id="viewUserContent" class="max-h-[70vh] overflow-y-auto">
+            <div class="flex items-center justify-center py-12">
+                <div class="inline-flex items-center gap-3 text-gray-500">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading user details...</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -550,145 +568,235 @@
     }
 
     function openViewModal(userId) {
+    // Show loading state
+    document.getElementById('viewUserContent').innerHTML = `
+        <div class="flex items-center justify-center py-12">
+            <div class="inline-flex items-center gap-3 text-gray-500">
+                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Loading user details...</span>
+            </div>
+        </div>
+    `;
+    document.getElementById('viewModal').classList.remove('hidden');
+    
     fetch(`/users/${userId}/json`)
         .then(response => response.json())
         .then(data => {
-            // Create sections for better organization
+            // Get initials for avatar
+            const initials = data.name ? data.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'U';
+            
             const content = `
-                <div class="space-y-6">
-                    <!-- Header Section -->
-                    <div class="flex items-center gap-4 border-b pb-4">
-                        <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="text-white text-xl font-bold">${data.name ? data.name.substring(0,2).toUpperCase() : 'U'}</span>
+                <div class="space-y-5">
+                    <!-- Header Section - User Profile -->
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 border-b pb-4">
+                        <div class="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                            <span class="text-white text-2xl font-bold">${initials}</span>
                         </div>
-                        <div class="flex-1">
+                        <div class="flex-1 text-center sm:text-left">
                             <h4 class="text-xl font-bold text-gray-900">${escapeHtml(data.name || 'N/A')}</h4>
-                            <p class="text-gray-600">${escapeHtml(data.email || 'N/A')}</p>
-                            <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                <span class="inline-block px-2 py-1 text-xs rounded-full ${data.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            <p class="text-gray-600 text-sm">${escapeHtml(data.email || 'N/A')}</p>
+                            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full ${data.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${data.is_active ? 'bg-green-500' : 'bg-red-500'}"></span>
                                     ${data.is_active ? 'Active' : 'Inactive'}
                                 </span>
+                               
                                 
+                                ${data.is_singer ? `
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
+                                        <i class="fas fa-microphone text-xs"></i> Singer
+                                    </span>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Quick Info Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        
+                       
+                    </div>
+                    
                     <!-- Personal Information -->
                     <div>
-                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
                             <i class="fas fa-user text-blue-500"></i> Personal Information
                         </h5>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Full Name</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.name || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(data.name || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Email Address</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.email || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(data.email || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Phone Number</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.phone || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.phone || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Gender</label>
-                                <p class="font-medium text-gray-800 capitalize">${escapeHtml(data.gender || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm capitalize">${escapeHtml(data.gender || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Date of Birth</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.date_of_birth || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.date_of_birth || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Marital Status</label>
-                                <p class="font-medium text-gray-800 capitalize">${escapeHtml(data.marital_status || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm capitalize">${escapeHtml(data.marital_status || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Membership Type</label>
-                                <p class="font-medium text-gray-800 capitalize">${escapeHtml(data.membership_type || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm capitalize">${escapeHtml(data.membership_type || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Occupation</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.occupation || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.occupation || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
-                                <label class="text-xs text-gray-500">Ministry Role</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.ministry_role || '-')}</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
-                                <label class="text-xs text-gray-500">Address</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.address || '-')}</p>
-                            </div>
+                            
                         </div>
                     </div>
                     
                     <!-- Address Information -->
                     <div>
-                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
                             <i class="fas fa-map-marker-alt text-green-500"></i> Address Information
                         </h5>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Province</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.province || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.province || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">District</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.district || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.district || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Sector</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.sector || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.sector || '-')}</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                                 <label class="text-xs text-gray-500">Village</label>
-                                <p class="font-medium text-gray-800">${escapeHtml(data.village || '-')}</p>
+                                <p class="font-medium text-gray-800 text-sm">${escapeHtml(data.village || '-')}</p>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Roles -->
+                    <div>
+                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
+                            <i class="fas fa-tags text-yellow-500"></i> Roles & Permissions
+                        </h5>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                            <div class="flex flex-wrap gap-2">
+                                ${data.roles && data.roles.length > 0 ? 
+                                    data.roles.map(r => `<span class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium border border-blue-200">
+                                        <i class="fas fa-user-tag text-xs"></i> ${escapeHtml(r.display_name || r.name)}
+                                    </span>`).join('') : 
+                                    '<span class="text-gray-500 text-sm">No roles assigned</span>'}
+                            </div>
+                            ${data.is_super_admin ? `
+                                <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p class="text-yellow-700 text-sm flex items-center gap-2">
+                                        <i class="fas fa-star"></i>
+                                        <span>Super Administrator - Full system access</span>
+                                    </p>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                     
                     
                     
-                    
-                    
-                    
-                    
-                    <!-- Roles -->
-                    <div>
-                        <h5 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <i class="fas fa-tags text-yellow-500"></i> Roles
-                        </h5>
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <div class="flex flex-wrap gap-2">
-                                ${data.roles && data.roles.length > 0 ? 
-                                    data.roles.map(r => `<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium border border-blue-200">${escapeHtml(r.display_name || r.name)}</span>`).join('') : 
-                                    '<span class="text-gray-500">No roles assigned</span>'}
-                            </div>
-                        </div>
-                    </div>                    
                     <!-- Footer Actions -->
-                    <div class="flex justify-end gap-3 pt-4 border-t">
-                        <button onclick="closeModal('viewModal')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
-                            Close
+                    <div class="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                        <button onclick="closeModal('viewModal')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fas fa-times"></i> Close
                         </button>
                         ${data.id ? `
-                        <button onclick="window.openEditModal && window.openEditModal(${data.id})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                            <i class="fas fa-edit mr-1"></i> Edit User
+                        <button onclick="window.openEditModal && window.openEditModal(${data.id})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fas fa-edit"></i> Edit
                         </button>
-                        <button onclick="window.generateUserPDF && window.generateUserPDF(${data.id})" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                            <i class="fas fa-file-pdf mr-1"></i> Export PDF
+                        <button onclick="window.generateUserPDF && window.generateUserPDF(${data.id})" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fas fa-file-pdf"></i> Export PDF
                         </button>
                         ` : ''}
                     </div>
                 </div>
             `;
             document.getElementById('viewUserContent').innerHTML = content;
-            document.getElementById('viewModal').classList.remove('hidden');
         })
         .catch(error => {
             console.error('Error:', error);
+            document.getElementById('viewUserContent').innerHTML = `
+                <div class="text-center py-12">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-3"></i>
+                    <p class="text-red-500 font-medium">Error loading user details</p>
+                    <p class="text-gray-500 text-sm mt-1">${error.message || 'Please try again'}</p>
+                    <button onclick="closeModal('viewModal')" class="mt-4 px-4 py-2 bg-gray-200 rounded-lg text-sm">Close</button>
+                </div>
+            `;
             showNotification('error', 'Could not load user details');
         });
+}
+function generateUserPDF(userId) {
+    if (!userId) {
+        showNotification('error', 'Invalid user ID');
+        return;
+    }
+    
+    // Show loading state on the button
+    const exportBtn = document.querySelector('#viewModal button[onclick*="generateUserPDF"]');
+    if (exportBtn) {
+        const originalText = exportBtn.innerHTML;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        exportBtn.disabled = true;
+        
+        // Open PDF in new window
+        window.open(`/users/${userId}/export-pdf`, '_blank');
+        
+        // Reset button after delay
+        setTimeout(() => {
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+        }, 3000);
+    } else {
+        // Direct open
+        window.open(`/users/${userId}/export-pdf`, '_blank');
+    }
+}
+// Helper function to format date
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+        });
+    } catch(e) {
+        return dateString;
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to show notification
+function showNotification(type, message) {
+    // You can implement your notification system here
+    console.log(`${type}: ${message}`);
 }
 
     function openEditModal(userId) {
@@ -763,39 +871,66 @@
     });
 
     function processUserAction(userId, userName, action, actionPastTense) {
-        const btn = document.getElementById(`confirm${action.charAt(0).toUpperCase() + action.slice(1)}Btn`);
-        if (!btn) return;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-        btn.disabled = true;
-        fetch(`/users/${userId}/${action}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal(`${action}Modal`);
-                showNotification('success', data.message || `User "${userName}" has been ${actionPastTense} successfully!`);
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('error', data.message || `Failed to ${action} user`);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('error', error.message || `Error ${action}ing user`);
+    const btn = document.getElementById(`confirm${action.charAt(0).toUpperCase() + action.slice(1)}Btn`);
+    if (!btn) return;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+    btn.disabled = true;
+    
+    let url = '';
+    let method = 'POST';
+    
+    // Map actions to correct URLs and methods
+    switch(action) {
+        case 'delete':
+            url = `/users/${userId}`;
+            method = 'DELETE';
+            break;
+        case 'approve':
+            url = `/users/${userId}/approve`;
+            method = 'POST';
+            break;
+        case 'activate':
+            url = `/users/${userId}/activate`;
+            method = 'POST';
+            break;
+        case 'deactivate':
+            url = `/users/${userId}/deactivate`;
+            method = 'POST';
+            break;
+        default:
+            url = `/users/${userId}/${action}`;
+            method = 'POST';
+    }
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal(`${action}Modal`);
+            showNotification('success', data.message || `User "${userName}" has been ${actionPastTense} successfully!`);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification('error', data.message || `Failed to ${action} user`);
             btn.innerHTML = originalText;
             btn.disabled = false;
-        });
-    }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', error.message || `Error ${action}ing user`);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
 
     // Export functions
     @if(auth()->check() && auth()->user()->canAccess('users', 'export-users-csv'))

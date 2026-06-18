@@ -115,12 +115,6 @@
             <div class="announcement-content">
                 {!! nl2br(e($announcement->content)) !!}
             </div>
-            
-           
-            
-            <div style="text-align: center;">
-                <a href="{{ url('/announcements') }}" class="button">View All Announcements</a>
-            </div>
         </div>
         
         <div class="footer">

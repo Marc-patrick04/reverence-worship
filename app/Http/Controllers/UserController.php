@@ -431,25 +431,64 @@ class UserController extends Controller
     
     // Delete user
     public function destroy(Request $request, $id)
-    {
-        $user = User::findOrFail($id);
-        
-        // Prevent deleting yourself
-        if ($user->id === auth()->id()) {
-            if ($request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'You cannot delete your own account!']);
-            }
-            return redirect()->back()->with('error', 'You cannot delete your own account!');
+{
+    $user = User::findOrFail($id);
+    
+    // Prevent deleting yourself
+    if ($user->id === auth()->id()) {
+        if ($request->ajax()) {
+            return response()->json(['success' => false, 'message' => 'You cannot delete your own account!']);
         }
+        return redirect()->back()->with('error', 'You cannot delete your own account!');
+    }
+    
+    try {
+        DB::beginTransaction();
         
         $userEmail = $user->email;
+        $userName = $user->name;
+        
+        // Check if user has team_members records
+        $teamMemberCount = DB::table('team_members')->where('user_id', $id)->count();
+        
+        if ($teamMemberCount > 0) {
+            // Option 1: Delete related team_members first
+            DB::table('team_members')->where('user_id', $id)->delete();
+            
+            // Option 2: Or update the team_members to set user_id to null if the column allows null
+            // DB::table('team_members')->where('user_id', $id)->update(['user_id' => null]);
+        }
+        
+        // Check other foreign key constraints
+        // Add other tables that reference users here
+        // Example: attendance_records
+        $attendanceCount = DB::table('attendance_records')->where('user_id', $id)->count();
+        if ($attendanceCount > 0) {
+            DB::table('attendance_records')->where('user_id', $id)->delete();
+        }
+        
+        // Check permission_requests
+        $permissionCount = DB::table('permission_requests')->where('user_id', $id)->count();
+        if ($permissionCount > 0) {
+            DB::table('permission_requests')->where('user_id', $id)->delete();
+        }
+        
+        // Check family_members
+        $familyCount = DB::table('family_members')->where('user_id', $id)->count();
+        if ($familyCount > 0) {
+            DB::table('family_members')->where('user_id', $id)->delete();
+        }
+        
+        // Now delete the user
         $user->delete();
+        
+        DB::commit();
         
         // Log activity
         ActivityLog::create([
             'user_id' => auth()->id(),
             'action' => 'user_deleted',
-            'description' => 'Deleted user: ' . $userEmail,
+            'description' => 'Deleted user: ' . $userEmail . ' (' . $userName . ')',
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent()
         ]);
@@ -459,7 +498,21 @@ class UserController extends Controller
         }
         
         return redirect()->route('users.index')->with('success', 'User deleted successfully!');
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('User deletion error: ' . $e->getMessage());
+        
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete user: ' . $e->getMessage()
+            ], 500);
+        }
+        
+        return redirect()->back()->with('error', 'Error deleting user: ' . $e->getMessage());
     }
+}
     
     // Toggle user status
     public function toggleStatus(Request $request, $id)

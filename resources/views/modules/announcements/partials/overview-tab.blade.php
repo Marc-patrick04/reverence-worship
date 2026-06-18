@@ -38,7 +38,18 @@
             </div>
         </div>
         
-       
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-red-100 text-sm">Expired</p>
+                    <p class="text-3xl font-bold" id="statExpired">0</p>
+                </div>
+                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-times text-white text-lg"></i>
+                </div>
+            </div>
+        </div>
+        
         <div class="bg-gradient-to-r from-gray-500 to-gray-600 rounded-xl shadow-lg p-4 text-white">
             <div class="flex items-center justify-between">
                 <div>
@@ -100,11 +111,18 @@ window.loadOverviewStats = function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('statTotal').textContent = data.stats.total || 0;
-            document.getElementById('statActive').textContent = data.stats.active || 0;
-            document.getElementById('statScheduled').textContent = data.stats.scheduled || 0;
-            document.getElementById('statExpired').textContent = data.stats.expired || 0;
-            document.getElementById('statDraft').textContent = data.stats.draft || 0;
+            // Check if elements exist before setting textContent
+            const totalEl = document.getElementById('statTotal');
+            const activeEl = document.getElementById('statActive');
+            const scheduledEl = document.getElementById('statScheduled');
+            const expiredEl = document.getElementById('statExpired');
+            const draftEl = document.getElementById('statDraft');
+            
+            if (totalEl) totalEl.textContent = data.stats.total || 0;
+            if (activeEl) activeEl.textContent = data.stats.active || 0;
+            if (scheduledEl) scheduledEl.textContent = data.stats.scheduled || 0;
+            if (expiredEl) expiredEl.textContent = data.stats.expired || 0;
+            if (draftEl) draftEl.textContent = data.stats.draft || 0;
         }
     })
     .catch(error => console.error('Error loading stats:', error));
@@ -120,34 +138,36 @@ window.loadOverviewStats = function() {
             const recent = announcements.slice(0, 5);
             const container = document.getElementById('recentAnnouncements');
             
-            if (recent.length > 0) {
-                container.innerHTML = recent.map(a => {
-                    const statusClass = getStatusClass(a.status);
-                    return `
-                        <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition cursor-pointer" 
-                             onclick="window.viewMessage && window.viewMessage(${a.id})">
-                            <div class="flex-1 min-w-0">
-                                <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(a.title)}</p>
-                                <div class="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-                                    <span><i class="fas fa-user mr-1"></i>${escapeHtml(a.created_by_name || 'Unknown')}</span>
-                                    <span><i class="far fa-calendar mr-1"></i>${formatDate(a.created_at)}</span>
+            if (container) {
+                if (recent.length > 0) {
+                    container.innerHTML = recent.map(a => {
+                        const statusClass = getStatusClass(a.status);
+                        return `
+                            <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition cursor-pointer" 
+                                 onclick="window.viewMessage && window.viewMessage(${a.id})">
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(a.title)}</p>
+                                    <div class="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                                        <span><i class="fas fa-user mr-1"></i>${escapeHtml(a.created_by_name || 'Unknown')}</span>
+                                        <span><i class="far fa-calendar mr-1"></i>${formatDate(a.created_at)}</span>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 ml-3">
+                                    <span class="inline-flex px-2 py-0.5 text-xs rounded-full ${statusClass}">
+                                        ${a.status}
+                                    </span>
                                 </div>
                             </div>
-                            <div class="flex-shrink-0 ml-3">
-                                <span class="inline-flex px-2 py-0.5 text-xs rounded-full ${statusClass}">
-                                    ${a.status}
-                                </span>
-                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-gray-400 text-sm">
+                            <i class="fas fa-inbox text-2xl mb-2 block"></i>
+                            No announcements found
                         </div>
                     `;
-                }).join('');
-            } else {
-                container.innerHTML = `
-                    <div class="text-center py-8 text-gray-400 text-sm">
-                        <i class="fas fa-inbox text-2xl mb-2 block"></i>
-                        No announcements found
-                    </div>
-                `;
+                }
             }
         }
     })

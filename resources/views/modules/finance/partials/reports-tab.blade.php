@@ -1,9 +1,4 @@
 <div>
-    <!-- Header -->
-    <div class="mb-6">
-        <h3 class="text-xl font-bold text-gray-800">Financial Reports</h3>
-        <p class="text-sm text-gray-500 mt-1">Generate and export detailed financial reports</p>
-    </div>
     
     <!-- Reports Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -128,25 +123,7 @@
         </div>
     </div>
     
-    <!-- Financial Summary Card (Full Width) -->
-    <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
-        <div class="p-6">
-            <div class="flex items-start justify-between">
-                <div class="flex-1">
-                    <h4 class="font-semibold text-white text-lg">Financial Summary</h4>
-                    <p class="text-gray-300 text-sm mt-1">Comprehensive financial overview and analytics</p>
-                </div>
-                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-white text-xl"></i>
-                </div>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button onclick="generateReport('summary')" class="text-white hover:text-gray-200 text-sm font-medium flex items-center gap-1 border border-white/30 px-4 py-1.5 rounded-lg">
-                    Generate Full Report <i class="fas fa-arrow-right text-xs ml-1"></i>
-                </button>
-            </div>
-        </div>
-    </div>
+    
     
     <!-- Report Preview Modal -->
     <div id="reportPreviewModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">

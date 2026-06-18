@@ -239,11 +239,11 @@
 }
 
 .nav-item.active i {
-    color: #3b82f6;
+    color: #0060fb;
 }
 
 .nav-item.active .nav-text {
-    color: #1f2937;
+    color: #2572dd;
     font-weight: 600;
 }
 

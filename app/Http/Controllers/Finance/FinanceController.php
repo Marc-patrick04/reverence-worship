@@ -1483,6 +1483,114 @@ class FinanceController extends Controller
         ]);
     }
 }
+// In your PaymentController.php
+
+public function getDetails($id)
+{
+    try {
+        $payment = SponsorPayment::with(['member', 'recordedBy'])
+            ->findOrFail($id);
+        
+        return response()->json([
+            'success' => true,
+            'payment' => [
+                'id' => $payment->id,
+                'member_name' => $payment->member->name ?? 'Unknown',
+                'member_email' => $payment->member->email ?? '',
+                'amount' => $payment->amount,
+                'term' => $payment->term,
+                'payment_date' => $payment->payment_date,
+                'payment_method' => $payment->payment_method,
+                'notes' => $payment->notes,
+                'recorded_by_name' => $payment->recordedBy->name ?? 'System',
+                'created_at' => $payment->created_at
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 404);
+    }
+}
+
+public function update(Request $request, $id)
+{
+    try {
+        $payment = SponsorPayment::findOrFail($id);
+        
+        $payment->update([
+            'amount' => $request->amount,
+            'payment_method' => $request->payment_method,
+            'payment_date' => $request->payment_date,
+            'term' => $request->term,
+            'notes' => $request->notes
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment updated successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function filter(Request $request)
+{
+    try {
+        $query = SponsorPayment::with(['member', 'recordedBy']);
+        
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('member', function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        if ($request->has('term') && $request->term) {
+            $query->where('term', $request->term);
+        }
+        
+        if ($request->has('method') && $request->method) {
+            $query->where('payment_method', $request->method);
+        }
+        
+        if ($request->has('month') && $request->month) {
+            $date = \Carbon\Carbon::parse($request->month . '-01');
+            $query->whereYear('payment_date', $date->year)
+                  ->whereMonth('payment_date', $date->month);
+        }
+        
+        $payments = $query->orderBy('payment_date', 'desc')->get();
+        
+        return response()->json([
+            'success' => true,
+            'payments' => $payments->map(function($payment) {
+                return [
+                    'id' => $payment->id,
+                    'member_name' => $payment->member->name ?? 'Unknown',
+                    'member_email' => $payment->member->email ?? '',
+                    'amount' => $payment->amount,
+                    'term' => $payment->term,
+                    'payment_date' => $payment->payment_date,
+                    'payment_method' => $payment->payment_method,
+                    'notes' => $payment->notes,
+                    'recorded_by_name' => $payment->recordedBy->name ?? 'System'
+                ];
+            })
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
     private function renderSummaryReportHTML($totalIncome, $totalCommitments, $totalExpenses, $netBalance, $collected, $sponsorReceived, $giftReceived)
     {
         $html = '<div class="space-y-6">';

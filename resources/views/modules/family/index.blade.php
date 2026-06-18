@@ -57,11 +57,7 @@
                         <i class="fas fa-users text-blue-500 mr-2"></i> Family Members
                         <span class="text-sm font-normal text-gray-500 ml-1">({{ $familyMembers->count() }})</span>
                     </h2>
-                    @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
-                    <button onclick="openAddMemberModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-lg text-xs transition flex items-center gap-1">
-                        <i class="fas fa-plus-circle"></i> Add
-                    </button>
-                    @endif
+                    
                 </div>
             </div>
             
@@ -106,9 +102,8 @@
                         </div>
                         <div class="flex items-center gap-1">
                             @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
-                            
+                            <!-- You can add edit button here -->
                             @endif
-                            
                         </div>
                     </div>
                 </div>
@@ -138,11 +133,7 @@
                             </span>
                         </div>
                     </div>
-                    @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
-                    <button onclick="openAddTaskModal()" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-lg text-xs transition flex items-center gap-1">
-                        <i class="fas fa-plus-circle"></i> Add Task
-                    </button>
-                    @endif
+                   
                 </div>
             </div>
 
@@ -214,7 +205,6 @@
                             </button>
                             @endif
                            
-                            
                         </div>
                         @endif
                     </div>
@@ -226,176 +216,6 @@
                 </div>
                 @endforelse
             </div>
-        </div>
-    </div>
-
-    <!-- Add Member Modal -->
-    <div id="addMemberModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center pb-3 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Add Family Member</h3>
-                <button onclick="closeModal('addMemberModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
-            </div>
-            <form id="addMemberForm" onsubmit="submitAddMember(event)">
-                @csrf
-                <div class="mt-4 space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Name *</label>
-                        <input type="text" name="name" id="memberName" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Role</label>
-                        <select name="role" id="memberRole" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="member">Member</option>
-                            <option value="parent">Parent</option>
-                            <option value="child">Child</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Phone</label>
-                        <input type="text" name="phone" id="memberPhone" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Email</label>
-                        <input type="email" name="email" id="memberEmail" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
-                    <button type="button" onclick="closeModal('addMemberModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Add Member</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Member Modal -->
-    <div id="editMemberModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center pb-3 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Edit Family Member</h3>
-                <button onclick="closeModal('editMemberModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
-            </div>
-            <form id="editMemberForm" onsubmit="submitEditMember(event)">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="member_id" id="editMemberId">
-                <div class="mt-4 space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Name *</label>
-                        <input type="text" name="name" id="editMemberName" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Role</label>
-                        <select name="role" id="editMemberRole" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="member">Member</option>
-                            <option value="parent">Parent</option>
-                            <option value="child">Child</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Phone</label>
-                        <input type="text" name="phone" id="editMemberPhone" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Email</label>
-                        <input type="email" name="email" id="editMemberEmail" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
-                    <button type="button" onclick="closeModal('editMemberModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Member</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Add Task Modal -->
-    <div id="addTaskModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center pb-3 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Add New Task</h3>
-                <button onclick="closeModal('addTaskModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
-            </div>
-            <form id="addTaskForm" onsubmit="submitAddTask(event)">
-                @csrf
-                <div class="mt-4 space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Title *</label>
-                        <input type="text" name="title" id="taskTitle" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Description</label>
-                        <textarea name="description" id="taskDescription" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Due Date</label>
-                        <input type="date" name="due_date" id="taskDueDate" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Assigned To</label>
-                        <select name="assigned_to" id="taskAssignedTo" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">-- Select Member --</option>
-                            @foreach($familyMembers as $member)
-                            <option value="{{ $member->id }}">{{ $member->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
-                    <button type="button" onclick="closeModal('addTaskModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Add Task</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Edit Task Modal -->
-    <div id="editTaskModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center pb-3 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Edit Task</h3>
-                <button onclick="closeModal('editTaskModal')" class="text-gray-400 hover:text-gray-600">&times;</button>
-            </div>
-            <form id="editTaskForm" onsubmit="submitEditTask(event)">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="task_id" id="editTaskId">
-                <div class="mt-4 space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Title *</label>
-                        <input type="text" name="title" id="editTaskTitle" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Description</label>
-                        <textarea name="description" id="editTaskDescription" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Due Date</label>
-                        <input type="date" name="due_date" id="editTaskDueDate" class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Status</label>
-                        <select name="status" id="editTaskStatus" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Assigned To</label>
-                        <select name="assigned_to" id="editTaskAssignedTo" class="w-full px-3 py-2 border rounded-lg">
-                            <option value="">-- Select Member --</option>
-                            @foreach($familyMembers as $member)
-                            <option value="{{ $member->id }}">{{ $member->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
-                    <button type="button" onclick="closeModal('editTaskModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Update Task</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -465,9 +285,7 @@
         }
     });
 
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.add('hidden');
-    }
+    
 
     function showNotification(type, message) {
         const notification = document.createElement('div');
@@ -482,7 +300,7 @@
         setTimeout(() => notification.remove(), 3000);
     }
 
-    @if(auth()->check() && auth()->user()->canAccess('family', 'export'))
+   
     function exportMembersToCSV() {
         var members = @json($familyMembers);
         var csv = [];
@@ -508,75 +326,14 @@
         URL.revokeObjectURL(url);
         showNotification('success', 'Export completed!');
     }
-    @endif
+ 
 
     @if(auth()->check() && auth()->user()->canAccess('family', 'create'))
     function openAddMemberModal() {
         document.getElementById('addMemberModal').classList.remove('hidden');
     }
-
-    function submitAddMember(event) {
-        event.preventDefault();
-        const formData = new FormData();
-        formData.append('name', document.getElementById('memberName').value);
-        formData.append('role', document.getElementById('memberRole').value);
-        formData.append('phone', document.getElementById('memberPhone').value);
-        formData.append('email', document.getElementById('memberEmail').value);
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-        fetch('/my-family/member', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal('addMemberModal');
-                showNotification('success', 'Member added successfully!');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('error', data.message || 'Failed to add member');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('error', 'Network error');
-        });
-    }
-
-    function openAddTaskModal() {
-        document.getElementById('addTaskModal').classList.remove('hidden');
-    }
-
-    function submitAddTask(event) {
-        event.preventDefault();
-        const formData = new FormData();
-        formData.append('title', document.getElementById('taskTitle').value);
-        formData.append('description', document.getElementById('taskDescription').value);
-        formData.append('due_date', document.getElementById('taskDueDate').value);
-        formData.append('assigned_to', document.getElementById('taskAssignedTo').value);
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-        fetch('/my-family/task', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal('addTaskModal');
-                showNotification('success', 'Task added successfully!');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('error', data.message || 'Failed to add task');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('error', 'Network error');
-        });
-    }
     @endif
+
 
     @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
     function editMember(memberId) {
@@ -622,77 +379,6 @@
             showNotification('error', 'Network error');
         });
     }
-
-    function updateTaskStatus(taskId, status) {
-        fetch(`/my-family/task/${taskId}/status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ status: status })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('success', 'Task updated successfully!');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('error', data.message || 'Failed to update task');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('error', 'Network error');
-        });
-    }
-
-    function editTask(taskId) {
-        fetch(`/my-family/task/${taskId}/json`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('editTaskId').value = data.id;
-                document.getElementById('editTaskTitle').value = data.title;
-                document.getElementById('editTaskDescription').value = data.description || '';
-                document.getElementById('editTaskDueDate').value = data.due_date || '';
-                document.getElementById('editTaskStatus').value = data.status;
-                document.getElementById('editTaskAssignedTo').value = data.assigned_to || '';
-                document.getElementById('editTaskModal').classList.remove('hidden');
-            });
-    }
-
-    function submitEditTask(event) {
-        event.preventDefault();
-        const taskId = document.getElementById('editTaskId').value;
-        const formData = new FormData();
-        formData.append('title', document.getElementById('editTaskTitle').value);
-        formData.append('description', document.getElementById('editTaskDescription').value);
-        formData.append('due_date', document.getElementById('editTaskDueDate').value);
-        formData.append('status', document.getElementById('editTaskStatus').value);
-        formData.append('assigned_to', document.getElementById('editTaskAssignedTo').value);
-        formData.append('_method', 'PUT');
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-        fetch(`/my-family/task/${taskId}`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal('editTaskModal');
-                showNotification('success', 'Task updated successfully!');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('error', data.message || 'Failed to update task');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('error', 'Network error');
-        });
-    }
     @endif
 
     @if(auth()->check() && auth()->user()->canAccess('family', 'delete'))
@@ -712,31 +398,6 @@
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     showNotification('error', data.message || 'Failed to delete member');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('error', 'Network error');
-            });
-        }
-    }
-
-    function deleteTask(taskId, taskTitle) {
-        if (confirm(`Are you sure you want to delete task "${taskTitle}"?`)) {
-            fetch(`/my-family/task/${taskId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('success', 'Task deleted successfully!');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showNotification('error', data.message || 'Failed to delete task');
                 }
             })
             .catch(error => {
