@@ -1,13 +1,13 @@
 <div class="max-w-5xl mx-auto py-6 px-4 sm:px-6">
     <!-- Header Section -->
-    <div class="mb-8">
+    <div class="mb-6">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Term Structure Settings</h1>
-                <p class="text-sm text-gray-500 mt-1">Configure yearly contribution periods and distribution percentages</p>
+               
             </div>
-            <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shadow-sm">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shadow-sm">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
@@ -23,30 +23,43 @@
             <div class="p-6 space-y-6">
                 <!-- Configuration Row -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <!-- Year Selection -->
+                    <!-- Year Selection - Compact -->
                     <div class="space-y-1.5">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Fiscal Year
+                            Select Year
                         </label>
-                        <div class="flex gap-2">
-                            <div class="relative flex-1">
-                                <select name="current_year" id="currentYear" 
-                                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white appearance-none cursor-pointer transition-shadow">
-                                    <!-- Years populated dynamically -->
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
+                        
+                        <div class="relative" id="yearPickerContainer">
+                            <div onclick="toggleYearPicker()" 
+                                class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all max-w-[180px]">
+                                <span id="selectedYearDisplay" class="text-sm font-semibold text-gray-800">{{ date('Y') }}</span>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="yearPickerArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <input type="hidden" id="selectedYear" name="selected_year" value="{{ date('Y') }}">
+                            
+                            <!-- Year Picker Dropdown -->
+                            <div id="yearPickerDropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[180px]">
+                                <div class="flex items-center justify-between mb-2">
+                                    <button type="button" onclick="changeYearPage(-1)" 
+                                        class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <span id="yearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
+                                    <button type="button" onclick="changeYearPage(1)" 
+                                        class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1" id="yearGrid">
+                                    <!-- Years populated by JavaScript -->
                                 </div>
                             </div>
-                            <button type="button" onclick="loadYearSettings()" 
-                                class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-gray-300">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                                Load
-                            </button>
                         </div>
                     </div>
                     
@@ -57,9 +70,9 @@
                         </label>
                         <div class="flex gap-2">
                             <input type="number" id="numberOfTerms" min="1" max="12" step="1" 
-                                class="w-28 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center text-sm">
+                                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center text-sm">
                             <button type="button" onclick="updateTermsCount()" 
-                                class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all">
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all">
                                 Apply
                             </button>
                         </div>
@@ -67,18 +80,18 @@
                 </div>
 
                 <!-- Status Badges -->
-                <div id="yearInfoBadge" class="hidden bg-blue-50 rounded-lg px-4 py-2.5 text-sm text-blue-700 flex items-center gap-2 border border-blue-100">
+                <div id="yearInfoBadge" class="hidden bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center gap-2 border border-blue-100">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span id="yearInfoText">Viewing settings for year</span>
                 </div>
 
-                <div id="historicalNote" class="hidden bg-amber-50 rounded-lg px-4 py-2.5 text-sm text-amber-700 flex items-center gap-2 border border-amber-100">
+                <div id="historicalNote" class="hidden bg-amber-50 rounded-lg px-3 py-2 text-xs text-amber-700 flex items-center gap-2 border border-amber-100">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <span>You are viewing historical data from a previous year. Changes will be saved separately for this year.</span>
+                    <span>Historical data. Changes saved separately.</span>
                 </div>
 
                 <!-- Terms Section Header -->
@@ -86,7 +99,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="text-sm font-semibold text-gray-700">Term Distribution</h3>
-                            <p class="text-xs text-gray-400 mt-0.5">Define percentage allocation per term</p>
+                          
                         </div>
                         <button type="button" onclick="distributeEvenly()" 
                             class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 transition-colors">
@@ -98,7 +111,7 @@
                     </div>
                 </div>
 
-                <!-- Terms Container - Grid -->
+                <!-- Terms Container -->
                 <div id="termsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Terms injected via JS -->
                 </div>
@@ -133,7 +146,7 @@
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="text-emerald-700 text-sm">Settings saved successfully!</span>
+                        <span class="text-emerald-700 text-sm">Settings saved!</span>
                     </div>
                 </div>
                 
@@ -148,14 +161,7 @@
             </div>
 
             <!-- Footer Actions -->
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3">
-                <button type="button" onclick="copyFromCurrentYear()" 
-                    class="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1.5 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                    Copy from Current Year
-                </button>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
                 <button type="submit" id="saveButton" 
                     class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,42 +179,126 @@ let currentTermsCount = 3;
 let isUpdating = false;
 let isManualEdit = false;
 let currentSelectedYear = null;
+let yearPageOffset = 0;
+let isPickerOpen = false;
+let savedSettings = null;
 
-// Populate year dropdown with range from 5 years ago to 10 years ahead
-function populateYearOptions() {
-    const currentYearSelect = document.getElementById('currentYear');
-    if (!currentYearSelect) return;
+// Toggle Year Picker
+function toggleYearPicker() {
+    const dropdown = document.getElementById('yearPickerDropdown');
+    const arrow = document.getElementById('yearPickerArrow');
     
-    const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 5;
-    const endYear = currentYear + 10;
+    if (!dropdown) return;
     
-    currentYearSelect.innerHTML = '<option value="">Select Year</option>';
-    
-    for (let year = endYear; year >= startYear; year--) {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year === currentYear ? `${year} (Current)` : year;
-        currentYearSelect.appendChild(option);
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        if (arrow) arrow.classList.add('rotate-180');
+        isPickerOpen = true;
+        renderYearGrid();
+    } else {
+        dropdown.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+        isPickerOpen = false;
     }
+}
+
+// Close year picker
+function closeYearPicker() {
+    const dropdown = document.getElementById('yearPickerDropdown');
+    const arrow = document.getElementById('yearPickerArrow');
+    
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+        isPickerOpen = false;
+    }
+}
+
+// Change year page
+function changeYearPage(direction) {
+    yearPageOffset += direction;
+    renderYearGrid();
+}
+
+// Render 3x3 Year Grid
+function renderYearGrid() {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear + (yearPageOffset * 9) - 4;
+    
+    const grid = document.getElementById('yearGrid');
+    const title = document.getElementById('yearPageTitle');
+    
+    if (!grid) return;
+    
+    const endYear = startYear + 8;
+    if (title) title.textContent = `${startYear} - ${endYear}`;
+    
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < 9; i++) {
+        const year = startYear + i;
+        const isSelected = year == currentSelectedYear;
+        const isCurrentYear = year == currentYear;
+        const isDisabled = year < 2000 || year > 2100;
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = year;
+        btn.className = 'year-grid-btn py-2 px-2 rounded text-sm transition-all text-center';
+        
+        if (isSelected) {
+            btn.classList.add('bg-blue-600', 'text-white', 'font-semibold', 'shadow-sm');
+        } else if (isCurrentYear) {
+            btn.classList.add('bg-blue-50', 'text-blue-600', 'font-medium', 'border', 'border-blue-200');
+        } else {
+            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
+        }
+        
+        if (isDisabled) {
+            btn.classList.add('text-gray-300', 'cursor-not-allowed');
+            btn.disabled = true;
+        } else {
+            btn.onclick = function() {
+                selectYear(year);
+            };
+        }
+        
+        if (isCurrentYear && !isSelected) {
+            const dot = document.createElement('span');
+            dot.className = 'ml-1 text-xs text-blue-500';
+            dot.textContent = '●';
+            btn.appendChild(dot);
+        }
+        
+        grid.appendChild(btn);
+    }
+}
+
+// Select a year
+function selectYear(year) {
+    currentSelectedYear = year;
+    document.getElementById('selectedYear').value = year;
+    document.getElementById('selectedYearDisplay').textContent = year;
+    
+    closeYearPicker();
+    renderYearGrid();
+    loadYearSettings();
 }
 
 // Load settings for the selected year
 function loadYearSettings() {
-    const yearSelect = document.getElementById('currentYear');
-    const selectedYear = yearSelect.value;
+    const selectedYear = document.getElementById('selectedYear').value;
     
     if (!selectedYear) {
-        showMessage('error', 'Please select a fiscal year');
+        showMessage('error', 'Please select a valid year');
         return;
     }
     
     currentSelectedYear = selectedYear;
     
-    // Show loading state
     const saveBtn = document.getElementById('saveButton');
     const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Loading...';
+    saveBtn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
     saveBtn.disabled = true;
     
     fetch(`/finance/settings/get?year=${selectedYear}`, {
@@ -219,29 +309,27 @@ function loadYearSettings() {
         const currentYear = new Date().getFullYear();
         const isHistorical = parseInt(selectedYear) < currentYear;
         
-        // Toggle historical note
         const historicalNote = document.getElementById('historicalNote');
         if (historicalNote) {
             historicalNote.classList.toggle('hidden', !isHistorical);
         }
         
-        // Show year info badge
         const yearInfoBadge = document.getElementById('yearInfoBadge');
         const yearInfoText = document.getElementById('yearInfoText');
         if (yearInfoBadge && yearInfoText) {
             yearInfoBadge.classList.remove('hidden');
             yearInfoText.innerHTML = isHistorical 
-                ? `📜 Viewing historical settings for ${selectedYear}. Changes will be saved separately.`
-                : `📅 Viewing current settings for ${selectedYear}`;
+                ? `📜 Viewing historical settings for ${selectedYear}`
+                : `📅 Viewing settings for ${selectedYear}`;
         }
         
         if (data.success && data.settings) {
-            // Set number of terms
+            savedSettings = data.settings;
+            
             const numberOfTerms = data.settings.number_of_terms || 3;
             document.getElementById('numberOfTerms').value = numberOfTerms;
             currentTermsCount = numberOfTerms;
             
-            // Set term percentages
             if (data.settings.term_percentages && typeof data.settings.term_percentages === 'object') {
                 window.savedPercentages = {};
                 for (let key in data.settings.term_percentages) {
@@ -256,91 +344,23 @@ function loadYearSettings() {
                 distributeEvenly();
             }
         } else {
-            // No saved settings, use defaults
+            savedSettings = null;
             document.getElementById('numberOfTerms').value = 3;
             currentTermsCount = 3;
             window.savedPercentages = {};
             isManualEdit = false;
             renderTerms();
             distributeEvenly();
-            showMessage('info', `No existing settings for ${selectedYear}. Using default values.`);
+            showMessage('info', `No existing settings for ${selectedYear}. Using defaults.`);
         }
     })
     .catch(error => {
         console.error('Error loading settings:', error);
-        showMessage('error', 'Failed to load settings for selected year');
+        showMessage('error', 'Failed to load settings');
     })
     .finally(() => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-    });
-}
-
-function onYearChange() {
-    const yearSelect = document.getElementById('currentYear');
-    const selectedYear = yearSelect.value;
-    
-    if (selectedYear) {
-        loadYearSettings();
-    } else {
-        // Reset form
-        document.getElementById('numberOfTerms').value = 3;
-        currentTermsCount = 3;
-        window.savedPercentages = {};
-        renderTerms();
-        distributeEvenly();
-        document.getElementById('yearInfoBadge')?.classList.add('hidden');
-        document.getElementById('historicalNote')?.classList.add('hidden');
-    }
-}
-
-// Copy settings from current year to selected year
-function copyFromCurrentYear() {
-    const yearSelect = document.getElementById('currentYear');
-    const targetYear = yearSelect.value;
-    
-    if (!targetYear) {
-        showMessage('error', 'Please select a target year first');
-        return;
-    }
-    
-    const currentYear = new Date().getFullYear();
-    
-    if (targetYear == currentYear) {
-        showMessage('error', 'Cannot copy settings to the current year');
-        return;
-    }
-    
-    if (!confirm(`Copy settings from ${currentYear} to ${targetYear}? This will overwrite any existing settings for ${targetYear}.`)) {
-        return;
-    }
-    
-    fetch(`/finance/settings/get?year=${currentYear}`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.settings) {
-            if (data.settings.number_of_terms) {
-                document.getElementById('numberOfTerms').value = data.settings.number_of_terms;
-                currentTermsCount = data.settings.number_of_terms;
-            }
-            
-            if (data.settings.term_percentages && typeof data.settings.term_percentages === 'object') {
-                window.savedPercentages = {};
-                for (let key in data.settings.term_percentages) {
-                    window.savedPercentages[key] = parseFloat(data.settings.term_percentages[key]).toFixed(2);
-                }
-                renderTerms(window.savedPercentages);
-                showMessage('success', `Settings copied from ${currentYear} to ${targetYear}. Click Save to confirm.`);
-            }
-        } else {
-            showMessage('error', 'No settings found for current year to copy from');
-        }
-    })
-    .catch(error => {
-        console.error('Error copying settings:', error);
-        showMessage('error', 'Failed to copy settings');
     });
 }
 
@@ -360,7 +380,6 @@ function distributeEvenly() {
         total += percent;
     }
     
-    // Adjust last term to fix rounding
     if (Math.abs(total - 100) > 0.01) {
         percentages[percentages.length - 1] = +(percentages[percentages.length - 1] + (100 - total)).toFixed(2);
     }
@@ -391,7 +410,6 @@ function updateTermsCount() {
     const oldCount = currentTermsCount;
     currentTermsCount = newCount;
     
-    // Preserve existing percentages where possible
     const existingPercentages = {};
     for (let i = 1; i <= oldCount; i++) {
         const input = document.getElementById(`term${i}Percentage`);
@@ -494,7 +512,6 @@ function updateTotalPercentage() {
 }
 
 function showMessage(type, message) {
-    // Clear existing messages
     ['successMessage', 'errorMessage'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -522,6 +539,18 @@ function showMessage(type, message) {
         setTimeout(() => infoToast.remove(), 3000);
     }
 }
+
+// Close picker when clicking outside
+document.addEventListener('click', function(event) {
+    const picker = document.getElementById('yearPickerDropdown');
+    const container = document.getElementById('yearPickerContainer');
+    
+    if (picker && !picker.classList.contains('hidden') && container) {
+        if (!container.contains(event.target)) {
+            closeYearPicker();
+        }
+    }
+});
 
 // Form submission
 document.getElementById('financeSettingsForm')?.addEventListener('submit', function(e) {
@@ -558,7 +587,7 @@ document.getElementById('financeSettingsForm')?.addEventListener('submit', funct
     const saveBtn = document.getElementById('saveButton');
     const originalHtml = saveBtn.innerHTML;
     
-    saveBtn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Saving...';
+    saveBtn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>';
     saveBtn.disabled = true;
     
     fetch('/finance/settings/update', {
@@ -573,7 +602,7 @@ document.getElementById('financeSettingsForm')?.addEventListener('submit', funct
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showMessage('success', `Settings for ${currentSelectedYear} saved successfully!`);
+            showMessage('success', `Settings for ${currentSelectedYear} saved!`);
             if (data.settings && data.settings.term_percentages) {
                 window.savedPercentages = {};
                 for (let key in data.settings.term_percentages) {
@@ -586,7 +615,7 @@ document.getElementById('financeSettingsForm')?.addEventListener('submit', funct
     })
     .catch(error => {
         console.error('Error:', error);
-        showMessage('error', 'Network error: Unable to save settings');
+        showMessage('error', 'Network error');
     })
     .finally(() => {
         saveBtn.innerHTML = originalHtml;
@@ -594,16 +623,15 @@ document.getElementById('financeSettingsForm')?.addEventListener('submit', funct
     });
 });
 
-// Initialize on page load
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    populateYearOptions();
-    
     const currentYear = new Date().getFullYear();
-    const yearSelect = document.getElementById('currentYear');
-    if (yearSelect) {
-        yearSelect.value = currentYear;
-        loadYearSettings();
-    }
+    document.getElementById('selectedYear').value = currentYear;
+    document.getElementById('selectedYearDisplay').textContent = currentYear;
+    currentSelectedYear = currentYear;
+    yearPageOffset = 0;
+    renderYearGrid();
+    loadYearSettings();
 });
 </script>
 
@@ -614,5 +642,29 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .animate-fade-in {
     animation: fade-in 0.2s ease-out;
+}
+
+.year-grid-btn {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 36px;
+}
+
+.year-grid-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.year-grid-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+#yearPickerDropdown {
+    animation: fade-in 0.15s ease-out;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
 }
 </style>

@@ -12,152 +12,293 @@ use App\Models\User\User;
 class SocialFellowshipController extends Controller
 {
     public function index()
-{
-    // Debug: Log start
-    \Log::info('SocialFellowship index method called');
-    
-    // Get all families
-    $families = DB::table('families')
-        ->leftJoin('family_members', 'families.id', '=', 'family_members.family_id')
-        ->select('families.*', DB::raw('COUNT(DISTINCT family_members.id) as members_count'))
-        ->groupBy('families.id')
-        ->orderBy('families.created_at', 'desc')
-        ->get();
-    
-    \Log::info('Families count: ' . $families->count());
-    $archiveSections = DB::table('archive_sections')
-        ->where('module', 'social-fellowship')  // Add this filter
-        ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
-        ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
-        ->groupBy('archive_sections.id')
-        ->orderBy('archive_sections.created_at', 'desc')
-        ->get();
-    // Get all tasks with family names
-    $tasks = DB::table('family_tasks')
-        ->join('families', 'family_tasks.family_id', '=', 'families.id')
-        ->leftJoin('users', 'family_tasks.assigned_to', '=', 'users.id')
-        ->select('family_tasks.*', 'families.name as family_name', 'users.name as assigned_name')
-        ->orderByRaw("CASE WHEN family_tasks.status = 'pending' THEN 1 WHEN family_tasks.status = 'in-progress' THEN 2 ELSE 3 END")
-        ->orderBy('family_tasks.due_date', 'asc')
-        ->get();
-    
-    \Log::info('Tasks count: ' . $tasks->count());
-    if ($tasks->count() > 0) {
-        \Log::info('First task: ' . json_encode($tasks->first()));
-    } else {
-        \Log::warning('No tasks found in family_tasks table');
+    {
+        // Debug: Log start
+        \Log::info('SocialFellowship index method called');
+        
+        // Get all families
+        $families = DB::table('families')
+            ->leftJoin('family_members', 'families.id', '=', 'family_members.family_id')
+            ->select('families.*', DB::raw('COUNT(DISTINCT family_members.id) as members_count'))
+            ->groupBy('families.id')
+            ->orderBy('families.created_at', 'desc')
+            ->get();
+        
+        \Log::info('Families count: ' . $families->count());
+        
+        $archiveSections = DB::table('archive_sections')
+            ->where('module', 'social-fellowship')
+            ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
+            ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
+            ->groupBy('archive_sections.id')
+            ->orderBy('archive_sections.created_at', 'desc')
+            ->get();
+        
+        // Get all tasks with subtasks and family names
+        $tasks = DB::table('family_tasks')
+            ->join('families', 'family_tasks.family_id', '=', 'families.id')
+            ->select('family_tasks.*', 'families.name as family_name')
+            ->orderBy('family_tasks.created_at', 'desc')
+            ->get();
+        
+        // Get subtasks for each task
+        foreach ($tasks as $task) {
+            $subtasks = DB::table('task_subtasks')
+                ->where('task_id', $task->id)
+                ->get();
+            
+            $task->subtasks = $subtasks;
+            $task->subtask_count = $subtasks->count();
+            $task->completed_subtasks = $subtasks->where('is_completed', true)->count();
+            $task->progress = $task->subtask_count > 0 
+                ? round(($task->completed_subtasks / $task->subtask_count) * 100) 
+                : 0;
+            
+            // Auto-calculate status based on progress
+            if ($task->progress === 100) {
+                $task->status = 'completed';
+            } elseif ($task->progress > 0) {
+                $task->status = 'in-progress';
+            } else {
+                $task->status = 'pending';
+            }
+        }
+        
+        \Log::info('Tasks count: ' . $tasks->count());
+        
+        // Get action plans with stats
+        $actionPlans = DB::table('family_action_plans')
+            ->leftJoin('families', 'family_action_plans.family_id', '=', 'families.id')
+            ->select('family_action_plans.*', 'families.name as family_name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        \Log::info('Action Plans count: ' . $actionPlans->count());
+        
+        $totalActionPlans = $actionPlans->count();
+        $completedPlans = $actionPlans->where('status', 'completed')->count();
+        $inProgressPlans = $actionPlans->where('status', 'in-progress')->count();
+        $pendingPlans = $actionPlans->where('status', 'pending')->count();
+        $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
+        
+        \Log::info('Archive Sections count: ' . $archiveSections->count());
+        
+        // Available users (not in any family)
+        $availableUsers = DB::table('users')
+            ->whereNotIn('id', function($query) {
+                $query->select('user_id')->from('family_members');
+            })
+            ->get();
+        
+        \Log::info('Available Users count: ' . $availableUsers->count());
+        
+        // All users for users tab (including family info)
+        $allUsers = DB::table('users')
+            ->leftJoin('family_members', 'users.id', '=', 'family_members.user_id')
+            ->leftJoin('families', 'family_members.family_id', '=', 'families.id')
+            ->select(
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.phone',
+                'users.province',
+                'users.district',
+                'users.sector',
+                'users.village',
+                'family_members.family_id',
+                'family_members.role',
+                'families.name as family_name',
+                DB::raw("CONCAT(COALESCE(users.province, ''), ', ', COALESCE(users.district, ''), ', ', COALESCE(users.sector, '')) as residence")
+            )
+            ->orderBy('users.name')
+            ->paginate(15);
+        
+        \Log::info('All Users count (paginated): ' . $allUsers->total());
+        
+        // Regular users list for dropdowns
+        $users = DB::table('users')->select('id', 'name', 'email')->get();
+        
+        $totalFamilies = $families->count();
+        $totalMembers = DB::table('family_members')->count();
+        
+        // Fix: Count active tasks (tasks that have pending or in-progress status)
+        $activeTasks = DB::table('family_tasks')
+            ->where('status', 'pending')
+            ->orWhere('status', 'in-progress')
+            ->count();
+        
+        // Debug: Check if tables exist
+        $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        $tableNames = array_column($tables, 'table_name');
+        \Log::info('Available tables: ' . implode(', ', $tableNames));
+        
+        return view('modules.social-fellowship.index', compact(
+            'families', 
+            'tasks',
+            'actionPlans',
+            'totalActionPlans',
+            'completedPlans',
+            'inProgressPlans',
+            'pendingPlans',
+            'overallProgress',
+            'archiveSections',
+            'availableUsers',
+            'allUsers',
+            'users',
+            'totalFamilies', 
+            'totalMembers', 
+            'activeTasks'
+        ));
     }
     
-    // Get action plans with stats
-    $actionPlans = DB::table('family_action_plans')
-        ->leftJoin('families', 'family_action_plans.family_id', '=', 'families.id')
-        ->select('family_action_plans.*', 'families.name as family_name')
-        ->orderBy('created_at', 'desc')
-        ->get();
+    /**
+     * Get available users to assign as parent for a family
+     * Only shows users who are already members of the family
+     */
+    public function getAvailableParents($familyId)
+    {
+        try {
+            // Get the family
+            $family = DB::table('families')->where('id', $familyId)->first();
+            
+            if (!$family) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Family not found'
+                ], 404);
+            }
+            
+            // Get users who are members of this family
+            $familyMembers = DB::table('family_members')
+                ->join('users', 'family_members.user_id', '=', 'users.id')
+                ->where('family_members.family_id', $familyId)
+                ->select('users.id', 'users.name', 'users.email')
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'users' => $familyMembers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     
-    \Log::info('Action Plans count: ' . $actionPlans->count());
+    /**
+     * Change family parent - only from existing family members
+     */
+    public function changeParent(Request $request, $familyId)
+    {
+        try {
+            $request->validate([
+                'parent_id' => 'required|exists:users,id',
+                'parent_name' => 'nullable|string'
+            ]);
+            
+            // Get the family
+            $family = DB::table('families')->where('id', $familyId)->first();
+            
+            if (!$family) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Family not found'
+                ], 404);
+            }
+            
+            // Check if the selected user is a member of this family
+            $isMember = DB::table('family_members')
+                ->where('family_id', $familyId)
+                ->where('user_id', $request->parent_id)
+                ->exists();
+            
+            if (!$isMember) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected user is not a member of this family.'
+                ], 422);
+            }
+            
+            // Get the parent name from users table
+            $parentUser = DB::table('users')->where('id', $request->parent_id)->first();
+            $parentName = $parentUser ? $parentUser->name : $request->parent_name;
+            
+            // Update the family
+            DB::table('families')
+                ->where('id', $familyId)
+                ->update([
+                    'parent_id' => $request->parent_id,
+                    'parent_name' => $parentName,
+                    'updated_at' => now()
+                ]);
+            
+            // If there was a previous parent, update their role in family_members back to member
+            if ($family->parent_id) {
+                DB::table('family_members')
+                    ->where('family_id', $familyId)
+                    ->where('user_id', $family->parent_id)
+                    ->update(['role' => 'member']);
+            }
+            
+            // Update the new parent's role to parent
+            DB::table('family_members')
+                ->where('family_id', $familyId)
+                ->where('user_id', $request->parent_id)
+                ->update(['role' => 'parent']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Parent updated successfully'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     
-    $totalActionPlans = $actionPlans->count();
-    $completedPlans = $actionPlans->where('status', 'completed')->count();
-    $inProgressPlans = $actionPlans->where('status', 'in-progress')->count();
-    $pendingPlans = $actionPlans->where('status', 'pending')->count();
-    $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
-    
-   
-    \Log::info('Archive Sections count: ' . $archiveSections->count());
-    
-    // Available users (not in any family)
-    $availableUsers = DB::table('users')
-        ->whereNotIn('id', function($query) {
-            $query->select('user_id')->from('family_members');
-        })
-        ->get();
-    
-    \Log::info('Available Users count: ' . $availableUsers->count());
-    
-    // All users for users tab (including family info)
-    $allUsers = DB::table('users')
-        ->leftJoin('family_members', 'users.id', '=', 'family_members.user_id')
-        ->leftJoin('families', 'family_members.family_id', '=', 'families.id')
-        ->select(
-            'users.id',
-            'users.name',
-            'users.email',
-            'users.phone',
-            'users.province',
-            'users.district',
-            'users.sector',
-            'users.village',
-            'family_members.family_id',
-            'family_members.role',
-            'families.name as family_name',
-            DB::raw("CONCAT(COALESCE(users.province, ''), ', ', COALESCE(users.district, ''), ', ', COALESCE(users.sector, '')) as residence")
-        )
-        ->orderBy('users.name')
-        ->paginate(15);
-    
-    \Log::info('All Users count (paginated): ' . $allUsers->total());
-    
-    // Regular users list for dropdowns
-    $users = DB::table('users')->select('id', 'name', 'email')->get();
-    
-    $totalFamilies = $families->count();
-    $totalMembers = DB::table('family_members')->count();
-    $activeTasks = DB::table('family_tasks')->where('status', 'pending')->count();
-    
-    // Debug: Check if tables exist
-    $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-    $tableNames = array_column($tables, 'table_name');
-    \Log::info('Available tables: ' . implode(', ', $tableNames));
-    
-    return view('modules.social-fellowship.index', compact(
-        'families', 
-        'tasks',
-        'actionPlans',
-        'totalActionPlans',
-        'completedPlans',
-        'inProgressPlans',
-        'pendingPlans',
-        'overallProgress',
-        'archiveSections',
-        'availableUsers',
-        'allUsers',
-        'users',
-        'totalFamilies', 
-        'totalMembers', 
-        'activeTasks'
-    ));
-}
-
-// Add a debug route to check data
-public function debugData()
-{
-    $data = [];
-    
-    // Check families table
-    $data['families_count'] = DB::table('families')->count();
-    $data['families'] = DB::table('families')->get();
-    
-    // Check family_tasks table
-    $data['family_tasks_count'] = DB::table('family_tasks')->count();
-    $data['family_tasks'] = DB::table('family_tasks')->get();
-    
-    // Check family_action_plans table
-    $data['family_action_plans_count'] = DB::table('family_action_plans')->count();
-    $data['family_action_plans'] = DB::table('family_action_plans')->get();
-    
-    // Check archive_sections table
-    $data['archive_sections_count'] = DB::table('archive_sections')->count();
-    $data['archive_sections'] = DB::table('archive_sections')->get();
-    
-    // Check archive_pages table
-    $data['archive_pages_count'] = DB::table('archive_pages')->count();
-    
-    // Check family_members table
-    $data['family_members_count'] = DB::table('family_members')->count();
-    
-    return response()->json($data);
-}
+    // Add a debug route to check data
+    public function debugData()
+    {
+        $data = [];
+        
+        // Check families table
+        $data['families_count'] = DB::table('families')->count();
+        $data['families'] = DB::table('families')->get();
+        
+        // Check family_tasks table
+        $data['family_tasks_count'] = DB::table('family_tasks')->count();
+        $data['family_tasks'] = DB::table('family_tasks')->get();
+        
+        // Check task_subtasks table
+        $data['task_subtasks_count'] = DB::table('task_subtasks')->count();
+        $data['task_subtasks'] = DB::table('task_subtasks')->get();
+        
+        // Check family_action_plans table
+        $data['family_action_plans_count'] = DB::table('family_action_plans')->count();
+        $data['family_action_plans'] = DB::table('family_action_plans')->get();
+        
+        // Check archive_sections table
+        $data['archive_sections_count'] = DB::table('archive_sections')->count();
+        $data['archive_sections'] = DB::table('archive_sections')->get();
+        
+        // Check archive_pages table
+        $data['archive_pages_count'] = DB::table('archive_pages')->count();
+        
+        // Check family_members table
+        $data['family_members_count'] = DB::table('family_members')->count();
+        
+        return response()->json($data);
+    }
     
     // ==================== FAMILY METHODS ====================
     
@@ -176,6 +317,9 @@ public function debugData()
         try {
             DB::table('family_members')->where('family_id', $id)->delete();
             DB::table('family_tasks')->where('family_id', $id)->delete();
+            DB::table('task_subtasks')->whereIn('task_id', function($query) use ($id) {
+                $query->select('id')->from('family_tasks')->where('family_id', $id);
+            })->delete();
             DB::table('family_action_plans')->where('family_id', $id)->delete();
             DB::table('families')->where('id', $id)->delete();
             
@@ -385,7 +529,7 @@ public function debugData()
         }
     }
     
-    // ==================== TASK METHODS ====================
+    // ==================== TASK METHODS WITH SUBTASKS ====================
     
     public function storeTask(Request $request)
     {
@@ -395,8 +539,8 @@ public function debugData()
                 'description' => 'nullable|string',
                 'family_id' => 'required|exists:families,id',
                 'due_date' => 'nullable|date',
-                'priority' => 'nullable|string',
-                'status' => 'nullable|string'
+                'subtasks' => 'required|array|min:1',
+                'subtasks.*' => 'required|string|max:255'
             ]);
             
             $taskId = DB::table('family_tasks')->insertGetId([
@@ -404,13 +548,27 @@ public function debugData()
                 'description' => $request->description,
                 'family_id' => $request->family_id,
                 'due_date' => $request->due_date,
-                'priority' => $request->priority ?? 'medium',
-                'status' => $request->status ?? 'pending',
-                'assigned_to' => $request->assigned_to ?? null,
+                'status' => 'pending',
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
+            
+            // Create subtasks
+            foreach ($request->subtasks as $subtaskTitle) {
+                if (!empty(trim($subtaskTitle))) {
+                    DB::table('task_subtasks')->insert([
+                        'task_id' => $taskId,
+                        'title' => trim($subtaskTitle),
+                        'is_completed' => false,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+            
+            // Update task progress
+            $this->updateTaskProgress($taskId);
             
             if ($request->ajax()) {
                 return response()->json(['success' => true, 'task_id' => $taskId]);
@@ -430,10 +588,16 @@ public function debugData()
         try {
             $task = DB::table('family_tasks')
                 ->join('families', 'family_tasks.family_id', '=', 'families.id')
-                ->leftJoin('users', 'family_tasks.assigned_to', '=', 'users.id')
                 ->where('family_tasks.id', $id)
-                ->select('family_tasks.*', 'families.name as family_name', 'users.name as assigned_name')
+                ->select('family_tasks.*', 'families.name as family_name')
                 ->first();
+            
+            // Get subtasks
+            if ($task) {
+                $task->subtasks = DB::table('task_subtasks')
+                    ->where('task_id', $task->id)
+                    ->get();
+            }
             
             return response()->json(['success' => true, 'task' => $task]);
         } catch (\Exception $e) {
@@ -445,6 +609,13 @@ public function debugData()
     {
         try {
             $task = DB::table('family_tasks')->where('id', $id)->first();
+            
+            if ($task) {
+                $task->subtasks = DB::table('task_subtasks')
+                    ->where('task_id', $task->id)
+                    ->get();
+            }
+            
             return response()->json(['success' => true, 'task' => $task]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -459,20 +630,69 @@ public function debugData()
                 'description' => 'nullable|string',
                 'family_id' => 'required|exists:families,id',
                 'due_date' => 'nullable|date',
-                'priority' => 'nullable|string',
-                'status' => 'nullable|string'
+                'subtasks' => 'required|array|min:1',
+                'subtasks.*' => 'required|string|max:255'
             ]);
             
-            DB::table('family_tasks')->where('id', $id)->update([
-                'title' => $request->title,
-                'description' => $request->description,
-                'family_id' => $request->family_id,
-                'due_date' => $request->due_date,
-                'priority' => $request->priority ?? 'medium',
-                'status' => $request->status ?? 'pending',
-                'assigned_to' => $request->assigned_to ?? null,
-                'updated_at' => now()
-            ]);
+            // Update the task
+            DB::table('family_tasks')
+                ->where('id', $id)
+                ->update([
+                    'title' => $request->title,
+                    'description' => $request->description,
+                    'family_id' => $request->family_id,
+                    'due_date' => $request->due_date,
+                    'updated_at' => now()
+                ]);
+            
+            // Get existing subtask IDs
+            $existingSubtaskIds = DB::table('task_subtasks')
+                ->where('task_id', $id)
+                ->pluck('id')
+                ->toArray();
+            
+            $subtaskIds = $request->input('subtask_ids', []);
+            $subtaskTitles = $request->input('subtasks', []);
+            
+            // Update or create subtasks
+            foreach ($subtaskTitles as $index => $title) {
+                if (empty(trim($title))) continue;
+                
+                $subtaskId = isset($subtaskIds[$index]) && $subtaskIds[$index] !== 'new' 
+                    ? $subtaskIds[$index] 
+                    : null;
+                
+                if ($subtaskId && in_array($subtaskId, $existingSubtaskIds)) {
+                    // Update existing subtask
+                    DB::table('task_subtasks')
+                        ->where('id', $subtaskId)
+                        ->update([
+                            'title' => trim($title),
+                            'updated_at' => now()
+                        ]);
+                    // Remove from list to keep
+                    $existingSubtaskIds = array_diff($existingSubtaskIds, [$subtaskId]);
+                } else {
+                    // Create new subtask
+                    DB::table('task_subtasks')->insert([
+                        'task_id' => $id,
+                        'title' => trim($title),
+                        'is_completed' => false,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+            
+            // Delete removed subtasks
+            if (!empty($existingSubtaskIds)) {
+                DB::table('task_subtasks')
+                    ->whereIn('id', $existingSubtaskIds)
+                    ->delete();
+            }
+            
+            // Update task progress
+            $this->updateTaskProgress($id);
             
             if ($request->ajax()) {
                 return response()->json(['success' => true]);
@@ -490,6 +710,9 @@ public function debugData()
     public function deleteTask($id)
     {
         try {
+            // Delete subtasks first
+            DB::table('task_subtasks')->where('task_id', $id)->delete();
+            // Delete the task
             DB::table('family_tasks')->where('id', $id)->delete();
             
             if (request()->ajax()) {
@@ -503,6 +726,66 @@ public function debugData()
             }
             return redirect()->back()->with('error', 'Error deleting task: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * Toggle subtask completion status
+     */
+    public function toggleSubtask($id)
+    {
+        try {
+            $subtask = DB::table('task_subtasks')->where('id', $id)->first();
+            
+            if (!$subtask) {
+                return response()->json(['success' => false, 'message' => 'Subtask not found'], 404);
+            }
+            
+            $newStatus = !$subtask->is_completed;
+            
+            DB::table('task_subtasks')
+                ->where('id', $id)
+                ->update([
+                    'is_completed' => $newStatus,
+                    'completed_at' => $newStatus ? now() : null,
+                    'updated_at' => now()
+                ]);
+            
+            // Update task progress
+            $this->updateTaskProgress($subtask->task_id);
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Update task progress based on subtasks
+     */
+    private function updateTaskProgress($taskId)
+    {
+        $subtasks = DB::table('task_subtasks')
+            ->where('task_id', $taskId)
+            ->get();
+        
+        $total = $subtasks->count();
+        $completed = $subtasks->where('is_completed', true)->count();
+        $progress = $total > 0 ? round(($completed / $total) * 100) : 0;
+        
+        $status = 'pending';
+        if ($progress === 100) {
+            $status = 'completed';
+        } elseif ($progress > 0) {
+            $status = 'in-progress';
+        }
+        
+        DB::table('family_tasks')
+            ->where('id', $taskId)
+            ->update([
+                'progress' => $progress,
+                'status' => $status,
+                'updated_at' => now()
+            ]);
     }
     
     // ==================== ACTION PLAN METHODS ====================
@@ -609,253 +892,252 @@ public function debugData()
     
     // ==================== ARCHIVES METHODS ====================
     
-    // ==================== ARCHIVES METHODS ====================
-
-public function storeArchiveSection(Request $request)
-{
-    try {
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-        
-        $id = DB::table('archive_sections')->insertGetId([
-            'name' => $request->name,
-            'module' => 'social-fellowship',
-            'created_by' => auth()->id(),
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Section created successfully',
-            'section_id' => $id
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function updateArchiveSection(Request $request, $id)
-{
-    try {
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-        
-        DB::table('archive_sections')
-            ->where('id', $id)
-            ->where('module', 'social-fellowship')
-            ->update([
+    public function storeArchiveSection(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255'
+            ]);
+            
+            $id = DB::table('archive_sections')->insertGetId([
                 'name' => $request->name,
+                'module' => 'social-fellowship',
+                'created_by' => auth()->id(),
+                'created_at' => now(),
                 'updated_at' => now()
             ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Section updated successfully'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function deleteArchiveSection($id)
-{
-    try {
-        // Delete pages first
-        DB::table('archive_pages')->where('section_id', $id)->delete();
-        DB::table('archive_sections')
-            ->where('id', $id)
-            ->where('module', 'social-fellowship')
-            ->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Section deleted successfully'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function getSectionPages($id)
-{
-    try {
-        $section = DB::table('archive_sections')
-            ->where('id', $id)
-            ->where('module', 'social-fellowship')
-            ->first();
-        
-        if (!$section) {
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Section created successfully',
+                'section_id' => $id
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Section not found'
-            ], 404);
+                'message' => $e->getMessage()
+            ], 500);
         }
-        
-        $pages = DB::table('archive_pages')
-            ->where('section_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        foreach ($pages as $page) {
-            $page->excerpt = Str::limit(strip_tags($page->content), 100);
-            $page->formatted_date = date('F j, Y', strtotime($page->created_at));
-        }
-        
-        return response()->json([
-            'success' => true,
-            'section_name' => $section->name,
-            'pages' => $pages
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
     }
-}
-
-public function storeArchivePage(Request $request)
-{
-    try {
-        $validated = $request->validate([
-            'section_id' => 'required|integer|exists:archive_sections,id',
-            'title' => 'required|string|max:255',
-            'content' => 'required|string'
-        ]);
-        
-        // Verify section exists and belongs to social-fellowship
-        $section = DB::table('archive_sections')
-            ->where('id', $validated['section_id'])
-            ->where('module', 'social-fellowship')
-            ->first();
-        
-        if (!$section) {
+    
+    public function updateArchiveSection(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255'
+            ]);
+            
+            DB::table('archive_sections')
+                ->where('id', $id)
+                ->where('module', 'social-fellowship')
+                ->update([
+                    'name' => $request->name,
+                    'updated_at' => now()
+                ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Section updated successfully'
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid section'
-            ], 400);
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function deleteArchiveSection($id)
+    {
+        try {
+            // Delete pages first
+            DB::table('archive_pages')->where('section_id', $id)->delete();
+            DB::table('archive_sections')
+                ->where('id', $id)
+                ->where('module', 'social-fellowship')
+                ->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Section deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getSectionPages($id)
+    {
+        try {
+            $section = DB::table('archive_sections')
+                ->where('id', $id)
+                ->where('module', 'social-fellowship')
+                ->first();
+            
+            if (!$section) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Section not found'
+                ], 404);
+            }
+            
+            $pages = DB::table('archive_pages')
+                ->where('section_id', $id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            foreach ($pages as $page) {
+                $page->excerpt = Str::limit(strip_tags($page->content), 100);
+                $page->formatted_date = date('F j, Y', strtotime($page->created_at));
+            }
+            
+            return response()->json([
+                'success' => true,
+                'section_name' => $section->name,
+                'pages' => $pages
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function storeArchivePage(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'section_id' => 'required|integer|exists:archive_sections,id',
+                'title' => 'required|string|max:255',
+                'content' => 'required|string'
+            ]);
+            
+            // Verify section exists and belongs to social-fellowship
+            $section = DB::table('archive_sections')
+                ->where('id', $validated['section_id'])
+                ->where('module', 'social-fellowship')
+                ->first();
+            
+            if (!$section) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid section'
+                ], 400);
+            }
+            
+            $id = DB::table('archive_pages')->insertGetId([
+                'section_id' => $validated['section_id'],
+                'title' => $validated['title'],
+                'content' => $validated['content'],
+                'is_published' => $request->has('is_published'),
+                'created_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Page created successfully',
+                'page_id' => $id
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function updateArchivePage(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'content' => 'required|string'
+            ]);
+            
+            DB::table('archive_pages')->where('id', $id)->update([
+                'title' => $validated['title'],
+                'content' => $validated['content'],
+                'is_published' => $request->has('is_published'),
+                'updated_at' => now()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Page updated successfully'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function deleteArchivePage($id)
+    {
+        try {
+            DB::table('archive_pages')->where('id', $id)->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Page deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function editArchivePage($id)
+    {
+        try {
+            $page = DB::table('archive_pages')->where('id', $id)->first();
+            
+            return response()->json([
+                'success' => true,
+                'page' => $page
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function showArchivePage($id)
+    {
+        $page = DB::table('archive_pages')
+            ->join('archive_sections', 'archive_pages.section_id', '=', 'archive_sections.id')
+            ->where('archive_pages.id', $id)
+            ->where('archive_sections.module', 'social-fellowship')
+            ->select('archive_pages.*', 'archive_sections.name as section_name')
+            ->first();
+        
+        if (!$page) {
+            abort(404, 'Page not found');
         }
         
-        $id = DB::table('archive_pages')->insertGetId([
-            'section_id' => $validated['section_id'],
-            'title' => $validated['title'],
-            'content' => $validated['content'],
-            'is_published' => $request->has('is_published'),
-            'created_by' => auth()->id(),
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Page created successfully',
-            'page_id' => $id
-        ]);
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation error',
-            'errors' => $e->errors()
-        ], 422);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
+        return view('modules.social-fellowship.partials.archive-page-show', compact('page'));
     }
-}
-public function updateArchivePage(Request $request, $id)
-{
-    try {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string'
-        ]);
-        
-        DB::table('archive_pages')->where('id', $id)->update([
-            'title' => $validated['title'],
-            'content' => $validated['content'],
-            'is_published' => $request->has('is_published'),
-            'updated_at' => now()
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Page updated successfully'
-        ]);
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation error',
-            'errors' => $e->errors()
-        ], 422);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function deleteArchivePage($id)
-{
-    try {
-        DB::table('archive_pages')->where('id', $id)->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Page deleted successfully'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function editArchivePage($id)
-{
-    try {
-        $page = DB::table('archive_pages')->where('id', $id)->first();
-        
-        return response()->json([
-            'success' => true,
-            'page' => $page
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function showArchivePage($id)
-{
-    $page = DB::table('archive_pages')
-        ->join('archive_sections', 'archive_pages.section_id', '=', 'archive_sections.id')
-        ->where('archive_pages.id', $id)
-        ->where('archive_sections.module', 'social-fellowship')
-        ->select('archive_pages.*', 'archive_sections.name as section_name')
-        ->first();
-    
-    if (!$page) {
-        abort(404, 'Page not found');
-    }
-    
-    return view('modules.social-fellowship.partials.archive-page-show', compact('page'));
-}
 }

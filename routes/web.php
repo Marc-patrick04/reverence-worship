@@ -264,3 +264,4 @@ require __DIR__ . '/profile.php';
 require __DIR__ . '/announcements.php';
 require __DIR__ . '/reports.php';
 require __DIR__ . '/permission.php';
+require __DIR__ . '/parent.php';

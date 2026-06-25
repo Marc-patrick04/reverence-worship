@@ -5,20 +5,40 @@
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6">
 
-   
-    <!-- Year Selector - Requires view permission -->
+    <!-- Year Selector - Same style as Finance module -->
     @if(auth()->check() && auth()->user()->canAccess('financial', 'view'))
     <div class="bg-white rounded-xl shadow-md p-4">
         <div class="flex items-center gap-4">
             <label class="text-sm font-medium text-gray-700">Select Year:</label>
-            <select onchange="window.location.href='?year='+this.value" 
-                    class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                @foreach($availableYears as $year)
-                    <option value="{{ $year }}" {{ $currentYear == $year ? 'selected' : '' }}>
-                        {{ $year }}
-                    </option>
-                @endforeach
-            </select>
+            <div class="relative">
+                <div onclick="toggleYearPicker()" 
+                    class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all min-w-[120px]">
+                    <span id="yearDisplay" class="text-sm font-semibold text-gray-800">{{ $currentYear }}</span>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="yearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <input type="hidden" id="selectedYear" value="{{ $currentYear }}">
+                
+                <div id="yearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
+                    <div class="flex items-center justify-between mb-2">
+                        <button type="button" onclick="changeYearPage(-1)" 
+                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+                        <span id="yearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
+                        <button type="button" onclick="changeYearPage(1)" 
+                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1" id="yearGrid"></div>
+                </div>
+            </div>
         </div>
     </div>
     @endif
@@ -62,7 +82,7 @@
                 <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4">
                     <h4 class="font-bold text-blue-800 text-sm mb-2">2 Abakorinto 9:7</h4>
                     <p class="italic text-blue-700 text-xs leading-relaxed">
-                        "Umuntu wese atange nk'uko abigambiriye mu mutima we, atinuba kandi adahatwa kuko Imana ikunda utanga anezerewe."
+                        "Umuntu wese atange nk'uko abigambiriye mu mutima he, atinuba kandi adahatwa kuko Imana ikunda utanga anezerewe."
                     </p>
                 </div>
             </div>
@@ -170,6 +190,7 @@
         <form method="POST" action="{{ route('financial.submit-payment') }}">
             @csrf
             <input type="hidden" name="term" id="paymentTerm">
+            <input type="hidden" name="year" id="paymentYear" value="{{ $currentYear }}">
             <div class="mt-4 space-y-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Amount (RWF)</label>
@@ -262,6 +283,102 @@
 
 <script>
 let currentTermTarget = 0;
+let yearPageOffset = 0;
+
+// ============================================
+// YEAR PICKER FUNCTIONS
+// ============================================
+
+function toggleYearPicker() {
+    const dropdown = document.getElementById('yearPickerDropdown');
+    const arrow = document.getElementById('yearArrow');
+    
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+        renderYearGrid();
+    } else {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+function closeYearPicker() {
+    const dropdown = document.getElementById('yearPickerDropdown');
+    const arrow = document.getElementById('yearArrow');
+    
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+function changeYearPage(direction) {
+    yearPageOffset += direction;
+    renderYearGrid();
+}
+
+function renderYearGrid() {
+    const currentYear = new Date().getFullYear();
+    const selectedYear = parseInt(document.getElementById('selectedYear').value) || currentYear;
+    const startYear = currentYear + (yearPageOffset * 9) - 4;
+    
+    const grid = document.getElementById('yearGrid');
+    const title = document.getElementById('yearPageTitle');
+    
+    if (!grid) return;
+    
+    const endYear = startYear + 8;
+    title.textContent = `${startYear} - ${endYear}`;
+    
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < 9; i++) {
+        const year = startYear + i;
+        const isSelected = year == selectedYear;
+        const isCurrentYear = year == currentYear;
+        const isDisabled = year < 2000 || year > 2100;
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = year;
+        btn.className = 'py-1.5 px-2 rounded text-xs transition-all text-center';
+        
+        if (isSelected) {
+            btn.classList.add('bg-blue-600', 'text-white', 'font-semibold', 'shadow-sm');
+        } else if (isCurrentYear) {
+            btn.classList.add('bg-blue-50', 'text-blue-600', 'font-medium', 'border', 'border-blue-200');
+        } else {
+            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
+        }
+        
+        if (isDisabled) {
+            btn.classList.add('text-gray-300', 'cursor-not-allowed');
+            btn.disabled = true;
+        } else {
+            btn.onclick = function() {
+                selectYear(year);
+            };
+        }
+        
+        grid.appendChild(btn);
+    }
+}
+
+function selectYear(year) {
+    document.getElementById('selectedYear').value = year;
+    document.getElementById('yearDisplay').textContent = year;
+    
+    closeYearPicker();
+    renderYearGrid();
+    
+    // Redirect to the selected year
+    window.location.href = '?year=' + year;
+}
+
+// ============================================
+// MODAL FUNCTIONS
+// ============================================
 
 function openPaymentModal(term, targetAmount, remainingAmount) {
     // Check if user has pay permission
@@ -271,6 +388,7 @@ function openPaymentModal(term, targetAmount, remainingAmount) {
     @endif
     
     document.getElementById('paymentTerm').value = term;
+    document.getElementById('paymentYear').value = document.getElementById('selectedYear').value;
     const maxAmount = remainingAmount > 0 ? remainingAmount : targetAmount;
     document.getElementById('paymentModalTitle').innerHTML = 'Submit Payment - Term ' + term;
     document.getElementById('maxAmountHint').innerHTML = 'Remaining: ' + numberFormat(maxAmount) + ' RWF';
@@ -296,7 +414,9 @@ function openPaymentHistory() {
         return;
     @endif
     
-    fetch('/financial/payments/history', {
+    const year = document.getElementById('selectedYear').value;
+    
+    fetch(`/financial/payments/history?year=${year}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -330,7 +450,7 @@ function openPaymentHistory() {
             document.getElementById('paymentHistoryContent').innerHTML = `
                 <div class="text-center py-8 text-gray-500">
                     <i class="fas fa-receipt text-3xl mb-2 block"></i>
-                    No payment history found
+                    No payment history found for ${year}
                 </div>
             `;
         }
@@ -364,6 +484,16 @@ document.addEventListener('click', function(event) {
     if (event.target === historyModal) {
         closeModal('paymentHistoryModal');
     }
+    
+    // Close year picker when clicking outside
+    const picker = document.getElementById('yearPickerDropdown');
+    const display = document.getElementById('yearDisplay');
+    if (picker && !picker.classList.contains('hidden') && display) {
+        const parentDiv = display.closest('.relative');
+        if (parentDiv && !parentDiv.contains(event.target)) {
+            closeYearPicker();
+        }
+    }
 });
 
 // ESC key to close modals
@@ -372,12 +502,19 @@ document.addEventListener('keydown', function(event) {
         closeModal('paymentModal');
         closeModal('editAmountModal');
         closeModal('paymentHistoryModal');
+        closeYearPicker();
     }
+});
+
+// Initialize year picker
+document.addEventListener('DOMContentLoaded', function() {
+    renderYearGrid();
 });
 </script>
 
 <style>
 .modal { display: none; }
 .modal:not(.hidden) { display: block !important; }
+.rotate-180 { transform: rotate(180deg); }
 </style>
 @endsection

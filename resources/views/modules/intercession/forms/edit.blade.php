@@ -13,10 +13,6 @@
             <button id="questionsNav" class="nav-tab text-indigo-600 border-b-2 border-indigo-600 pb-2">
                 <i class="fas fa-list mr-1"></i> Questions
             </button>
-            <button id="responsesNav" class="nav-tab hover:text-indigo-600">
-                
-               
-            </button>
             <button id="settingsNav" class="nav-tab hover:text-indigo-600">
                 <i class="fas fa-cog mr-1"></i> Settings
             </button>
@@ -72,75 +68,6 @@
         </div>
     </div>
 
-    <!-- ==================== RESPONSES SECTION ==================== -->
-    <div id="responsesSection" class="max-w-5xl mx-auto" style="display: none;">
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="px-6 py-4 border-b bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">
-                    <i class="fas fa-chart-bar text-indigo-600 mr-2"></i>
-                    Responses
-                    <span class="text-sm font-normal text-gray-500 ml-2">({{ count($submissions ?? []) }} total)</span>
-                </h3>
-            </div>
-
-            @if(isset($submissions) && count($submissions) > 0)
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($submissions as $sub)
-                        <tr class="border-t hover:bg-gray-50">
-                            <td class="px-4 py-3">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                                        {{ strtoupper(substr($sub->user_name ?? 'U', 0, 2)) }}
-                                    </div>
-                                    <span class="text-sm">{{ $sub->user_name ?? 'User #' . $sub->user_id }}</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3">
-                                @if($sub->score)
-                                @php
-                                $score = round($sub->score, 1);
-                                $color = $score >= 80 ? 'bg-green-100 text-green-700' : ($score >= 60 ? 'bg-blue-100 text-blue-700' : ($score >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'));
-                                @endphp
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $color }}">
-                                    {{ number_format($score, 1) }}%
-                                </span>
-                                @else
-                                <span class="text-sm text-gray-400">Pending</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-600">
-                                {{ \Carbon\Carbon::parse($sub->submitted_at)->format('M d, Y h:i A') }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <a href="{{ route('forms.results', $sub->form_id) }}" class="text-blue-600 hover:text-blue-800 text-sm transition">
-                                    <i class="fas fa-eye mr-1"></i> View
-                                </a>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @else
-            <div class="text-center py-12 text-gray-500">
-                <i class="fas fa-inbox text-4xl mb-3 text-gray-300"></i>
-                <p>No responses yet</p>
-                <p class="text-xs mt-1 text-gray-400">Share your form to receive responses</p>
-            </div>
-            @endif
-        </div>
-    </div>
-
     <!-- ==================== SETTINGS SECTION ==================== -->
     <div id="settingsSection" class="max-w-5xl mx-auto" style="display: none;">
         @include('modules.intercession.partials.settings-form')
@@ -176,21 +103,12 @@
     // Navigation
     document.getElementById('questionsNav').addEventListener('click', function() {
         document.getElementById('questionsSection').style.display = 'block';
-        document.getElementById('responsesSection').style.display = 'none';
         document.getElementById('settingsSection').style.display = 'none';
         updateNavActive('questionsNav');
     });
 
-    document.getElementById('responsesNav').addEventListener('click', function() {
-        document.getElementById('questionsSection').style.display = 'none';
-        document.getElementById('responsesSection').style.display = 'block';
-        document.getElementById('settingsSection').style.display = 'none';
-        updateNavActive('responsesNav');
-    });
-
     document.getElementById('settingsNav').addEventListener('click', function() {
         document.getElementById('questionsSection').style.display = 'none';
-        document.getElementById('responsesSection').style.display = 'none';
         document.getElementById('settingsSection').style.display = 'block';
         updateNavActive('settingsNav');
     });
@@ -204,40 +122,35 @@
         document.getElementById(activeId).classList.add('text-indigo-700', 'border-b-2', 'border-indigo-700');
     }
 
-    // Settings functions - these delegate to the settings partial
     // Settings functions - delegate to settings partial
-function showSettingsTab(tabName) {
-    // Use the settings partial's function if available (using _ prefix to avoid conflict)
-    if (typeof window._showSettingsTab === 'function') {
-        window._showSettingsTab(tabName);
-        return;
+    function showSettingsTab(tabName) {
+        if (typeof window._showSettingsTab === 'function') {
+            window._showSettingsTab(tabName);
+            return;
+        }
+        
+        document.querySelectorAll('.settings-content').forEach(function(c) {
+            c.classList.add('hidden');
+        });
+        var content = document.getElementById(tabName + '-settings-content');
+        if (content) content.classList.remove('hidden');
+        document.querySelectorAll('.settings-nav').forEach(function(btn) {
+            btn.classList.remove('border-indigo-600', 'text-indigo-600');
+            btn.classList.add('border-transparent', 'text-gray-500');
+        });
+        var navBtn = document.getElementById(tabName + 'SettingsNav');
+        if (navBtn) {
+            navBtn.classList.remove('border-transparent', 'text-gray-500');
+            navBtn.classList.add('border-indigo-600', 'text-indigo-600');
+        }
     }
-    
-    // Fallback: try to find the settings content directly
-    document.querySelectorAll('.settings-content').forEach(function(c) {
-        c.classList.add('hidden');
-    });
-    var content = document.getElementById(tabName + '-settings-content');
-    if (content) content.classList.remove('hidden');
-    document.querySelectorAll('.settings-nav').forEach(function(btn) {
-        btn.classList.remove('border-indigo-600', 'text-indigo-600');
-        btn.classList.add('border-transparent', 'text-gray-500');
-    });
-    var navBtn = document.getElementById(tabName + 'SettingsNav');
-    if (navBtn) {
-        navBtn.classList.remove('border-transparent', 'text-gray-500');
-        navBtn.classList.add('border-indigo-600', 'text-indigo-600');
-    }
-}
 
-function autoSaveSettings() {
-    if (typeof window._autoSaveSettings === 'function') {
-        window._autoSaveSettings();
+    function autoSaveSettings() {
+        if (typeof window._autoSaveSettings === 'function') {
+            window._autoSaveSettings();
+        }
+        autoSave();
     }
-    autoSave();
-}
-
-   
 
     function showAutoSaveIndicator() {
         var indicator = document.getElementById('autoSaveIndicator');
@@ -366,7 +279,7 @@ function autoSaveSettings() {
                     sectionCount++;
                 }
                 
-                // ✅ FIX: Ensure correctAnswers is properly parsed
+                // Parse correctAnswers
                 var correctAnswers = q.correctAnswers || [];
                 if (typeof correctAnswers === 'string') {
                     try {
@@ -375,7 +288,22 @@ function autoSaveSettings() {
                         correctAnswers = [];
                     }
                 }
-                if (!Array.isArray(correctAnswers)) {
+                
+                // For grid questions, correctAnswers might be an object
+                if (questionType === 'multiple_choice_grid' || questionType === 'checkbox_grid') {
+                    if (typeof correctAnswers === 'object' && !Array.isArray(correctAnswers)) {
+                        // Keep as object for grid
+                    } else if (Array.isArray(correctAnswers)) {
+                        // Convert array to object for grid
+                        var gridCorrect = {};
+                        if (correctAnswers.length > 0) {
+                            correctAnswers.forEach(function(ans, idx) {
+                                gridCorrect[idx] = ans;
+                            });
+                        }
+                        correctAnswers = gridCorrect;
+                    }
+                } else if (!Array.isArray(correctAnswers)) {
                     correctAnswers = [];
                 }
                 
@@ -564,17 +492,44 @@ function autoSaveSettings() {
                     ' class="px-3 py-2 border rounded-lg text-sm border-gray-300 focus:ring-1 focus:ring-indigo-500"></div>';
 
             case 'linear_scale':
-                return '<div class="flex items-center gap-3"><span class="text-xs text-gray-500">Lowest</span><input type="number" value="' + (q.min || 1) + '" onchange="updateAndAutoSave(\'scaleMin\', ' + q.id + ', null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm"><span class="text-gray-400">→</span><input type="number" value="' + (q.max || 5) + '" onchange="updateAndAutoSave(\'scaleMax\', ' + q.id + ', null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm"><span class="text-xs text-gray-500">Highest</span></div>';
+                return '<div class="flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-lg">' +
+                    '<div class="flex items-center gap-3">' +
+                    '<span class="text-xs text-gray-500">Range:</span>' +
+                    '<input type="number" value="' + (q.min || 1) + '" onchange="updateAndAutoSave(\'scaleMin\', ' + q.id + ', null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center">' +
+                    '<span class="text-gray-400">→</span>' +
+                    '<input type="number" value="' + (q.max || 5) + '" onchange="updateAndAutoSave(\'scaleMax\', ' + q.id + ', null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center">' +
+                    '</div>' +
+                    '<div class="flex items-center gap-3 border-l border-gray-300 pl-4">' +
+                    '<span class="text-xs text-gray-500">Correct Value:</span>' +
+                    '<input type="number" value="' + escapeHtml(q.correctAnswer || '') + '" onchange="updateAndAutoSave(\'correctAnswer\', ' + q.id + ', null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center" placeholder="None">' +
+                    '<span class="text-xs text-gray-400">(Leave blank for no correct answer)</span>' +
+                    '</div></div>';
 
             case 'rating':
-                return '<div class="flex items-center gap-3"><span class="text-xs text-gray-500">Stars:</span><select onchange="updateAndAutoSave(\'ratingMax\', ' + q.id + ', null, this.value)" class="border rounded px-2 py-1 text-sm">' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function(n) {
-                    return '<option value="' + n + '" ' + ((q.max || 5) === n ? 'selected' : '') + '>' + n + ' stars</option>';
-                }).join('') +
-                '</select></div>';
+                var maxStars = q.max || 5;
+                return '<div class="flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-lg">' +
+                    '<div class="flex items-center gap-3">' +
+                    '<span class="text-xs text-gray-500">Stars:</span>' +
+                    '<select onchange="updateAndAutoSave(\'ratingMax\', ' + q.id + ', null, this.value)" class="border rounded px-2 py-1 text-sm">' +
+                    [1,2,3,4,5,6,7,8,9,10].map(function(n) {
+                        return '<option value="' + n + '" ' + ((q.max || 5) === n ? 'selected' : '') + '>' + n + ' stars</option>';
+                    }).join('') +
+                    '</select>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-3 border-l border-gray-300 pl-4">' +
+                    '<span class="text-xs text-gray-500">Correct Value:</span>' +
+                    '<select onchange="updateAndAutoSave(\'correctAnswer\', ' + q.id + ', null, this.value)" class="border rounded px-2 py-1 text-sm">' +
+                    '<option value="">None</option>' +
+                    Array.from({length: maxStars}, function(_, i) { return i + 1; }).map(function(n) {
+                        return '<option value="' + n + '" ' + (q.correctAnswer == n ? 'selected' : '') + '>' + n + ' star' + (n > 1 ? 's' : '') + '</option>';
+                    }).join('') +
+                    '</select>' +
+                    '<span class="text-xs text-gray-400">(Leave blank for no correct answer)</span>' +
+                    '</div></div>';
 
             case 'multiple_choice_grid':
-            case 'checkbox_grid':
-                return '<div class="grid grid-cols-2 gap-4">' +
+                var gridHtml = '<div class="bg-gray-50 p-3 rounded-lg">' +
+                    '<div class="grid grid-cols-2 gap-4">' +
                     '<div><label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>' +
                     (q.rows || ['Row 1']).map(function(r, i) {
                         return '<div class="flex items-center gap-1 mb-1"><span class="text-gray-500 w-5 text-xs">' + (i + 1) + '.</span><input type="text" value="' + escapeHtml(r) + '" onchange="updateAndAutoSave(\'row\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeRow(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';
@@ -584,11 +539,95 @@ function autoSaveSettings() {
                     (q.columns || ['Column 1']).map(function(c, i) {
                         return '<div class="flex items-center gap-1 mb-1"><input type="text" value="' + escapeHtml(c) + '" onchange="updateAndAutoSave(\'column\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeColumn(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';
                     }).join('') +
-                    '<button onclick="event.stopPropagation(); addColumn(' + q.id + ')" class="text-indigo-600 text-xs">+ Add column</button></div></div>';
+                    '<button onclick="event.stopPropagation(); addColumn(' + q.id + ')" class="text-indigo-600 text-xs">+ Add column</button></div>' +
+                    '</div>' +
+                    '<div class="mt-3 pt-3 border-t border-gray-200">' +
+                    '<label class="block text-xs font-medium text-gray-700 mb-2">Correct Answers (per row):</label>';
+                
+                (q.rows || ['Row 1']).forEach(function(r, rowIndex) {
+                    var rowCorrect = (q.correctAnswers && q.correctAnswers[rowIndex]) ? q.correctAnswers[rowIndex] : '';
+                    gridHtml += '<div class="flex items-center gap-2 mb-1">' +
+                        '<span class="text-xs font-medium text-gray-600 w-16 truncate">' + escapeHtml(r) + ':</span>' +
+                        '<select onchange="updateGridCorrectAnswer(' + q.id + ', ' + rowIndex + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">' +
+                        '<option value="">None</option>';
+                    (q.columns || ['Column 1']).forEach(function(c) {
+                        gridHtml += '<option value="' + escapeHtml(c) + '" ' + (rowCorrect === c ? 'selected' : '') + '>' + escapeHtml(c) + '</option>';
+                    });
+                    gridHtml += '</select></div>';
+                });
+                
+                gridHtml += '<span class="text-xs text-gray-400">Select the correct answer for each row</span></div></div>';
+                return gridHtml;
+
+            case 'checkbox_grid':
+                var checkboxGridHtml = '<div class="bg-gray-50 p-3 rounded-lg">' +
+                    '<div class="grid grid-cols-2 gap-4">' +
+                    '<div><label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>' +
+                    (q.rows || ['Row 1']).map(function(r, i) {
+                        return '<div class="flex items-center gap-1 mb-1"><span class="text-gray-500 w-5 text-xs">' + (i + 1) + '.</span><input type="text" value="' + escapeHtml(r) + '" onchange="updateAndAutoSave(\'row\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeRow(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';
+                    }).join('') +
+                    '<button onclick="event.stopPropagation(); addRow(' + q.id + ')" class="text-indigo-600 text-xs">+ Add row</button></div>' +
+                    '<div><label class="block text-xs font-medium text-gray-700 mb-1">Columns</label>' +
+                    (q.columns || ['Column 1']).map(function(c, i) {
+                        return '<div class="flex items-center gap-1 mb-1"><input type="text" value="' + escapeHtml(c) + '" onchange="updateAndAutoSave(\'column\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeColumn(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';
+                    }).join('') +
+                    '<button onclick="event.stopPropagation(); addColumn(' + q.id + ')" class="text-indigo-600 text-xs">+ Add column</button></div>' +
+                    '</div>' +
+                    '<div class="mt-3 pt-3 border-t border-gray-200">' +
+                    '<label class="block text-xs font-medium text-gray-700 mb-2">Correct Answers (select all that apply per row):</label>';
+                
+                (q.rows || ['Row 1']).forEach(function(r, rowIndex) {
+                    checkboxGridHtml += '<div class="mb-2">' +
+                        '<span class="text-xs font-medium text-gray-600 block mb-1">' + escapeHtml(r) + ':</span>' +
+                        '<div class="flex flex-wrap gap-2 ml-2">';
+                    (q.columns || ['Column 1']).forEach(function(c) {
+                        var isChecked = q.correctAnswers && q.correctAnswers[rowIndex] && q.correctAnswers[rowIndex].includes ? q.correctAnswers[rowIndex].includes(c) : false;
+                        checkboxGridHtml += '<label class="flex items-center gap-1 cursor-pointer">' +
+                            '<input type="checkbox" value="' + escapeHtml(c) + '" ' + (isChecked ? 'checked' : '') + 
+                            ' onchange="updateGridCheckboxCorrect(' + q.id + ', ' + rowIndex + ', \'' + escapeHtml(c) + '\', this.checked)" ' +
+                            'class="w-3 h-3 text-green-600 rounded">' +
+                            '<span class="text-xs">' + escapeHtml(c) + '</span>' +
+                            '</label>';
+                    });
+                    checkboxGridHtml += '</div></div>';
+                });
+                
+                checkboxGridHtml += '<span class="text-xs text-gray-400">Select all correct answers for each row</span></div></div>';
+                return checkboxGridHtml;
 
             default:
                 return '<input type="text" class="w-full text-sm border-0 border-b border-gray-300" placeholder="Answer" disabled>';
         }
+    }
+
+    // Function to update grid correct answer (for multiple choice grid)
+    function updateGridCorrectAnswer(id, rowIndex, value) {
+        var q = questions.find(function(question) { return question.id === id; });
+        if (!q) return;
+        
+        if (!q.correctAnswers) q.correctAnswers = {};
+        q.correctAnswers[rowIndex] = value;
+        autoSave();
+    }
+
+    // Function to update grid checkbox correct answers (for checkbox grid)
+    function updateGridCheckboxCorrect(id, rowIndex, value, checked) {
+        var q = questions.find(function(question) { return question.id === id; });
+        if (!q) return;
+        
+        if (!q.correctAnswers) q.correctAnswers = {};
+        if (!q.correctAnswers[rowIndex]) q.correctAnswers[rowIndex] = [];
+        
+        if (checked) {
+            if (!q.correctAnswers[rowIndex].includes(value)) {
+                q.correctAnswers[rowIndex].push(value);
+            }
+        } else {
+            q.correctAnswers[rowIndex] = q.correctAnswers[rowIndex].filter(function(v) {
+                return v !== value;
+            });
+        }
+        autoSave();
     }
 
     function updateAndAutoSave(type, id, index, value, checked) {
@@ -855,7 +894,7 @@ function autoSaveSettings() {
             title: title,
             description: description,
             questions: questions.map(function(q) {
-                return {
+                var questionData = {
                     type: q.type,
                     text: q.text || null,
                     title: q.title || null,
@@ -872,6 +911,7 @@ function autoSaveSettings() {
                     correctAnswer: q.correctAnswer || null,
                     correctAnswers: q.correctAnswers || null
                 };
+                return questionData;
             }),
             settings: settings
         };
@@ -967,6 +1007,8 @@ function autoSaveSettings() {
     window.changeQuestionType = changeQuestionType;
     window.showSettingsTab = showSettingsTab;
     window.autoSaveSettings = autoSaveSettings;
+    window.updateGridCorrectAnswer = updateGridCorrectAnswer;
+    window.updateGridCheckboxCorrect = updateGridCheckboxCorrect;
 </script>
 
 <style>

@@ -37,7 +37,7 @@
                     <h3 class="font-medium text-gray-800 text-sm mb-1">Release grade</h3>
                     <div class="space-y-1.5 mt-1">
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="release_grade" value="immediately" checked onchange="autoSaveSettings()" class="text-indigo-600 text-sm">
+                            <input type="radio" name="release_grade" value="immediately"  onchange="autoSaveSettings()" class="text-indigo-600 text-sm">
                             <span class="text-xs">Immediately after submission</span>
                             <span class="text-xs text-gray-400">(Users see score right away)</span>
                         </label>
@@ -47,7 +47,7 @@
                             <span class="text-xs text-gray-400">(Admin must review and release scores)</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="release_grade" value="never" onchange="autoSaveSettings()" class="text-indigo-600 text-sm">
+                            <input type="radio" name="release_grade" value="never" checked onchange="autoSaveSettings()" class="text-indigo-600 text-sm">
                             <span class="text-xs">Never show score</span>
                             <span class="text-xs text-gray-400">(Keep scores private)</span>
                         </label>
@@ -76,16 +76,7 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
-            <div class="flex justify-between items-start py-3 border-b">
-                <div>
-                    <h3 class="font-medium text-gray-800 text-sm">Allow response editing</h3>
-                    <p class="text-xs text-gray-500">Users can edit their responses after submission</p>
-                </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="allowEditing" onchange="autoSaveSettings();">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
+            
             <div class="flex justify-between items-start py-3 border-b">
                 <div>
                     <h3 class="font-medium text-gray-800 text-sm">Limit to 1 response</h3>
@@ -106,11 +97,11 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
-            <div class="py-3">
+            <!-- <div class="py-3">
                 <h3 class="font-medium text-gray-800 text-sm mb-1">Submission message</h3>
                 <p class="text-xs text-gray-500 mb-2">Custom message shown after form submission</p>
                 <textarea id="confirmationMessage" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onchange="autoSaveSettings()">Your response has been recorded. Thank you!</textarea>
-            </div>
+            </div> -->
         </div>
 
         <!-- Presentation Settings -->
@@ -136,19 +127,19 @@
                     <span class="text-xs text-gray-400">(Display numbering on questions)</span>
                 </label>
             </div>
-            <div class="py-2 border-b">
+            <!-- <div class="py-2 border-b">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="onePageAtATime" class="rounded text-indigo-600 text-sm" onchange="autoSaveSettings()">
                     <span class="text-sm">Show one page at a time</span>
                     <span class="text-xs text-gray-400">(Break form into multiple pages)</span>
                 </label>
-            </div>
+            </div> -->
             <div class="py-2">
-                <label class="flex items-center gap-2 cursor-pointer">
+                <!-- <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="showTimer" class="rounded text-indigo-600 text-sm" onchange="toggleTimerSettings(); autoSaveSettings();">
                     <span class="text-sm">Enable time limit</span>
                     <span class="text-xs text-gray-400">(Set a time limit for completing the form)</span>
-                </label>
+                </label> -->
                 <div id="timerSettings" class="mt-3 ml-6 hidden">
                     <div class="flex items-center gap-3">
                         <span class="text-sm text-gray-600">Time limit:</span>
@@ -187,26 +178,7 @@
 
         <!-- Advanced Settings -->
         <div id="advanced-settings-content" class="settings-content hidden space-y-3">
-            <div class="py-2 border-b">
-                <h3 class="font-medium text-gray-800 text-sm mb-2">Form Access Control</h3>
-                <div class="space-y-2">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="restrictByDepartment" class="rounded text-indigo-600 text-sm" onchange="toggleDepartmentRestriction(); autoSaveSettings();">
-                        <span class="text-sm">Restrict by department</span>
-                        <span class="text-xs text-gray-400">(Only specific departments can view)</span>
-                    </label>
-                    <div id="departmentList" class="ml-6 hidden">
-                        <select id="allowedDepartments" multiple class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                            <option value="all">All Departments</option>
-                            <option value="music">Music</option>
-                            <option value="youth">Youth</option>
-                            <option value="children">Children</option>
-                            <option value="administration">Administration</option>
-                        </select>
-                        <p class="text-xs text-gray-400 mt-1">Hold Ctrl/Cmd to select multiple departments</p>
-                    </div>
-                </div>
-            </div>
+            
             <div class="py-2 border-b">
                 <h3 class="font-medium text-gray-800 text-sm mb-2">Notifications</h3>
                 <div class="space-y-2">
@@ -307,6 +279,7 @@
 </style>
 
 <script>
+// ==================== TAB NAVIGATION ====================
 function showSettingsTab(tabName) {
     document.querySelectorAll('.settings-content').forEach(c => c.classList.add('hidden'));
     document.getElementById(`${tabName}-settings-content`).classList.remove('hidden');
@@ -318,8 +291,9 @@ function showSettingsTab(tabName) {
     document.getElementById(`${tabName}SettingsNav`).classList.add('border-indigo-600', 'text-indigo-600');
 }
 
+// ==================== TOGGLE FUNCTIONS ====================
 function toggleQuizSettings() {
-    const isChecked = document.getElementById('isQuiz').checked;
+    const isChecked = document.getElementById('isQuiz')?.checked;
     const quizDetails = document.getElementById('quizDetails');
     if (quizDetails) {
         quizDetails.style.display = isChecked ? 'block' : 'none';
@@ -327,7 +301,7 @@ function toggleQuizSettings() {
 }
 
 function toggleTimerSettings() {
-    const isChecked = document.getElementById('showTimer').checked;
+    const isChecked = document.getElementById('showTimer')?.checked;
     const timerSettings = document.getElementById('timerSettings');
     if (timerSettings) {
         timerSettings.style.display = isChecked ? 'block' : 'none';
@@ -335,19 +309,185 @@ function toggleTimerSettings() {
 }
 
 function toggleDepartmentRestriction() {
-    const isChecked = document.getElementById('restrictByDepartment').checked;
+    const isChecked = document.getElementById('restrictByDepartment')?.checked;
     const departmentList = document.getElementById('departmentList');
     if (departmentList) {
         departmentList.style.display = isChecked ? 'block' : 'none';
     }
 }
 
-function autoSaveSettings() {
-    // Get all settings values
-    const settings = {
+// ==================== LOAD SETTINGS FROM FORM DATA ====================
+function loadSettingsFromForm(formSettings) {
+    // If no form settings provided, use defaults
+    if (!formSettings) {
+        setDefaultSettings();
+        return;
+    }
+    
+    try {
+        const s = typeof formSettings === 'string' ? JSON.parse(formSettings) : formSettings;
+        
+        console.log('Loading settings from form data:', s);
+        
+        // ===== QUIZ SETTINGS =====
+        if (document.getElementById('isQuiz')) {
+            document.getElementById('isQuiz').checked = s.is_quiz !== false;
+            toggleQuizSettings();
+        }
+        
+        // ===== RELEASE GRADE =====
+        // Check if release_grade exists in settings
+        if (s.release_grade) {
+            // Use the saved value
+            const radio = document.querySelector(`input[name="release_grade"][value="${s.release_grade}"]`);
+            if (radio) {
+                radio.checked = true;
+            } else {
+                // If value not found, fallback to 'immediately'
+                const defaultRadio = document.querySelector('input[name="release_grade"][value="immediately"]');
+                if (defaultRadio) defaultRadio.checked = true;
+            }
+        } else {
+            // No release_grade in settings - use default 'immediately'
+            const defaultRadio = document.querySelector('input[name="release_grade"][value="immediately"]');
+            if (defaultRadio) defaultRadio.checked = true;
+        }
+        
+        // Default points
+        if (document.getElementById('defaultPoints')) {
+            document.getElementById('defaultPoints').value = s.default_points || 1;
+        }
+        
+        // ===== RESPONSE SETTINGS =====
+        if (document.getElementById('allowViewResponse')) {
+            document.getElementById('allowViewResponse').checked = s.allow_view_response !== false;
+        }
+        if (document.getElementById('allowEditing')) {
+            document.getElementById('allowEditing').checked = s.allow_editing || false;
+        }
+        if (document.getElementById('limitOneResponse')) {
+            document.getElementById('limitOneResponse').checked = s.limit_one_response !== false;
+        }
+        if (document.getElementById('requireLogin')) {
+            document.getElementById('requireLogin').checked = s.require_login !== false;
+        }
+        if (document.getElementById('confirmationMessage')) {
+            document.getElementById('confirmationMessage').value = s.confirmation_message || 'Your response has been recorded. Thank you!';
+        }
+        
+        // ===== PRESENTATION SETTINGS =====
+        if (document.getElementById('showProgressBar')) {
+            document.getElementById('showProgressBar').checked = s.show_progress_bar || false;
+        }
+        if (document.getElementById('shuffleQuestions')) {
+            document.getElementById('shuffleQuestions').checked = s.shuffle_questions || false;
+        }
+        if (document.getElementById('showQuestionNumbers')) {
+            document.getElementById('showQuestionNumbers').checked = s.show_question_numbers !== false;
+        }
+        if (document.getElementById('onePageAtATime')) {
+            document.getElementById('onePageAtATime').checked = s.one_page_at_a_time || false;
+        }
+        if (document.getElementById('showTimer')) {
+            document.getElementById('showTimer').checked = s.show_timer || false;
+            toggleTimerSettings();
+        }
+        if (document.getElementById('timeLimit')) {
+            document.getElementById('timeLimit').value = s.time_limit || 30;
+        }
+        
+        // ===== DEFAULTS SETTINGS =====
+        if (document.getElementById('defaultRequired')) {
+            document.getElementById('defaultRequired').checked = s.default_required || false;
+        }
+        if (document.getElementById('publishByDefault')) {
+            document.getElementById('publishByDefault').checked = s.publish_by_default || false;
+        }
+        if (document.getElementById('allowPartialPoints')) {
+            document.getElementById('allowPartialPoints').checked = s.allow_partial_points !== false;
+        }
+        
+        // ===== ADVANCED SETTINGS =====
+        if (document.getElementById('restrictByDepartment')) {
+            document.getElementById('restrictByDepartment').checked = s.restrict_by_department || false;
+            toggleDepartmentRestriction();
+        }
+        if (document.getElementById('notifyOnSubmit')) {
+            document.getElementById('notifyOnSubmit').checked = s.notify_on_submit || false;
+        }
+        if (document.getElementById('notifyUserOnReview')) {
+            document.getElementById('notifyUserOnReview').checked = s.notify_user_on_review || false;
+        }
+        if (document.getElementById('allowExport')) {
+            document.getElementById('allowExport').checked = s.allow_export !== false;
+        }
+        if (document.getElementById('includeTimestamps')) {
+            document.getElementById('includeTimestamps').checked = s.include_timestamps !== false;
+        }
+        
+    } catch (e) {
+        console.error('Error loading settings:', e);
+        setDefaultSettings();
+    }
+}
+
+// ==================== SET DEFAULT SETTINGS ====================
+function setDefaultSettings() {
+    console.log('Setting default settings');
+    
+    // Set default release grade to 'immediately'
+    const defaultRadio = document.querySelector('input[name="release_grade"][value="immediately"]');
+    if (defaultRadio) {
+        defaultRadio.checked = true;
+    }
+    
+    // Set other defaults
+    if (document.getElementById('isQuiz')) {
+        document.getElementById('isQuiz').checked = true;
+        toggleQuizSettings();
+    }
+    
+    if (document.getElementById('defaultPoints')) {
+        document.getElementById('defaultPoints').value = 1;
+    }
+    
+    if (document.getElementById('allowViewResponse')) {
+        document.getElementById('allowViewResponse').checked = true;
+    }
+    
+    if (document.getElementById('limitOneResponse')) {
+        document.getElementById('limitOneResponse').checked = true;
+    }
+    
+    if (document.getElementById('requireLogin')) {
+        document.getElementById('requireLogin').checked = true;
+    }
+    
+    if (document.getElementById('showQuestionNumbers')) {
+        document.getElementById('showQuestionNumbers').checked = true;
+    }
+    
+    if (document.getElementById('allowPartialPoints')) {
+        document.getElementById('allowPartialPoints').checked = true;
+    }
+    
+    if (document.getElementById('allowExport')) {
+        document.getElementById('allowExport').checked = true;
+    }
+    
+    if (document.getElementById('includeTimestamps')) {
+        document.getElementById('includeTimestamps').checked = true;
+    }
+}
+
+// ==================== SAVE SETTINGS ====================
+function getSettings() {
+    const releaseGradeRadio = document.querySelector('input[name="release_grade"]:checked');
+    
+    return {
         is_quiz: document.getElementById('isQuiz')?.checked || false,
-        release_grade: document.querySelector('input[name="release_grade"]:checked')?.value || 'immediately',
-        default_points: document.getElementById('defaultPoints')?.value || 1,
+        release_grade: releaseGradeRadio?.value || 'immediately',
+        default_points: parseInt(document.getElementById('defaultPoints')?.value) || 1,
         allow_view_response: document.getElementById('allowViewResponse')?.checked || false,
         allow_editing: document.getElementById('allowEditing')?.checked || false,
         limit_one_response: document.getElementById('limitOneResponse')?.checked || false,
@@ -358,7 +498,7 @@ function autoSaveSettings() {
         show_question_numbers: document.getElementById('showQuestionNumbers')?.checked || false,
         one_page_at_a_time: document.getElementById('onePageAtATime')?.checked || false,
         show_timer: document.getElementById('showTimer')?.checked || false,
-        time_limit: document.getElementById('timeLimit')?.value || 30,
+        time_limit: parseInt(document.getElementById('timeLimit')?.value) || 30,
         default_required: document.getElementById('defaultRequired')?.checked || false,
         publish_by_default: document.getElementById('publishByDefault')?.checked || false,
         allow_partial_points: document.getElementById('allowPartialPoints')?.checked || false,
@@ -368,133 +508,66 @@ function autoSaveSettings() {
         allow_export: document.getElementById('allowExport')?.checked || false,
         include_timestamps: document.getElementById('includeTimestamps')?.checked || false
     };
-    
-    // Save to localStorage
+}
+
+function autoSaveSettings() {
+    const settings = getSettings();
     localStorage.setItem('form_settings', JSON.stringify(settings));
     
-    // Show auto-save indicator if function exists
     if (typeof window.showAutoSaveIndicator === 'function') {
         window.showAutoSaveIndicator();
     }
     
-    // Trigger main auto-save if function exists
     if (typeof window.autoSave === 'function') {
         window.autoSave();
     }
 }
 
-function loadSettings() {
-    const saved = localStorage.getItem('form_settings');
-    if (saved) {
-        try {
-            const s = JSON.parse(saved);
-            
-            // Quiz settings
-            if (document.getElementById('isQuiz')) {
-                document.getElementById('isQuiz').checked = s.is_quiz !== false;
-                toggleQuizSettings();
+// ==================== INITIALIZE ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // First, set default settings
+    setDefaultSettings();
+    
+    // Check if we have form data from the page (edit mode)
+    if (typeof window.formSettings !== 'undefined' && window.formSettings) {
+        // We have form settings from the server - load them
+        loadSettingsFromForm(window.formSettings);
+    } else {
+        // Create mode - check localStorage for saved draft
+        const saved = localStorage.getItem('form_settings');
+        if (saved) {
+            try {
+                const s = JSON.parse(saved);
+                // Only load if there's actually saved data
+                if (s && Object.keys(s).length > 0 && s.release_grade) {
+                    loadSettingsFromForm(s);
+                } else {
+                    // No valid saved data, keep defaults
+                    setDefaultSettings();
+                }
+            } catch (e) {
+                console.error('Error loading saved settings:', e);
+                setDefaultSettings();
             }
-            
-            // Release grade
-            if (s.release_grade) {
-                const radio = document.querySelector(`input[name="release_grade"][value="${s.release_grade}"]`);
-                if (radio) radio.checked = true;
-            }
-            
-            // Default points
-            if (document.getElementById('defaultPoints')) {
-                document.getElementById('defaultPoints').value = s.default_points || 1;
-            }
-            
-            // Response settings
-            if (document.getElementById('allowViewResponse')) {
-                document.getElementById('allowViewResponse').checked = s.allow_view_response !== false;
-            }
-            if (document.getElementById('allowEditing')) {
-                document.getElementById('allowEditing').checked = s.allow_editing || false;
-            }
-            if (document.getElementById('limitOneResponse')) {
-                document.getElementById('limitOneResponse').checked = s.limit_one_response !== false;
-            }
-            if (document.getElementById('requireLogin')) {
-                document.getElementById('requireLogin').checked = s.require_login !== false;
-            }
-            if (document.getElementById('confirmationMessage')) {
-                document.getElementById('confirmationMessage').value = s.confirmation_message || 'Your response has been recorded. Thank you!';
-            }
-            
-            // Presentation settings
-            if (document.getElementById('showProgressBar')) {
-                document.getElementById('showProgressBar').checked = s.show_progress_bar || false;
-            }
-            if (document.getElementById('shuffleQuestions')) {
-                document.getElementById('shuffleQuestions').checked = s.shuffle_questions || false;
-            }
-            if (document.getElementById('showQuestionNumbers')) {
-                document.getElementById('showQuestionNumbers').checked = s.show_question_numbers !== false;
-            }
-            if (document.getElementById('onePageAtATime')) {
-                document.getElementById('onePageAtATime').checked = s.one_page_at_a_time || false;
-            }
-            if (document.getElementById('showTimer')) {
-                document.getElementById('showTimer').checked = s.show_timer || false;
-                toggleTimerSettings();
-            }
-            if (document.getElementById('timeLimit')) {
-                document.getElementById('timeLimit').value = s.time_limit || 30;
-            }
-            
-            // Defaults settings
-            if (document.getElementById('defaultRequired')) {
-                document.getElementById('defaultRequired').checked = s.default_required || false;
-            }
-            if (document.getElementById('publishByDefault')) {
-                document.getElementById('publishByDefault').checked = s.publish_by_default || false;
-            }
-            if (document.getElementById('allowPartialPoints')) {
-                document.getElementById('allowPartialPoints').checked = s.allow_partial_points !== false;
-            }
-            
-            // Advanced settings
-            if (document.getElementById('restrictByDepartment')) {
-                document.getElementById('restrictByDepartment').checked = s.restrict_by_department || false;
-                toggleDepartmentRestriction();
-            }
-            if (document.getElementById('notifyOnSubmit')) {
-                document.getElementById('notifyOnSubmit').checked = s.notify_on_submit || false;
-            }
-            if (document.getElementById('notifyUserOnReview')) {
-                document.getElementById('notifyUserOnReview').checked = s.notify_user_on_review || false;
-            }
-            if (document.getElementById('allowExport')) {
-                document.getElementById('allowExport').checked = s.allow_export !== false;
-            }
-            if (document.getElementById('includeTimestamps')) {
-                document.getElementById('includeTimestamps').checked = s.include_timestamps !== false;
-            }
-            
-        } catch (e) {
-            console.log('Error loading settings:', e);
+        } else {
+            // No saved settings - keep defaults (immediately is already checked)
+            console.log('No saved settings, using defaults');
         }
     }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Load settings
-    loadSettings();
     
-    // Initialize quiz toggle
+    // Initialize toggles
     toggleQuizSettings();
     toggleTimerSettings();
     toggleDepartmentRestriction();
 });
 
-// Expose functions globally
+// ==================== EXPOSE FUNCTIONS GLOBALLY ====================
 window.showSettingsTab = showSettingsTab;
 window.toggleQuizSettings = toggleQuizSettings;
 window.toggleTimerSettings = toggleTimerSettings;
 window.toggleDepartmentRestriction = toggleDepartmentRestriction;
 window.autoSaveSettings = autoSaveSettings;
-window.loadSettings = loadSettings;
+window.loadSettingsFromForm = loadSettingsFromForm;
+window.getSettings = getSettings;
+window.setDefaultSettings = setDefaultSettings;
 </script>
