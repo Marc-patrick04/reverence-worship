@@ -215,69 +215,74 @@ class IntercessionController extends Controller
     /**
  * Edit action plan - get plan data for editing
  */
+/**
+ * Edit action plan - get plan data for editing
+ */
 public function editActionPlan($id)
 {
     try {
         $plan = DB::table('action_plans')->where('id', $id)->first();
-        $tasks = DB::table('action_plan_tasks')->where('action_plan_id', $id)->get();
+        
+        if (!$plan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plan not found'
+            ], 404);
+        }
         
         return response()->json([
             'success' => true,
-            'plan' => $plan,
-            'tasks' => $tasks
+            'plan' => [
+                'id' => $plan->id,
+                'title' => $plan->title,
+                'description' => $plan->description ?? '',
+                'due_date' => $plan->due_date ?? '',
+                'status' => $plan->status ?? 'pending'
+            ]
         ]);
     } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        Log::error('Edit action plan error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
 }
     
     /**
  * Update action plan
  */
+/**
+ * Update action plan
+ */
 public function updateActionPlan(Request $request, $id)
 {
     try {
-        $validated = $request->validate([
+        $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'due_date' => 'nullable|date'
         ]);
         
-        // Update plan
-        DB::table('action_plans')->where('id', $id)->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'updated_at' => now()
+        DB::table('action_plans')
+            ->where('id', $id)
+            ->update([
+                'title' => $request->title,
+                'description' => $request->description ?? null,
+                'due_date' => $request->due_date ?? null,
+                'updated_at' => now()
+            ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Action plan updated successfully'
         ]);
-        
-        // Update tasks
-        $tasks = $request->get('edit_tasks', []);
-        if (!empty($tasks)) {
-            foreach ($tasks as $taskData) {
-                if (isset($taskData['id']) && !empty($taskData['id'])) {
-                    // Update existing task
-                    DB::table('action_plan_tasks')->where('id', $taskData['id'])->update([
-                        'title' => $taskData['title'] ?? '',
-                        'target_date' => $taskData['target_date'] ?? null,
-                        'updated_at' => now()
-                    ]);
-                } else {
-                    // Create new task
-                    DB::table('action_plan_tasks')->insert([
-                        'action_plan_id' => $id,
-                        'title' => $taskData['title'] ?? '',
-                        'target_date' => $taskData['target_date'] ?? null,
-                        'status' => 'pending',
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                }
-            }
-        }
-        
-        return response()->json(['success' => true]);
     } catch (\Exception $e) {
         Log::error('Update action plan error: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
 }
     

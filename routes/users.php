@@ -15,6 +15,10 @@ Route::middleware('auth')->prefix('users')->group(function () {
     Route::get('/{id}/roles/edit', [UserController::class, 'getEditRolesForm'])->name('users.roles.edit');
     Route::put('/{id}/roles', [UserController::class, 'updateRoles'])->name('users.roles.update');
     Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('/{id}/approve', [UserController::class, 'approve'])->name('users.approve.clean');
+    Route::post('/{id}/reject', [UserController::class, 'reject'])->name('users.reject');
+    Route::post('/{id}/activate', [UserController::class, 'activate'])->name('users.activate.clean');
+    Route::post('/{id}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate.clean');
     Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('/{id}', [UserController::class, 'show'])->name('users.show');
 

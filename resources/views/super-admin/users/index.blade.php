@@ -184,63 +184,40 @@
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->created_at ? $user->created_at->format('M d, Y') : '-' }}</td>
                         @if(auth()->check() && (auth()->user()->canAccess('users', 'view-users') || auth()->user()->canAccess('users', 'edit-user') || auth()->user()->canAccess('users', 'delete-user')))
                         <td class="px-4 py-3 text-sm">
-                            <div class="relative">
-                                <button onclick="toggleDropdown({{ $user->id }})" class="text-gray-400 hover:text-gray-600">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div id="dropdown-{{ $user->id }}" class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-20 hidden">
-                                    @if(auth()->check() && auth()->user()->canAccess('users', 'view-user-details'))
-                                    <button onclick="openViewModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-eye text-blue-500 w-4"></i> View Details
-                                    </button>
-                                    @endif
-                                    
-                                    @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user'))
-                                    <button onclick="openEditModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-edit text-green-500 w-4"></i> Edit User
-                                    </button>
-                                    @endif
-                                    
-                                    @if(!$user->is_active && $user->created_by === null && $user->email_verified_at === null)
+                            <select onchange="handleUserAction(this, {{ $user->id }}, @js($user->name))"
+                                class="w-28 px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Action</option>
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'view-user-details'))
+                                    <option value="view">👁 View Details</option>
+                                @endif
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user'))
+                                    <option value="edit">✎ Edit User</option>
+                                @endif
+                                @if(!$user->is_active && $user->created_by === null && $user->email_verified_at === null)
                                     @if(auth()->check() && auth()->user()->canAccess('users', 'approve-user'))
-                                    <button onclick="openApproveModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-check-circle text-green-500 w-4"></i> Approve User
-                                    </button>
+                                        <option value="approve">✓ Approve User</option>
+                                        <option value="reject">✕ Reject User</option>
                                     @endif
-                                    @endif
-                                    
-                                    @if(auth()->id() !== $user->id && $user->is_active)
+                                @endif
+                                @if(auth()->id() !== $user->id && $user->is_active)
                                     @if(auth()->check() && auth()->user()->canAccess('users', 'deactivate-user'))
-                                    <button onclick="openDeactivateModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-ban text-yellow-500 w-4"></i> Deactivate User
-                                    </button>
+                                        <option value="deactivate">⊘ Deactivate User</option>
                                     @endif
-                                    @endif
-                                    
-                                    @if(auth()->id() !== $user->id && !$user->is_active && $user->created_by !== null)
+                                @endif
+                                @if(auth()->id() !== $user->id && !$user->is_active && $user->created_by !== null)
                                     @if(auth()->check() && auth()->user()->canAccess('users', 'activate-user'))
-                                    <button onclick="openActivateModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-check-circle text-green-500 w-4"></i> Activate User
-                                    </button>
+                                        <option value="activate">✓ Activate User</option>
                                     @endif
-                                    @endif
-                                    
-                                    @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user-roles'))
-                                    <button onclick="openEditRolesModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <i class="fas fa-tags text-purple-500 w-4"></i> Manage Roles
-                                    </button>
-                                    @endif
-                                    
-                                    @if(auth()->id() !== $user->id)
+                                @endif
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user-roles'))
+                                    <option value="roles">⚙ Manage Roles</option>
+                                @endif
+                                @if(auth()->id() !== $user->id)
                                     @if(auth()->check() && auth()->user()->canAccess('users', 'delete-user'))
-                                    <hr class="my-1">
-                                    <button onclick="openDeleteModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                        <i class="fas fa-trash text-red-500 w-4"></i> Delete User
-                                    </button>
+                                        <option value="delete">🗑 Delete User</option>
                                     @endif
-                                    @endif
-                                </div>
-                            </div>
+                                @endif
+                            </select>
                         </td>
                         @endif
                     </tr>
@@ -271,62 +248,41 @@
                         </div>
                     </div>
                     @if(auth()->check() && (auth()->user()->canAccess('users', 'view-users') || auth()->user()->canAccess('users', 'edit-user') || auth()->user()->canAccess('users', 'delete-user')))
-                    <div class="relative">
-                        <button onclick="toggleMobileDropdown({{ $user->id }})" class="p-2 rounded-full hover:bg-gray-100">
-                            <i class="fas fa-ellipsis-v text-gray-500"></i>
-                        </button>
-                        <div id="mobile-dropdown-{{ $user->id }}" class="mobile-dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20 hidden">
+                    <div class="shrink-0 ml-2">
+                        <select onchange="handleUserAction(this, {{ $user->id }}, @js($user->name))"
+                            class="w-24 px-2 py-1 border border-gray-300 rounded-md text-[11px] font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Action</option>
                             @if(auth()->check() && auth()->user()->canAccess('users', 'view-user-details'))
-                            <button onclick="openViewModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-eye text-blue-500 text-xs"></i> View Details
-                            </button>
+                                <option value="view">👁 View Details</option>
                             @endif
-                            
                             @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user'))
-                            <button onclick="openEditModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-edit text-green-500 text-xs"></i> Edit User
-                            </button>
+                                <option value="edit">✎ Edit User</option>
                             @endif
-                            
                             @if(!$user->is_active && $user->created_by === null && $user->email_verified_at === null)
-                            @if(auth()->check() && auth()->user()->canAccess('users', 'approve-user'))
-                            <button onclick="openApproveModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-check-circle text-green-500 text-xs"></i> Approve User
-                            </button>
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'approve-user'))
+                                    <option value="approve">✓ Approve User</option>
+                                    <option value="reject">✕ Reject User</option>
+                                @endif
                             @endif
-                            @endif
-                            
                             @if(auth()->id() !== $user->id && $user->is_active)
-                            @if(auth()->check() && auth()->user()->canAccess('users', 'deactivate-user'))
-                            <button onclick="openDeactivateModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-ban text-yellow-500 text-xs"></i> Deactivate User
-                            </button>
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'deactivate-user'))
+                                    <option value="deactivate">⊘ Deactivate User</option>
+                                @endif
                             @endif
-                            @endif
-                            
                             @if(auth()->id() !== $user->id && !$user->is_active && $user->created_by !== null)
-                            @if(auth()->check() && auth()->user()->canAccess('users', 'activate-user'))
-                            <button onclick="openActivateModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-check-circle text-green-500 text-xs"></i> Activate User
-                            </button>
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'activate-user'))
+                                    <option value="activate">✓ Activate User</option>
+                                @endif
                             @endif
-                            @endif
-                            
                             @if(auth()->check() && auth()->user()->canAccess('users', 'edit-user-roles'))
-                            <button onclick="openEditRolesModal({{ $user->id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                <i class="fas fa-tags text-purple-500 text-xs"></i> Manage Roles
-                            </button>
+                                <option value="roles">⚙ Manage Roles</option>
                             @endif
-                            
                             @if(auth()->id() !== $user->id)
-                            @if(auth()->check() && auth()->user()->canAccess('users', 'delete-user'))
-                            <hr class="my-1">
-                            <button onclick="openDeleteModal({{ $user->id }}, '{{ addslashes($user->name) }}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                <i class="fas fa-trash text-red-500 text-xs"></i> Delete User
-                            </button>
+                                @if(auth()->check() && auth()->user()->canAccess('users', 'delete-user'))
+                                    <option value="delete">🗑 Delete User</option>
+                                @endif
                             @endif
-                            @endif
-                        </div>
+                        </select>
                     </div>
                     @endif
                 </div>
@@ -409,11 +365,11 @@
     </div>
 </div>
 
-<div id="createModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-10 mx-auto p-4 sm:p-5 border w-[95%] sm:w-full max-w-4xl shadow-lg rounded-lg bg-white">
+<div id="createModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full z-[9999] hidden">
+    <div class="relative top-6 sm:top-10 mx-auto p-4 border w-[94%] sm:w-full max-w-2xl shadow-xl rounded-lg bg-white">
         <div class="flex justify-between items-center border-b pb-3 mb-4">
-            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Create New User</h3>
-            <button onclick="closeModal('createModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900">Create New User</h3>
+            <button onclick="closeModal('createModal')" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><i class="fas fa-times"></i></button>
         </div>
         <div id="createUserContent">Loading...</div>
     </div>
@@ -428,6 +384,20 @@
             <div class="flex justify-center gap-3">
                 <button onclick="closeModal('approveModal')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
                 <button id="confirmApproveBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg">Approve</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="rejectModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-[90%] sm:w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div class="text-center">
+            <i class="fas fa-user-times text-red-500 text-4xl mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Reject User</h3>
+            <p class="text-sm text-gray-500 mb-6">Are you sure you want to reject <span id="rejectUserName" class="font-semibold"></span>? This pending registration will be removed.</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeModal('rejectModal')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
+                <button id="confirmRejectBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg">Reject</button>
             </div>
         </div>
     </div>
@@ -499,29 +469,27 @@
     document.getElementById('roleFilter')?.addEventListener('change', applyFilters);
     document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
 
-    // Toggle dropdown functions
-    function toggleDropdown(userId) {
-        const dropdown = document.getElementById(`dropdown-${userId}`);
-        document.querySelectorAll('.dropdown-menu').forEach(d => {
-            if (d.id !== `dropdown-${userId}`) d.classList.add('hidden');
-        });
-        if (dropdown) dropdown.classList.toggle('hidden');
-    }
+    function handleUserAction(select, userId, userName) {
+        const action = select.value;
+        select.value = '';
 
-    function toggleMobileDropdown(userId) {
-        const dropdown = document.getElementById(`mobile-dropdown-${userId}`);
-        document.querySelectorAll('.mobile-dropdown-menu').forEach(d => {
-            if (d.id !== `mobile-dropdown-${userId}`) d.classList.add('hidden');
-        });
-        if (dropdown) dropdown.classList.toggle('hidden');
-    }
+        if (!action) return;
 
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.relative')) {
-            document.querySelectorAll('.dropdown-menu').forEach(d => d.classList.add('hidden'));
-            document.querySelectorAll('.mobile-dropdown-menu').forEach(d => d.classList.add('hidden'));
+        const actions = {
+            view: () => openViewModal(userId),
+            edit: () => openEditModal(userId),
+            approve: () => openApproveModal(userId, userName),
+            reject: () => openRejectModal(userId, userName),
+            deactivate: () => openDeactivateModal(userId, userName),
+            activate: () => openActivateModal(userId, userName),
+            roles: () => openEditRolesModal(userId),
+            delete: () => openDeleteModal(userId, userName)
+        };
+
+        if (actions[action]) {
+            actions[action]();
         }
-    });
+    }
 
     function closeModal(modalId) {
         document.getElementById(modalId)?.classList.add('hidden');
@@ -547,6 +515,12 @@
         document.getElementById('approveUserName').innerHTML = userName;
         document.getElementById('confirmApproveBtn').setAttribute('data-user-id', userId);
         document.getElementById('approveModal').classList.remove('hidden');
+    }
+
+    function openRejectModal(userId, userName) {
+        document.getElementById('rejectUserName').innerHTML = userName;
+        document.getElementById('confirmRejectBtn').setAttribute('data-user-id', userId);
+        document.getElementById('rejectModal').classList.remove('hidden');
     }
 
     function openActivateModal(userId, userName) {
@@ -852,6 +826,12 @@ function showNotification(type, message) {
         processUserAction(userId, userName, 'approve', 'approved');
     });
 
+    document.getElementById('confirmRejectBtn')?.addEventListener('click', function() {
+        const userId = this.getAttribute('data-user-id');
+        const userName = document.getElementById('rejectUserName')?.innerHTML || 'this user';
+        processUserAction(userId, userName, 'reject', 'rejected');
+    });
+
     document.getElementById('confirmActivateBtn')?.addEventListener('click', function() {
         const userId = this.getAttribute('data-user-id');
         const userName = document.getElementById('activateUserName')?.innerHTML || 'this user';
@@ -888,6 +868,10 @@ function showNotification(type, message) {
             break;
         case 'approve':
             url = `/users/${userId}/approve`;
+            method = 'POST';
+            break;
+        case 'reject':
+            url = `/users/${userId}/reject`;
             method = 'POST';
             break;
         case 'activate':
@@ -970,10 +954,6 @@ function showNotification(type, message) {
 <style>
     .modal { display: none; }
     .modal:not(.hidden) { display: block !important; }
-    .dropdown-menu { display: none; }
-    .dropdown-menu:not(.hidden) { display: block !important; }
-    .mobile-dropdown-menu { display: none; }
-    .mobile-dropdown-menu:not(.hidden) { display: block !important; }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
 </style>

@@ -304,6 +304,12 @@ class MusicController extends Controller
         $user->save();
         
         return response()->json(['success' => true]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first(),
+            'errors' => $e->errors(),
+        ], 422);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
@@ -404,6 +410,12 @@ public function exportAllGenerations()
             ->header('Content-Type', 'text/csv; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
         
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first(),
+            'errors' => $e->errors(),
+        ], 422);
     } catch (\Exception $e) {
         \Log::error('Export all generations error: ' . $e->getMessage());
         if (request()->ajax()) {
@@ -426,7 +438,7 @@ public function exportAllGenerations()
 
     // ==================== PUBLIC BOARD METHODS ====================
     
-    public function storeBoardPost(Request $request)
+public function storeBoardPost(Request $request)
 {
     if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
         abort(403, 'You do not have permission to create posts.');
@@ -434,34 +446,95 @@ public function exportAllGenerations()
     
     $validated = $request->validate([
         'title' => 'required|string|max:255',
-        'content' => 'required|string'
+        'content' => 'required|string',
+        'type' => 'required|in:event,update',
+        'event_date' => 'nullable|required_if:type,event|date',
+        'is_published' => 'nullable|boolean',
     ]);
     
-    PublicBoard::create([
+    $post = PublicBoard::create([
         'title' => $validated['title'],
         'content' => $validated['content'],
-        'is_pinned' => $request->has('is_pinned'),
+        'type' => $validated['type'],
+        'event_date' => $validated['event_date'] ?? null,
+        'is_published' => $request->boolean('is_published'),
+        'is_pinned' => $request->boolean('is_pinned'),
         'created_by' => auth()->id()
     ]);
-    
-    return redirect()->back()->with('success', 'Announcement posted successfully!');
+
+    return response()->json(['success' => true, 'message' => 'Board item created.', 'item' => $post], 201);
 }
+
+    public function editBoardPost($id)
+    {
+        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+            abort(403);
+        }
+
+        return response()->json(['success' => true, 'item' => PublicBoard::findOrFail($id)]);
+    }
+
+    public function updateBoardPost(Request $request, $id)
+    {
+        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'type' => 'required|in:event,update',
+            'event_date' => 'nullable|required_if:type,event|date',
+            'is_published' => 'nullable|boolean',
+            'is_pinned' => 'nullable|boolean',
+        ]);
+
+        $item = PublicBoard::findOrFail($id);
+        $item->update([
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'type' => $validated['type'],
+            'event_date' => $validated['event_date'] ?? null,
+            'is_published' => $request->boolean('is_published'),
+            'is_pinned' => $request->boolean('is_pinned'),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Board item updated.', 'item' => $item]);
+    }
+
+    public function togglePublishBoard($id)
+    {
+        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+            abort(403);
+        }
+
+        $item = PublicBoard::findOrFail($id);
+        $item->update(['is_published' => !$item->is_published]);
+
+        return response()->json(['success' => true, 'is_published' => $item->is_published]);
+    }
     
     public function togglePinBoard($id)
     {
+        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+            abort(403);
+        }
         $post = PublicBoard::findOrFail($id);
         $post->is_pinned = !$post->is_pinned;
         $post->save();
         
-        return redirect()->back()->with('success', 'Post ' . ($post->is_pinned ? 'pinned' : 'unpinned'));
+        return response()->json(['success' => true, 'is_pinned' => $post->is_pinned]);
     }
     
     public function deleteBoardPost($id)
     {
+        if (!auth()->user()->canAccess('music-ministry', 'add-board')) {
+            abort(403);
+        }
         $post = PublicBoard::findOrFail($id);
         $post->delete();
         
-        return redirect()->back()->with('success', 'Announcement deleted successfully!');
+        return response()->json(['success' => true, 'message' => 'Board item deleted.']);
     }
 
     // ==================== ACTION PLAN METHODS ====================
@@ -1033,15 +1106,17 @@ public function storeYouTubeVideo(Request $request)
     try {
         $request->validate([
             'title' => 'required|string|max:255',
-            'youtube_id' => 'required|string|max:100'
+            'youtube_id' => 'required|url|max:500'
         ]);
+
+        $youtubeId = $this->extractYouTubeId($request->youtube_id);
         
         $maxOrder = DB::table('landing_youtube_videos')->max('sort_order') ?? 0;
         
         $id = DB::table('landing_youtube_videos')->insertGetId([
             'title' => $request->title,
-            'youtube_id' => $request->youtube_id,
-            'is_published' => $request->has('is_published'),
+            'youtube_id' => $youtubeId,
+            'is_published' => $request->boolean('is_published'),
             'sort_order' => $maxOrder + 1,
             'created_by' => auth()->id(),
             'created_at' => now(),
@@ -1049,6 +1124,12 @@ public function storeYouTubeVideo(Request $request)
         ]);
         
         return response()->json(['success' => true, 'id' => $id]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first(),
+            'errors' => $e->errors(),
+        ], 422);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
@@ -1059,17 +1140,25 @@ public function updateYouTubeVideo(Request $request, $id)
     try {
         $request->validate([
             'title' => 'required|string|max:255',
-            'youtube_id' => 'required|string|max:100'
+            'youtube_id' => 'required|url|max:500'
         ]);
+
+        $youtubeId = $this->extractYouTubeId($request->youtube_id);
         
         DB::table('landing_youtube_videos')->where('id', $id)->update([
             'title' => $request->title,
-            'youtube_id' => $request->youtube_id,
-            'is_published' => $request->has('is_published'),
+            'youtube_id' => $youtubeId,
+            'is_published' => $request->boolean('is_published'),
             'updated_at' => now()
         ]);
         
         return response()->json(['success' => true]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first(),
+            'errors' => $e->errors(),
+        ], 422);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
@@ -1116,8 +1205,9 @@ public function storeFeaturedImage(Request $request)
         $request->validate([
             'title' => 'required|string|max:255',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
+
         
         // Upload image
         $image = $request->file('image');
@@ -1132,6 +1222,7 @@ public function storeFeaturedImage(Request $request)
             'image_path' => $imagePath,
             'description' => $request->description,
             'is_published' => $request->has('is_published'),
+            'is_hero' => false,
             'sort_order' => $maxOrder + 1,
             'created_by' => auth()->id(),
             'created_at' => now(),
@@ -1149,8 +1240,9 @@ public function updateFeaturedImage(Request $request, $id)
     try {
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
+
         
         $updateData = [
             'title' => $request->title,
@@ -1158,6 +1250,10 @@ public function updateFeaturedImage(Request $request, $id)
             'is_published' => $request->has('is_published'),
             'updated_at' => now()
         ];
+
+        if (!$request->has('is_published')) {
+            $updateData['is_hero'] = false;
+        }
         
         // Upload new image if provided
         if ($request->hasFile('image')) {
@@ -1211,8 +1307,10 @@ public function toggleFeaturedPublish($id)
 {
     try {
         $image = DB::table('landing_featured_images')->where('id', $id)->first();
+        $willPublish = !$image->is_published;
         DB::table('landing_featured_images')->where('id', $id)->update([
-            'is_published' => !$image->is_published,
+            'is_published' => $willPublish,
+            'is_hero' => $willPublish ? $image->is_hero : false,
             'updated_at' => now()
         ]);
         return response()->json(['success' => true]);
@@ -1221,11 +1319,40 @@ public function toggleFeaturedPublish($id)
     }
 }
 
+public function toggleFeaturedHero($id)
+{
+    try {
+        $image = DB::table('landing_featured_images')->where('id', $id)->first();
+        if (!$image) {
+            return response()->json(['success' => false, 'message' => 'Image not found.'], 404);
+        }
+
+        DB::table('landing_featured_images')->where('id', $id)->update([
+            'is_hero' => !$image->is_hero,
+            'is_published' => !$image->is_hero ? true : $image->is_published,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $image->is_hero ? 'Image removed from hero.' : 'Image added to hero.',
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
 public function updateLandingOrder(Request $request)
 {
     try {
-        $type = $request->type;
-        $orders = $request->orders;
+        $validated = $request->validate([
+            'type' => 'required|in:youtube,featured',
+            'orders' => 'required|array',
+            'orders.*.id' => 'required|integer',
+            'orders.*.sort_order' => 'required|integer|min:1',
+        ]);
+        $type = $validated['type'];
+        $orders = $validated['orders'];
         
         $table = $type === 'youtube' ? 'landing_youtube_videos' : 'landing_featured_images';
         
@@ -1240,5 +1367,31 @@ public function updateLandingOrder(Request $request)
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
+
+private function extractYouTubeId(string $url): string
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+    $videoId = null;
+
+    if (in_array($host, ['youtu.be', 'www.youtu.be'], true)) {
+        $videoId = explode('/', $path)[0] ?? null;
+    } elseif (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'], true)) {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        if (!empty($query['v'])) {
+            $videoId = $query['v'];
+        } elseif (preg_match('~^(?:shorts|embed|live)/([^/?]+)~', $path, $matches)) {
+            $videoId = $matches[1];
+        }
+    }
+
+    if (!$videoId || !preg_match('/^[A-Za-z0-9_-]{11}$/', $videoId)) {
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'youtube_id' => 'Enter a valid YouTube video link.',
+        ]);
+    }
+
+    return $videoId;
 }
 }

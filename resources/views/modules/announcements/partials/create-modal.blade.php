@@ -80,39 +80,13 @@
             
             <!-- Editor Toolbar (Simple) -->
             <div class="border-t border-gray-200 pt-3 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="Bold">
-                        <i class="fas fa-bold text-sm"></i>
-                    </button>
-                    <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="Italic">
-                        <i class="fas fa-italic text-sm"></i>
-                    </button>
-                    <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="Underline">
-                        <i class="fas fa-underline text-sm"></i>
-                    </button>
-                    <span class="w-px h-4 bg-gray-300"></span>
-                    <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="Bullet list">
-                        <i class="fas fa-list-ul text-sm"></i>
-                    </button>
-                    <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="Numbered list">
-                        <i class="fas fa-list-ol text-sm"></i>
-                    </button>
-                    <span class="w-px h-4 bg-gray-300"></span>
-                    <label class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition cursor-pointer" title="Attach file">
-                        <i class="fas fa-paperclip text-sm"></i>
-                        <input type="file" class="hidden">
-                    </label>
-                    <button type="button" onclick="toggleMoreOptions()" class="p-1.5 text-gray-400 hover:text-gray-600 rounded transition" title="More options">
-                        <i class="fas fa-ellipsis-v text-sm"></i>
-                    </button>
-                </div>
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-lock mr-1"></i> One-way announcement — replies are not monitored.
+                </p>
                 
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="closeCreateModal()" class="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">
                         Discard
-                    </button>
-                    <button type="button" onclick="saveAsDraft()" class="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">
-                        <i class="far fa-save mr-1"></i> Draft
                     </button>
                     <button type="submit" class="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg flex items-center gap-2 transition shadow-sm">
                         <i class="fas fa-paper-plane text-xs"></i> Send
@@ -120,29 +94,6 @@
                 </div>
             </div>
             
-            <!-- More Options -->
-            <div id="moreOptions" class="hidden mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                        <select id="announcementStatus" class="w-full border rounded px-3 py-1.5 text-sm bg-white">
-                            <option value="active">Send Now</option>
-                            <option value="draft">Save as Draft</option>
-                            <option value="scheduled">Schedule</option>
-                        </select>
-                    </div>
-                    <div id="schedulePicker" class="hidden">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Send on</label>
-                        <input type="datetime-local" id="scheduledDateTime" class="w-full border rounded px-3 py-1.5 text-sm bg-white">
-                    </div>
-                    <div class="col-span-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="sendEmail" checked class="rounded text-blue-600">
-                            <span class="text-sm text-gray-700"><i class="far fa-envelope mr-1"></i> Send email notification to recipients</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
         </form>
     </div>
 </div>
@@ -498,16 +449,6 @@ async function submitCreateAnnouncement(event) {
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
-    formData.append('status', document.getElementById('announcementStatus')?.value || 'active');
-    
-    if (document.getElementById('announcementStatus')?.value === 'scheduled') {
-        const scheduleDate = document.getElementById('scheduledDateTime')?.value;
-        if (!scheduleDate) {
-            alert('Please select a schedule date and time');
-            return;
-        }
-        formData.append('scheduled_date', scheduleDate);
-    }
     
     const targetType = document.getElementById('recipientSelect')?.value || 'all';
     formData.append('target_type', targetType);
@@ -526,9 +467,6 @@ async function submitCreateAnnouncement(event) {
         formData.append('target_users', JSON.stringify(Array.from(selectedUsers)));
     }
     
-    if (document.getElementById('sendEmail')?.checked) {
-        formData.append('send_email', '1');
-    }
     
     const submitBtn = event.submitter;
     const originalText = submitBtn.innerHTML;

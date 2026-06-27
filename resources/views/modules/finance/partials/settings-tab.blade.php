@@ -1,12 +1,12 @@
-<div class="max-w-5xl mx-auto py-6 px-4 sm:px-6">
+<div class="max-w-4xl mx-auto py-3 px-2 sm:px-4">
     <!-- Header Section -->
-    <div class="mb-6">
+    <div class="mb-4">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Term Structure Settings</h1>
-               
+                <h1 class="text-xl font-bold text-gray-900">Finance Settings</h1>
+                <p class="text-xs text-gray-500 mt-0.5">Term structure and contribution allocation</p>
             </div>
-            <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shadow-sm">
+            <div class="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
                 <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -20,18 +20,18 @@
         <form id="financeSettingsForm" method="POST">
             @csrf
             
-            <div class="p-6 space-y-6">
+            <div class="p-4 space-y-4">
                 <!-- Configuration Row -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="flex flex-wrap items-end gap-5">
                     <!-- Year Selection - Compact -->
-                    <div class="space-y-1.5">
+                    <div class="space-y-1">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Select Year
                         </label>
                         
                         <div class="relative" id="yearPickerContainer">
                             <div onclick="toggleYearPicker()" 
-                                class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all max-w-[180px]">
+                                class="h-8 flex items-center justify-between border border-gray-300 rounded-lg px-3 bg-white cursor-pointer hover:border-blue-400 transition-all w-[130px]">
                                 <span id="selectedYearDisplay" class="text-sm font-semibold text-gray-800">{{ date('Y') }}</span>
                                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="yearPickerArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -64,16 +64,23 @@
                     </div>
                     
                     <!-- Number of Terms -->
-                    <div class="space-y-1.5">
+                    <div class="space-y-1">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Number of Terms
                         </label>
-                        <div class="flex gap-2">
-                            <input type="number" id="numberOfTerms" min="1" max="12" step="1" 
-                                class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center text-sm">
-                            <button type="button" onclick="updateTermsCount()" 
-                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all">
-                                Apply
+                        <div class="h-8 inline-flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
+                            <button type="button" onclick="adjustTermsCount(-1)"
+                                class="h-full w-8 text-gray-500 hover:bg-gray-100 transition"
+                                title="Remove a term" aria-label="Remove a term">
+                                <i class="fas fa-minus text-xs" aria-hidden="true"></i>
+                            </button>
+                            <input type="number" id="numberOfTerms" min="1" max="12" step="1"
+                                onchange="updateTermsCount()"
+                                class="h-full w-12 border-x border-y-0 border-gray-300 p-0 text-center text-sm focus:ring-0 focus:border-gray-300">
+                            <button type="button" onclick="adjustTermsCount(1)"
+                                class="h-full w-8 text-gray-500 hover:bg-gray-100 transition"
+                                title="Add a term" aria-label="Add a term">
+                                <i class="fas fa-plus text-xs" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -95,14 +102,14 @@
                 </div>
 
                 <!-- Terms Section Header -->
-                <div class="border-t border-gray-100 pt-4">
+                <div class="border-t border-gray-100 pt-3">
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="text-sm font-semibold text-gray-700">Term Distribution</h3>
                           
                         </div>
                         <button type="button" onclick="distributeEvenly()" 
-                            class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 transition-colors">
+                            class="h-8 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-xs text-blue-700 font-medium flex items-center gap-1.5 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
@@ -112,31 +119,22 @@
                 </div>
 
                 <!-- Terms Container -->
-                <div id="termsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div id="termsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <!-- Terms injected via JS -->
                 </div>
 
-                <!-- Summary Panel -->
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Allocation</p>
-                            <div class="flex items-baseline gap-1">
-                                <span id="totalPercentage" class="text-2xl font-bold text-blue-600">0%</span>
-                                <span class="text-sm text-gray-400">/ 100%</span>
-                            </div>
-                        </div>
-                        <div class="flex-1 max-w-md">
-                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div id="progressBar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                        </div>
+                <!-- Allocation Summary -->
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700">Total Allocation</span>
+                        <span id="totalPercentage" class="text-xl font-bold text-amber-600">0%</span>
                     </div>
-                    <p id="percentageWarning" class="text-xs text-red-500 mt-3 hidden flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Total must equal 100%
+                    <div class="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progressBar" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="percentageWarning" class="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                        <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                        <span id="percentageWarningText">Total must equal 100%.</span>
                     </p>
                 </div>
 
@@ -161,9 +159,9 @@
             </div>
 
             <!-- Footer Actions -->
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
                 <button type="submit" id="saveButton" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                    class="h-8 bg-blue-600 hover:bg-blue-700 text-white px-4 py-0 rounded-lg text-xs font-semibold transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
                     </svg>
@@ -266,7 +264,7 @@ function renderYearGrid() {
         if (isCurrentYear && !isSelected) {
             const dot = document.createElement('span');
             dot.className = 'ml-1 text-xs text-blue-500';
-            dot.textContent = '●';
+            dot.textContent = '*';
             btn.appendChild(dot);
         }
         
@@ -318,9 +316,9 @@ function loadYearSettings() {
         const yearInfoText = document.getElementById('yearInfoText');
         if (yearInfoBadge && yearInfoText) {
             yearInfoBadge.classList.remove('hidden');
-            yearInfoText.innerHTML = isHistorical 
-                ? `📜 Viewing historical settings for ${selectedYear}`
-                : `📅 Viewing settings for ${selectedYear}`;
+            yearInfoText.textContent = isHistorical
+                ? `Viewing historical settings for ${selectedYear}`
+                : `Viewing settings for ${selectedYear}`;
         }
         
         if (data.success && data.settings) {
@@ -361,6 +359,7 @@ function loadYearSettings() {
     .finally(() => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
+        updateTotalPercentage();
     });
 }
 
@@ -396,6 +395,13 @@ function distributeEvenly() {
     setTimeout(() => { isUpdating = false; }, 100);
 }
 
+function adjustTermsCount(change) {
+    const input = document.getElementById('numberOfTerms');
+    const currentValue = parseInt(input.value) || currentTermsCount;
+    input.value = Math.min(12, Math.max(1, currentValue + change));
+    updateTermsCount();
+}
+
 function updateTermsCount() {
     if (isUpdating) return;
     isUpdating = true;
@@ -419,12 +425,11 @@ function updateTermsCount() {
     }
     
     renderTerms(existingPercentages);
-    
+
+    isUpdating = false;
     if (!isManualEdit || Object.keys(existingPercentages).length === 0) {
-        setTimeout(() => distributeEvenly(), 100);
+        distributeEvenly();
     }
-    
-    setTimeout(() => { isUpdating = false; }, 100);
 }
 
 function renderTerms(savedPercentages = null) {
@@ -439,17 +444,17 @@ function renderTerms(savedPercentages = null) {
         if (!defaultValue || isNaN(defaultValue)) defaultValue = '';
         
         const termDiv = document.createElement('div');
-        termDiv.className = 'group border border-gray-200 hover:border-gray-300 rounded-xl p-4 bg-white transition-all';
+        termDiv.className = 'group border border-gray-200 hover:border-blue-300 rounded-lg p-3 bg-white transition-colors';
         termDiv.innerHTML = `
-            <div class="flex items-start gap-3">
-                <div class="w-8 h-8 bg-gray-100 group-hover:bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
-                    <span class="text-gray-700 font-semibold text-sm">${i}</span>
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 bg-gray-100 group-hover:bg-blue-50 rounded-md flex items-center justify-center flex-shrink-0 transition-colors">
+                    <span class="text-gray-700 font-semibold text-xs">${i}</span>
                 </div>
                 <div class="flex-1">
-                    <label class="block text-xs font-medium text-gray-500 mb-1.5">Term ${i} Allocation (%)</label>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Term ${i} (%)</label>
                     <input type="number" id="term${i}Percentage" name="term_percentages[]" 
                            value="${defaultValue}" step="0.01" min="0" max="100"
-                           class="term-percentage w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                           class="term-percentage h-8 w-full px-2 py-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                            data-term="${i}"
                            oninput="onPercentageChange(this)">
                     <input type="hidden" name="term_numbers[]" value="${i}">
@@ -467,8 +472,8 @@ function onPercentageChange(input) {
     
     let value = parseFloat(input.value);
     if (isNaN(value)) value = 0;
-    value = Math.min(Math.max(value, 0), 100);
-    input.value = value.toFixed(2);
+    if (value < 0) input.value = 0;
+    if (value > 100) input.value = 100;
     
     updateTotalPercentage();
 }
@@ -485,29 +490,73 @@ function updateTotalPercentage() {
     
     const totalPercentNum = total;
     const totalPercent = totalPercentNum.toFixed(2);
+    const difference = 100 - totalPercentNum;
+    const isBalanced = Math.abs(difference) <= 0.01;
+    const isOver = difference < -0.01;
     
     const totalEl = document.getElementById('totalPercentage');
     if (totalEl) {
         totalEl.textContent = totalPercent + '%';
-        totalEl.className = Math.abs(totalPercentNum - 100) <= 0.01 ? 'text-2xl font-bold text-blue-600' : 'text-2xl font-bold text-red-500';
+        totalEl.className = isBalanced
+            ? 'text-xl font-bold text-emerald-600'
+            : isOver
+                ? 'text-xl font-bold text-red-600'
+                : 'text-xl font-bold text-amber-600';
     }
+
+    const status = document.getElementById('allocationStatus');
+    if (status) {
+        status.textContent = isBalanced ? 'Balanced' : isOver ? 'Over allocated' : 'Incomplete';
+        status.className = isBalanced
+            ? 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700'
+            : isOver
+                ? 'px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700'
+                : 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700';
+    }
+
+    const differenceLabel = document.getElementById('allocationDifferenceLabel');
+    const differenceEl = document.getElementById('allocationDifference');
+    if (differenceLabel && differenceEl) {
+        differenceLabel.textContent = isOver ? 'Excess' : 'Remaining';
+        differenceEl.textContent = Math.abs(difference).toFixed(2) + '%';
+        differenceEl.className = isBalanced
+            ? 'text-xl font-bold text-emerald-600'
+            : isOver
+                ? 'text-xl font-bold text-red-600'
+                : 'text-xl font-bold text-amber-600';
+    }
+
+    const termsEl = document.getElementById('allocationTerms');
+    if (termsEl) termsEl.textContent = termInputs.length;
     
     const progressBar = document.getElementById('progressBar');
     if (progressBar) {
-        let width = Math.min(totalPercentNum, 100);
+        let width = Math.min(Math.max(totalPercentNum, 0), 100);
         progressBar.style.width = width + '%';
-        progressBar.className = totalPercentNum > 100 
-            ? 'h-full bg-red-500 rounded-full transition-all duration-300' 
-            : 'h-full bg-blue-500 rounded-full transition-all duration-300';
+        progressBar.className = isBalanced
+            ? 'h-full bg-emerald-500 rounded-full transition-all duration-300'
+            : isOver
+                ? 'h-full bg-red-500 rounded-full transition-all duration-300'
+                : 'h-full bg-amber-500 rounded-full transition-all duration-300';
     }
     
     const warning = document.getElementById('percentageWarning');
+    const warningText = document.getElementById('percentageWarningText');
     const saveButton = document.getElementById('saveButton');
     
     if (warning && saveButton) {
-        const isInvalid = Math.abs(totalPercentNum - 100) > 0.01;
-        warning.classList.toggle('hidden', !isInvalid);
-        saveButton.disabled = isInvalid;
+        warning.classList.toggle('hidden', isBalanced);
+        warning.className = isBalanced
+            ? 'hidden'
+            : isOver
+                ? 'text-xs text-red-600 mt-2 flex items-center gap-1'
+                : 'text-xs text-amber-600 mt-2 flex items-center gap-1';
+        if (warningText) {
+            warningText.textContent = isOver
+                ? `Reduce allocations by ${Math.abs(difference).toFixed(2)}% before saving.`
+                : `Allocate the remaining ${difference.toFixed(2)}% before saving.`;
+        }
+        saveButton.disabled = !isBalanced;
     }
 }
 
@@ -620,6 +669,7 @@ document.getElementById('financeSettingsForm')?.addEventListener('submit', funct
     .finally(() => {
         saveBtn.innerHTML = originalHtml;
         saveBtn.disabled = false;
+        updateTotalPercentage();
     });
 });
 

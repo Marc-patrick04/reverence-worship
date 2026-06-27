@@ -105,6 +105,33 @@ class UserController extends Controller
         
         return response()->json(['success' => true, 'message' => 'User approved successfully!']);
     }
+
+    /**
+     * Reject a pending user registration.
+     */
+    public function reject(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->is_active || $user->created_by !== null || $user->email_verified_at !== null) {
+            return response()->json(['success' => false, 'message' => 'Only pending users can be rejected.']);
+        }
+
+        $userEmail = $user->email;
+        $userName = $user->name;
+
+        $user->delete();
+
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'user_rejected',
+            'description' => 'Rejected pending user: ' . $userEmail . ' (' . $userName . ')',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Pending user rejected successfully!']);
+    }
     
     /**
      * Activate a previously deactivated user

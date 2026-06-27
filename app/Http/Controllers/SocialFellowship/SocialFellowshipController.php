@@ -11,145 +11,181 @@ use App\Models\User\User;
 
 class SocialFellowshipController extends Controller
 {
-    public function index()
-    {
-        // Debug: Log start
-        \Log::info('SocialFellowship index method called');
-        
-        // Get all families
-        $families = DB::table('families')
-            ->leftJoin('family_members', 'families.id', '=', 'family_members.family_id')
-            ->select('families.*', DB::raw('COUNT(DISTINCT family_members.id) as members_count'))
-            ->groupBy('families.id')
-            ->orderBy('families.created_at', 'desc')
+    public function index(Request $request)
+{
+    // Get the selected year from request, default to current year
+    $selectedYear = $request->get('year', date('Y'));
+    
+    // ============================================
+    // FAMILIES - Filter by year
+    // ============================================
+    $families = DB::table('families')
+        ->leftJoin('family_members', 'families.id', '=', 'family_members.family_id')
+        ->select('families.*', DB::raw('COUNT(DISTINCT family_members.id) as members_count'))
+        ->groupBy('families.id')
+        ->orderBy('families.created_at', 'desc');
+    
+    // ALWAYS filter by year - use the selected year
+    $families = $families->where('families.year', $selectedYear);
+    
+    $families = $families->get();
+    // ============================================
+    // ALL USERS - Get users with their year-specific assignment
+    // Using a subquery to check if user is assigned in the selected year
+    // ============================================
+    $allUsers = DB::table('users')
+        ->leftJoin('family_members', function($join) use ($selectedYear) {
+            $join->on('users.id', '=', 'family_members.user_id')
+                 ->whereRaw('EXTRACT(YEAR FROM family_members.created_at) = ?', [$selectedYear]);
+        })
+        ->leftJoin('families', 'family_members.family_id', '=', 'families.id')
+        ->select(
+            'users.id',
+            'users.name',
+            'users.email',
+            'users.phone',
+            'users.province',
+            'users.district',
+            'users.sector',
+            'users.village',
+            'family_members.family_id',
+            'family_members.role',
+            'families.name as family_name',
+            'families.year as family_year',
+            DB::raw("CONCAT(COALESCE(users.province, ''), ', ', COALESCE(users.district, ''), ', ', COALESCE(users.sector, '')) as residence"),
+            DB::raw("CASE WHEN family_members.id IS NOT NULL THEN true ELSE false END as is_assigned_in_year")
+        )
+        ->orderBy('users.name')
+        ->paginate(15);
+    
+    // ============================================
+    // Get previous/any family assignments for each user
+    // ============================================
+    foreach ($allUsers as $user) {
+        // Get ALL family assignments for this user (not filtered by year)
+        $allFamilies = DB::table('family_members')
+            ->join('families', 'family_members.family_id', '=', 'families.id')
+            ->where('family_members.user_id', $user->id)
+            ->select('families.name', 'families.year', 'family_members.created_at', 'family_members.role')
+            ->orderBy('family_members.created_at', 'desc')
             ->get();
         
-        \Log::info('Families count: ' . $families->count());
+        // Check if user has ANY family assignment
+        $user->has_any_family = $allFamilies->isNotEmpty();
+        $user->all_families = $allFamilies;
         
-        $archiveSections = DB::table('archive_sections')
-            ->where('module', 'social-fellowship')
-            ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
-            ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
-            ->groupBy('archive_sections.id')
-            ->orderBy('archive_sections.created_at', 'desc')
-            ->get();
+        // Find the most recent family assignment that is NOT the selected year
+        $previousFamily = $allFamilies->first(function($family) use ($selectedYear) {
+            return $family->year != $selectedYear;
+        });
         
-        // Get all tasks with subtasks and family names
-        $tasks = DB::table('family_tasks')
-            ->join('families', 'family_tasks.family_id', '=', 'families.id')
-            ->select('family_tasks.*', 'families.name as family_name')
-            ->orderBy('family_tasks.created_at', 'desc')
-            ->get();
-        
-        // Get subtasks for each task
-        foreach ($tasks as $task) {
-            $subtasks = DB::table('task_subtasks')
-                ->where('task_id', $task->id)
-                ->get();
-            
-            $task->subtasks = $subtasks;
-            $task->subtask_count = $subtasks->count();
-            $task->completed_subtasks = $subtasks->where('is_completed', true)->count();
-            $task->progress = $task->subtask_count > 0 
-                ? round(($task->completed_subtasks / $task->subtask_count) * 100) 
-                : 0;
-            
-            // Auto-calculate status based on progress
-            if ($task->progress === 100) {
-                $task->status = 'completed';
-            } elseif ($task->progress > 0) {
-                $task->status = 'in-progress';
-            } else {
-                $task->status = 'pending';
-            }
+        if ($previousFamily) {
+            $user->any_family_name = $previousFamily->name;
+            $user->any_family_year = $previousFamily->year;
+        } else {
+            $user->any_family_name = null;
+            $user->any_family_year = null;
         }
         
-        \Log::info('Tasks count: ' . $tasks->count());
-        
-        // Get action plans with stats
-        $actionPlans = DB::table('family_action_plans')
-            ->leftJoin('families', 'family_action_plans.family_id', '=', 'families.id')
-            ->select('family_action_plans.*', 'families.name as family_name')
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        \Log::info('Action Plans count: ' . $actionPlans->count());
-        
-        $totalActionPlans = $actionPlans->count();
-        $completedPlans = $actionPlans->where('status', 'completed')->count();
-        $inProgressPlans = $actionPlans->where('status', 'in-progress')->count();
-        $pendingPlans = $actionPlans->where('status', 'pending')->count();
-        $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
-        
-        \Log::info('Archive Sections count: ' . $archiveSections->count());
-        
-        // Available users (not in any family)
-        $availableUsers = DB::table('users')
-            ->whereNotIn('id', function($query) {
-                $query->select('user_id')->from('family_members');
-            })
-            ->get();
-        
-        \Log::info('Available Users count: ' . $availableUsers->count());
-        
-        // All users for users tab (including family info)
-        $allUsers = DB::table('users')
-            ->leftJoin('family_members', 'users.id', '=', 'family_members.user_id')
-            ->leftJoin('families', 'family_members.family_id', '=', 'families.id')
-            ->select(
-                'users.id',
-                'users.name',
-                'users.email',
-                'users.phone',
-                'users.province',
-                'users.district',
-                'users.sector',
-                'users.village',
-                'family_members.family_id',
-                'family_members.role',
-                'families.name as family_name',
-                DB::raw("CONCAT(COALESCE(users.province, ''), ', ', COALESCE(users.district, ''), ', ', COALESCE(users.sector, '')) as residence")
-            )
-            ->orderBy('users.name')
-            ->paginate(15);
-        
-        \Log::info('All Users count (paginated): ' . $allUsers->total());
-        
-        // Regular users list for dropdowns
-        $users = DB::table('users')->select('id', 'name', 'email')->get();
-        
-        $totalFamilies = $families->count();
-        $totalMembers = DB::table('family_members')->count();
-        
-        // Fix: Count active tasks (tasks that have pending or in-progress status)
-        $activeTasks = DB::table('family_tasks')
-            ->where('status', 'pending')
-            ->orWhere('status', 'in-progress')
-            ->count();
-        
-        // Debug: Check if tables exist
-        $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-        $tableNames = array_column($tables, 'table_name');
-        \Log::info('Available tables: ' . implode(', ', $tableNames));
-        
-        return view('modules.social-fellowship.index', compact(
-            'families', 
-            'tasks',
-            'actionPlans',
-            'totalActionPlans',
-            'completedPlans',
-            'inProgressPlans',
-            'pendingPlans',
-            'overallProgress',
-            'archiveSections',
-            'availableUsers',
-            'allUsers',
-            'users',
-            'totalFamilies', 
-            'totalMembers', 
-            'activeTasks'
-        ));
+        // If user is NOT assigned in selected year, clear the family data
+        if (!$user->is_assigned_in_year) {
+            $user->family_name = null;
+            $user->family_id = null;
+            $user->family_year = null;
+            $user->role = null;
+        }
     }
+    
+    // ============================================
+    // REGULAR USERS LIST FOR DROPDOWNS
+    // ============================================
+    $users = DB::table('users')->select('id', 'name', 'email')->get();
+    
+    // ============================================
+    // AVAILABLE USERS (not in any family)
+    // ============================================
+    $availableUsers = DB::table('users')
+        ->whereNotIn('id', function($query) {
+            $query->select('user_id')->from('family_members');
+        })
+        ->get();
+    
+    // ============================================
+    // REST OF THE CODE
+    // ============================================
+    $archiveSections = DB::table('archive_sections')
+        ->where('module', 'social-fellowship')
+        ->leftJoin('archive_pages', 'archive_sections.id', '=', 'archive_pages.section_id')
+        ->select('archive_sections.*', DB::raw('COUNT(archive_pages.id) as pages_count'))
+        ->groupBy('archive_sections.id')
+        ->orderBy('archive_sections.created_at', 'desc')
+        ->get();
+    
+    $tasks = DB::table('family_tasks')
+        ->join('families', 'family_tasks.family_id', '=', 'families.id')
+        ->select('family_tasks.*', 'families.name as family_name')
+        ->orderBy('family_tasks.created_at', 'desc')
+        ->get();
+    
+    foreach ($tasks as $task) {
+        $subtasks = DB::table('task_subtasks')
+            ->where('task_id', $task->id)
+            ->get();
+        
+        $task->subtasks = $subtasks;
+        $task->subtask_count = $subtasks->count();
+        $task->completed_subtasks = $subtasks->where('is_completed', true)->count();
+        $task->progress = $task->subtask_count > 0 
+            ? round(($task->completed_subtasks / $task->subtask_count) * 100) 
+            : 0;
+        
+        if ($task->progress === 100) {
+            $task->status = 'completed';
+        } elseif ($task->progress > 0) {
+            $task->status = 'in-progress';
+        } else {
+            $task->status = 'pending';
+        }
+    }
+    
+    $actionPlans = DB::table('family_action_plans')
+        ->leftJoin('families', 'family_action_plans.family_id', '=', 'families.id')
+        ->select('family_action_plans.*', 'families.name as family_name')
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+    $totalActionPlans = $actionPlans->count();
+    $completedPlans = $actionPlans->where('status', 'completed')->count();
+    $inProgressPlans = $actionPlans->where('status', 'in-progress')->count();
+    $pendingPlans = $actionPlans->where('status', 'pending')->count();
+    $overallProgress = $totalActionPlans > 0 ? round(($completedPlans / $totalActionPlans) * 100) : 0;
+    
+    $totalFamilies = $families->count();
+    $totalMembers = DB::table('family_members')->count();
+    $activeTasks = DB::table('family_tasks')
+        ->where('status', 'pending')
+        ->orWhere('status', 'in-progress')
+        ->count();
+    
+    return view('modules.social-fellowship.index', compact(
+        'families', 
+        'tasks',
+        'actionPlans',
+        'totalActionPlans',
+        'completedPlans',
+        'inProgressPlans',
+        'pendingPlans',
+        'overallProgress',
+        'archiveSections',
+        'availableUsers',
+        'allUsers',
+        'users',
+        'totalFamilies', 
+        'totalMembers', 
+        'activeTasks',
+        'selectedYear'
+    ));
+}
     
     /**
      * Get available users to assign as parent for a family
@@ -373,116 +409,20 @@ class SocialFellowshipController extends Controller
     }
     
     public function storeFamily(Request $request)
-    {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'parent_id' => 'nullable|exists:users,id',
-                'parent_name' => 'nullable|string|max:255',
-                'description' => 'nullable|string',
-                'motto' => 'nullable|string'
-            ]);
-            
-            // Check if the selected parent is already a parent of another family
-            if ($request->parent_id) {
-                $existingParent = DB::table('families')
-                    ->where('parent_id', $request->parent_id)
-                    ->first();
-                
-                if ($existingParent) {
-                    return response()->json([
-                        'success' => false, 
-                        'message' => 'This user is already a parent of another family. A parent cannot be in multiple families.'
-                    ], 400);
-                }
-                
-                // Check if the selected parent is already a member of another family
-                $existingMember = DB::table('family_members')
-                    ->where('user_id', $request->parent_id)
-                    ->first();
-                
-                if ($existingMember) {
-                    return response()->json([
-                        'success' => false, 
-                        'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
-                    ], 400);
-                }
-            }
-            
-            $parentName = $request->parent_name;
-            if ($request->parent_id) {
-                $parentUser = DB::table('users')->where('id', $request->parent_id)->first();
-                if ($parentUser) {
-                    $parentName = $parentUser->name;
-                }
-            }
-            
-            $id = DB::table('families')->insertGetId([
-                'name' => $request->name,
-                'parent_name' => $parentName,
-                'parent_id' => $request->parent_id,
-                'description' => $request->description,
-                'motto' => $request->motto,
-                'created_by' => auth()->id(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-            
-            // Add the parent as a member of the family
-            if ($request->parent_id) {
-                DB::table('family_members')->insert([
-                    'family_id' => $id,
-                    'user_id' => $request->parent_id,
-                    'role' => 'parent',
-                    'joined_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-            
-            return response()->json(['success' => true, 'message' => 'Family created successfully', 'family_id' => $id]);
-        } catch (\Illuminate\Database\QueryException $e) {
-            if (str_contains($e->getMessage(), 'unique_user_per_family')) {
-                return response()->json([
-                    'success' => false, 
-                    'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
-                ], 400);
-            }
-            if (str_contains($e->getMessage(), 'unique_parent_per_family')) {
-                return response()->json([
-                    'success' => false, 
-                    'message' => 'This user is already a parent of another family. A parent cannot be in multiple families.'
-                ], 400);
-            }
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-    
-    public function addMember(Request $request, $familyId)
-    {
-        try {
-            $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'role' => 'required|string'
-            ]);
-            
-            // Check if user is already a member of ANY family
-            $existingMember = DB::table('family_members')
-                ->where('user_id', $request->user_id)
-                ->first();
-            
-            if ($existingMember) {
-                return response()->json([
-                    'success' => false, 
-                    'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
-                ], 400);
-            }
-            
-            // Check if user is already a parent of another family
+{
+    try {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'parent_id' => 'nullable|exists:users,id',
+            'parent_name' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'motto' => 'nullable|string'
+        ]);
+        
+        // Check if the selected parent is already a parent of another family
+        if ($request->parent_id) {
             $existingParent = DB::table('families')
-                ->where('parent_id', $request->user_id)
+                ->where('parent_id', $request->parent_id)
                 ->first();
             
             if ($existingParent) {
@@ -492,28 +432,138 @@ class SocialFellowshipController extends Controller
                 ], 400);
             }
             
-            DB::table('family_members')->insert([
-                'family_id' => $familyId,
-                'user_id' => $request->user_id,
-                'role' => $request->role,
-                'joined_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            // Check if the selected parent is already a member of another family
+            $existingMember = DB::table('family_members')
+                ->where('user_id', $request->parent_id)
+                ->first();
             
-            return response()->json(['success' => true, 'message' => 'Member added successfully']);
-        } catch (\Illuminate\Database\QueryException $e) {
-            if (str_contains($e->getMessage(), 'unique_user_per_family')) {
+            if ($existingMember) {
                 return response()->json([
                     'success' => false, 
                     'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
                 ], 400);
             }
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+        
+        $parentName = $request->parent_name;
+        if ($request->parent_id) {
+            $parentUser = DB::table('users')->where('id', $request->parent_id)->first();
+            if ($parentUser) {
+                $parentName = $parentUser->name;
+            }
+        }
+        
+        // Get the year from request or use current year
+        $year = $request->get('year', date('Y'));
+        
+        $id = DB::table('families')->insertGetId([
+            'name' => $request->name,
+            'parent_name' => $parentName,
+            'parent_id' => $request->parent_id,
+            'description' => $request->description,
+            'motto' => $request->motto,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now(),
+            'year' => $year
+        ]);
+        
+        // Add the parent as a member of the family with the family's year
+        if ($request->parent_id) {
+            // Create date with the family's year (January 1st of that year)
+            $createdAt = \Carbon\Carbon::create($year, 1, 1, 0, 0, 0);
+            
+            DB::table('family_members')->insert([
+                'family_id' => $id,
+                'user_id' => $request->parent_id,
+                'role' => 'parent',
+                'joined_at' => now(),
+                'created_at' => $createdAt,
+                'updated_at' => now()
+            ]);
+        }
+        
+        return response()->json(['success' => true, 'message' => 'Family created successfully', 'family_id' => $id]);
+    } catch (\Illuminate\Database\QueryException $e) {
+        if (str_contains($e->getMessage(), 'unique_user_per_family')) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
+            ], 400);
+        }
+        if (str_contains($e->getMessage(), 'unique_parent_per_family')) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'This user is already a parent of another family. A parent cannot be in multiple families.'
+            ], 400);
+        }
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
+    
+    public function addMember(Request $request, $familyId)
+{
+    try {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|string'
+        ]);
+        
+        // Check if user is already a member of ANY family
+        $existingMember = DB::table('family_members')
+            ->where('user_id', $request->user_id)
+            ->first();
+        
+        if ($existingMember) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
+            ], 400);
+        }
+        
+        // Check if user is already a parent of another family
+        $existingParent = DB::table('families')
+            ->where('parent_id', $request->user_id)
+            ->first();
+        
+        if ($existingParent) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'This user is already a parent of another family. A parent cannot be in multiple families.'
+            ], 400);
+        }
+        
+        // Get the family to get its year
+        $family = DB::table('families')->where('id', $familyId)->first();
+        $familyYear = $family->year ?? date('Y');
+        
+        // Create date with the family's year (January 1st of that year)
+        $createdAt = \Carbon\Carbon::create($familyYear, 1, 1, 0, 0, 0);
+        
+        DB::table('family_members')->insert([
+            'family_id' => $familyId,
+            'user_id' => $request->user_id,
+            'role' => $request->role,
+            'joined_at' => now(),
+            'created_at' => $createdAt,
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['success' => true, 'message' => 'Member added successfully']);
+    } catch (\Illuminate\Database\QueryException $e) {
+        if (str_contains($e->getMessage(), 'unique_user_per_family')) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'This user is already a member of another family. A person cannot be in multiple families.'
+            ], 400);
+        }
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
     
     public function removeMember($familyId, $userId)
     {

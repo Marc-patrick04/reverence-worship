@@ -96,19 +96,15 @@ public function getUsers()
     {
         try {
             $type = $request->type;
-            $status = $request->status;
             $search = $request->search;
             
             $query = DB::table('announcements')
                 ->leftJoin('users as creators', 'announcements.created_by', '=', 'creators.id')
-                ->select('announcements.*', 'creators.name as created_by_name');
+                ->select('announcements.*', 'creators.name as created_by_name')
+                ->where('announcements.status', 'active');
             
             if ($type && $type !== 'all') {
                 $query->where('announcements.type', $type);
-            }
-            
-            if ($status && $status !== 'all') {
-                $query->where('announcements.status', $status);
             }
             
             if ($search) {
@@ -132,58 +128,61 @@ public function getUsers()
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'status' => 'nullable|string',
-            'scheduled_date' => 'nullable|date',
             'target_type' => 'required|in:all,roles,users',
             'target_roles' => 'nullable|string',
             'target_users' => 'nullable|string',
-            'send_email' => 'nullable|boolean'
         ]);
-        
-        $status = $validated['status'] ?? 'active';
-        $publishedBy = null;
-        $publishedAt = null;
-        
-        if ($status === 'active') {
-            $publishedBy = auth()->id();
-            $publishedAt = now();
+
+        $targetRoles = json_decode($validated['target_roles'] ?? '[]', true);
+        $targetUsers = json_decode($validated['target_users'] ?? '[]', true);
+
+        if ($validated['target_type'] === 'roles' && empty($targetRoles)) {
+            return response()->json(['success' => false, 'message' => 'Select at least one recipient role.'], 422);
         }
-        
-        $targetRoles = isset($validated['target_roles']) && $validated['target_roles'] ? $validated['target_roles'] : null;
-        $targetUsers = isset($validated['target_users']) && $validated['target_users'] ? $validated['target_users'] : null;
+        if ($validated['target_type'] === 'users' && empty($targetUsers)) {
+            return response()->json(['success' => false, 'message' => 'Select at least one recipient.'], 422);
+        }
         
         $id = DB::table('announcements')->insertGetId([
             'title' => $validated['title'],
             'content' => $validated['content'],
             'type' => 'general',
-            'status' => $status,
-            'scheduled_date' => $validated['scheduled_date'] ?? null,
+            'status' => 'active',
+            'scheduled_date' => null,
             'expiry_date' => null,
             'target_audience' => null,
             'priority' => 'normal',
             'image_path' => null,
             'created_by' => auth()->id(),
-            'published_by' => $publishedBy,
-            'published_at' => $publishedAt,
+            'published_by' => auth()->id(),
+            'published_at' => now(),
             'target_type' => $validated['target_type'],
-            'target_roles' => $targetRoles,
-            'target_users' => $targetUsers,
+            'target_roles' => $validated['target_type'] === 'roles' ? json_encode(array_values($targetRoles)) : null,
+            'target_users' => $validated['target_type'] === 'users' ? json_encode(array_values($targetUsers)) : null,
             'email_sent' => false,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
-        // Send emails immediately if status is active and send_email is true
-        if ($status === 'active' && ($request->send_email == '1' || $request->send_email === true)) {
-            $this->sendAnnouncementEmails($id);
+        $delivery = $this->sendAnnouncementEmails($id);
+
+        if ($delivery['sent'] === 0) {
+            DB::table('announcements')->where('id', $id)->delete();
         }
         
         return response()->json([
-            'success' => true, 
-            'message' => 'Announcement created successfully',
-            'id' => $id
-        ]);
+            'success' => $delivery['sent'] > 0,
+            'message' => $delivery['message'],
+            'id' => $id,
+            'delivery' => $delivery,
+        ], $delivery['sent'] > 0 ? 201 : 422);
         
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first() ?: 'Please check the message details.',
+            'errors' => $e->errors(),
+        ], 422);
     } catch (\Exception $e) {
         \Log::error('Store announcement error: ' . $e->getMessage());
         return response()->json([
@@ -193,7 +192,7 @@ public function getUsers()
     }
 }
 
-public function sendAnnouncementEmails($announcementId)
+public function sendAnnouncementEmails($announcementId, $force = false)
 {
     try {
         // Get announcement with all data
@@ -201,16 +200,16 @@ public function sendAnnouncementEmails($announcementId)
         
         if (!$announcement) {
             \Log::error("Announcement #{$announcementId} not found");
-            return;
+            return ['sent' => 0, 'failed' => 0, 'message' => 'Message not found.'];
         }
         
-        if ($announcement->email_sent) {
+        if ($announcement->email_sent && !$force) {
             \Log::info("Emails already sent for announcement #{$announcementId}");
-            return;
+            return ['sent' => 0, 'failed' => 0, 'message' => 'This message has already been sent.'];
         }
         
         // Get target users based on target_type
-        $targetUsers = [];
+        $targetUsers = collect();
         
         if ($announcement->target_type === 'all') {
             // Get all active users
@@ -249,13 +248,17 @@ public function sendAnnouncementEmails($announcementId)
         
         if ($targetUsers->isEmpty()) {
             \Log::warning("No target users found for announcement #{$announcementId}");
-            return;
+            return ['sent' => 0, 'failed' => 0, 'message' => 'No active recipients with an email address were found.'];
         }
         
         $sentCount = 0;
         $failedCount = 0;
         
         foreach ($targetUsers as $user) {
+            if (empty($user->email)) {
+                $failedCount++;
+                continue;
+            }
             try {
                 // Send email using Laravel's mail system
                 \Mail::send('emails.announcement', [
@@ -278,15 +281,39 @@ public function sendAnnouncementEmails($announcementId)
         DB::table('announcements')
             ->where('id', $announcementId)
             ->update([
-                'email_sent' => true,
-                'email_sent_at' => now()
+                'email_sent' => $sentCount > 0,
+                'email_sent_at' => $sentCount > 0 ? now() : null,
+                'updated_at' => now(),
             ]);
         
         \Log::info("Announcement #{$announcementId} emails sent: {$sentCount} sent, {$failedCount} failed");
+        return [
+            'sent' => $sentCount,
+            'failed' => $failedCount,
+            'message' => $failedCount > 0
+                ? "Message sent to {$sentCount} recipient(s); {$failedCount} delivery attempt(s) failed."
+                : "Message sent to {$sentCount} recipient(s).",
+        ];
         
     } catch (\Exception $e) {
         \Log::error("sendAnnouncementEmails error: " . $e->getMessage());
+        return ['sent' => 0, 'failed' => 0, 'message' => 'The message could not be sent. Check the mail configuration and try again.'];
     }
+}
+
+public function resend($id)
+{
+    $announcement = DB::table('announcements')->where('id', $id)->first();
+    if (!$announcement || $announcement->status !== 'active') {
+        return response()->json(['success' => false, 'message' => 'Sent message not found.'], 404);
+    }
+
+    $delivery = $this->sendAnnouncementEmails($id, true);
+    return response()->json([
+        'success' => $delivery['sent'] > 0,
+        'message' => $delivery['message'],
+        'delivery' => $delivery,
+    ], $delivery['sent'] > 0 ? 200 : 422);
 }
    /**
  * Get recipients for an announcement (actual users who received/will receive it)

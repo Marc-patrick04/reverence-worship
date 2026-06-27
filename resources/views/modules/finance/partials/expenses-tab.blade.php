@@ -1,172 +1,117 @@
 <div>
-   
-    
+    <!-- Header with Date Range -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-4">
+        <h3 class="text-base font-semibold text-gray-800">Expenses</h3>
+        <div class="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-wrap sm:items-end">
+            <div class="min-w-0">
+                <label for="filterStartDate" class="block text-xs font-medium text-gray-600 mb-1">From</label>
+                <input type="date" id="filterStartDate" value="{{ date('Y-01-01') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="min-w-0">
+                <label for="filterEndDate" class="block text-xs font-medium text-gray-600 mb-1">To</label>
+                <input type="date" id="filterEndDate" value="{{ date('Y-12-31') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <button onclick="window.expensesManager.openExpenseModal()" class="col-span-2 h-9 sm:h-8 sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-0 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+                <i class="fas fa-plus-circle"></i> New Expense
+            </button>
+        </div>
+    </div>
+
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</p>
-                    <p class="text-2xl font-bold text-gray-800" id="totalExpenses">RWF 0</p>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total</p>
+                    <p class="text-lg font-bold text-gray-800" id="totalExpenses">RWF 0</p>
                 </div>
-                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-red-600"></i>
+                <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-blue-500 text-sm"></i>
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pending Approval</p>
-                    <p class="text-2xl font-bold text-gray-800" id="pendingExpenses">RWF 0</p>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</p>
+                    <p class="text-lg font-bold text-yellow-600" id="pendingExpenses">RWF 0</p>
                 </div>
-                <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-clock text-yellow-600"></i>
+                <div class="w-8 h-8 bg-yellow-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-clock text-yellow-500 text-sm"></i>
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</p>
-                    <p class="text-2xl font-bold text-gray-800" id="approvedExpenses">RWF 0</p>
+                    <p class="text-lg font-bold text-green-600" id="approvedExpenses">RWF 0</p>
                 </div>
-                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-check-circle text-green-600"></i>
+                <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">This Month</p>
-                    <p class="text-2xl font-bold text-gray-800" id="monthlyExpenses">RWF 0</p>
+                    <p class="text-lg font-bold text-purple-600" id="monthlyExpenses">RWF 0</p>
                 </div>
-                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-calendar text-blue-600"></i>
+                <div class="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calendar-alt text-purple-500 text-sm"></i>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Add Expense Form -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-        <div class="bg-gray-50 px-6 py-4 border-b">
-            <h4 class="font-semibold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-plus-circle text-red-600"></i>
-                Record New Expense
-            </h4>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-4 max-w-xl">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</label>
+                <select id="filterStatus" class="w-full h-8 px-2 py-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Approver</label>
+                <select id="filterApprover" class="w-full h-8 px-2 py-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                    <option value="all">All Approvers</option>
+                </select>
+            </div>
         </div>
-        <div class="p-6">
-            <form id="expenseForm" onsubmit="submitExpense(event)">
-                @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">RWF</span>
-                            <input type="number" id="expenseAmount" name="amount" step="0.01" required 
-                                   placeholder="0.00"
-                                   class="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                        </div>
-                    </div>
-                    
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Description <span class="text-red-500">*</span></label>
-                        <textarea id="expenseDescription" name="description" rows="3" required 
-                                  placeholder="Reason for the expense..."
-                                  class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Expense Date <span class="text-red-500">*</span></label>
-                        <input type="date" id="expenseDate" name="date" value="{{ date('Y-m-d') }}" required
-                               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                    </div>
-                    <div class="flex items-center">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="requestApproval" name="request_approval" class="w-4 h-4 text-red-600 rounded focus:ring-red-500">
-                            <span class="text-sm text-gray-700">Request Approval</span>
-                            <span class="text-xs text-gray-400">(Pending approval from admin)</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="flex justify-end mt-6 pt-4 border-t">
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2">
-                        <i class="fas fa-save"></i> Save Expense
-                    </button>
-                </div>
-            </form>
+        <div class="flex justify-end mt-2">
+            <button onclick="window.expensesManager.resetFilters()" class="text-gray-500 hover:text-gray-700 text-xs transition flex items-center gap-1">
+                <i class="fas fa-undo text-xs"></i> Reset
+            </button>
         </div>
     </div>
-    
-    <!-- Expense History -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="bg-gray-50 px-6 py-4 border-b">
-            <h4 class="font-semibold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-history text-gray-600"></i>
-                Expense History
-            </h4>
-        </div>
-        
-        <!-- Filters -->
-        <div class="p-4 border-b bg-white">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Category</label>
-                    <select id="filterCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="all">All Categories</option>
-                        <option value="utilities">Utilities</option>
-                        <option value="salaries">Salaries</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="events">Events</option>
-                        <option value="equipment">Equipment</option>
-                        <option value="supplies">Supplies</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</label>
-                    <select id="filterStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="all">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Date From</label>
-                    <input type="date" id="filterStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Date To</label>
-                    <input type="date" id="filterEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                </div>
-            </div>
-            <div class="flex justify-end mt-4">
-                <button onclick="resetExpenseFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
-                    <i class="fas fa-undo"></i> Reset Filters
-                </button>
-            </div>
-        </div>
-        
-        <!-- Expenses Table -->
-        <div class="overflow-x-auto">
+
+    <!-- Expenses Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="expenses-responsive-table overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">REASON</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORY</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AMOUNT</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">DATE</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">REASON</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">AMOUNT</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">STATUS</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">APPROVER</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody id="expenses-table-body">
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <td colspan="7" class="px-3 py-8 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-lg mb-2 block"></i>
                             <p>Loading expenses...</p>
                         </td>
                     </tr>
@@ -176,343 +121,495 @@
     </div>
 </div>
 
-<!-- View Expense Modal -->
-<div id="viewExpenseModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Expense Details</h3>
-            <button onclick="closeModal('viewExpenseModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="viewExpenseContent" class="mt-4 space-y-3"></div>
-        <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('viewExpenseModal')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
+
 
 <script>
-function submitExpense(event) {
-    event.preventDefault();
+// ============================================
+// EXPENSES MANAGER
+// ============================================
+
+(function() {
+    'use strict';
+
+    const state = {
+        currentYear: new Date().getFullYear(),
+        isLoading: false,
+        initialized: false,
+        allUsers: @json($users ?? [])
+    };
+
+    const DOM = { get: (id) => document.getElementById(id) };
+
+    // ============================================
+    // APPROVER SEARCH
+    // ============================================
+
+   function searchApprovers(index) {
+    const searchInput = DOM.get(`approverSearch${index}`);
+    const resultsDiv = DOM.get(`approverSearchResults${index}`);
     
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+    // Return early if elements don't exist
+    if (!searchInput || !resultsDiv) return;
     
-    const formData = new FormData();
-    formData.append('amount', document.getElementById('expenseAmount').value);
-    formData.append('category', document.getElementById('expenseCategory').value);
-    formData.append('description', document.getElementById('expenseDescription').value);
-    formData.append('date', document.getElementById('expenseDate').value);
-    formData.append('request_approval', document.getElementById('requestApproval').checked ? 1 : 0);
+    const term = searchInput.value?.toLowerCase() || '';
     
-    fetch('/finance/expenses/store', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
+    if (term.length < 1) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    const filtered = state.allUsers.filter(u => 
+        u.name?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term)
+    );
+
+    resultsDiv.innerHTML = filtered.length ? filtered.map(u => `
+        <div class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0" 
+             data-id="${u.id}" data-name="${escapeHtml(u.name)}" data-email="${escapeHtml(u.email)}">
+            <div class="font-medium text-gray-800">${escapeHtml(u.name)}</div>
+            <div class="text-xs text-gray-500">${escapeHtml(u.email)}</div>
+        </div>
+    `).join('') : '<div class="p-3 text-center text-gray-500">No users found</div>';
+    
+    resultsDiv.querySelectorAll('[data-id]').forEach(el => {
+        el.addEventListener('click', () => {
+            selectApprover(index, el.dataset.id, el.dataset.name);
+        });
+    });
+    resultsDiv.classList.remove('hidden');
+}
+
+    function selectApprover(index, id, name) {
+    const idField = DOM.get(`approverId${index}`);
+    const nameDisplay = DOM.get(`selectedApproverName${index}`);
+    const displayDiv = DOM.get(`selectedApproverDisplay${index}`);
+    const searchInput = DOM.get(`approverSearch${index}`);
+    const resultsDiv = DOM.get(`approverSearchResults${index}`);
+    
+    // Only proceed if elements exist
+    if (idField) idField.value = id;
+    if (nameDisplay) nameDisplay.innerHTML = name;
+    if (displayDiv) displayDiv.classList.remove('hidden');
+    if (searchInput) searchInput.value = '';
+    if (resultsDiv) resultsDiv.classList.add('hidden');
+}
+
+    function clearApprover(index) {
+    const idField = DOM.get(`approverId${index}`);
+    const displayDiv = DOM.get(`selectedApproverDisplay${index}`);
+    const searchInput = DOM.get(`approverSearch${index}`);
+    
+    // Only try to set if elements exist
+    if (idField) idField.value = '';
+    if (displayDiv) displayDiv.classList.add('hidden');
+    if (searchInput) searchInput.value = '';
+}
+    // ============================================
+    // MODALS
+    // ============================================
+
+    function openModal(id) {
+        const m = DOM.get(id);
+        if (m) { m.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+    }
+
+    function closeModal(id) {
+        const m = DOM.get(id);
+        if (m) { m.classList.add('hidden'); document.body.style.overflow = ''; }
+    }
+
+    function openExpenseModal() {
+    const form = DOM.get('expenseForm');
+    
+    if (form) form.reset();
+    
+    // Clear approvers
+    clearApprover(1);
+    clearApprover(2);
+    
+    openModal('expenseModal');
+}
+
+    // ============================================
+    // EXPENSES CRUD
+    // ============================================
+
+  function submitExpense(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('amount', DOM.get('expenseAmount').value);
+    fd.append('description', DOM.get('expenseDescription').value);
+    // Date is auto-assigned in the backend
+    fd.append('year', state.currentYear);
+    
+    // Get approver IDs
+    const approver1 = DOM.get('approverId1');
+    const approver2 = DOM.get('approverId2');
+    
+    fd.append('approver_id_1', approver1 ? approver1.value : '');
+    fd.append('approver_id_2', approver2 ? approver2.value : '');
+    fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    fetch('/finance/expenses', { 
+        method: 'POST', 
+        body: fd, 
+        headers: { 'X-Requested-With': 'XMLHttpRequest' } 
     })
-    .then(response => response.json())
-    .then(data => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Expense';
-        
-        if (data.success) {
-            document.getElementById('expenseForm').reset();
-            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+    .then(r => r.json())
+    .then(d => {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+        if (d.success) {
+            closeModal('expenseModal');
+            // Clear approver selections
+            clearApprover(1);
+            clearApprover(2);
             filterExpenses();
-            showNotification('Expense recorded successfully!', 'success');
+            showNotification('Expense recorded!', 'success');
         } else {
-            showNotification('Error: ' + (data.message || 'Failed to record expense'), 'error');
+            showNotification('Error: ' + (d.message || 'Failed'), 'error');
         }
     })
-    .catch(error => {
-        console.error('Error:', error);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Expense';
-        showNotification('Network error: ' + error.message, 'error');
+    .catch(() => { 
+        btn.innerHTML = orig; 
+        btn.disabled = false; 
+        showNotification('Network error', 'error'); 
     });
 }
 
-function resetExpenseFilters() {
-    document.getElementById('filterCategory').value = 'all';
-    document.getElementById('filterStatus').value = 'all';
-    document.getElementById('filterStartDate').value = '';
-    document.getElementById('filterEndDate').value = '';
-    filterExpenses();
-}
-
-function filterExpenses() {
-    const category = document.getElementById('filterCategory')?.value || 'all';
-    const status = document.getElementById('filterStatus')?.value || 'all';
-    const startDate = document.getElementById('filterStartDate')?.value || '';
-    const endDate = document.getElementById('filterEndDate')?.value || '';
-    
-    let url = `/finance/expenses/filter?category=${category}&status=${status}&start_date=${startDate}&end_date=${endDate}`;
-    
-    fetch(url, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            updateExpensesTable(data.expenses);
-            updateStats(data.expenses);
+    function filterExpenses() {
+        const startDate = DOM.get('filterStartDate');
+        const endDate = DOM.get('filterEndDate');
+        endDate.setCustomValidity('');
+        if (startDate.value && endDate.value && startDate.value > endDate.value) {
+            endDate.setCustomValidity('To date must be on or after from date.');
+            endDate.reportValidity();
+            return;
         }
-    })
-    .catch(error => console.error('Error:', error));
-}
 
-function updateStats(expenses) {
-    const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    const pending = expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    const approved = expenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const monthly = expenses.filter(e => {
-        const date = new Date(e.date);
-        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    }).reduce((sum, e) => sum + parseFloat(e.amount), 0);
-    
-    document.getElementById('totalExpenses').textContent = 'RWF ' + total.toLocaleString();
-    document.getElementById('pendingExpenses').textContent = 'RWF ' + pending.toLocaleString();
-    document.getElementById('approvedExpenses').textContent = 'RWF ' + approved.toLocaleString();
-    document.getElementById('monthlyExpenses').textContent = 'RWF ' + monthly.toLocaleString();
-}
+        if (state.isLoading) return;
+        state.isLoading = true;
+        const params = new URLSearchParams({
+            status: DOM.get('filterStatus')?.value || 'all',
+            start_date: DOM.get('filterStartDate')?.value || '',
+            end_date: DOM.get('filterEndDate')?.value || '',
+            approver_id: DOM.get('filterApprover')?.value || 'all'
+        });
+        const url = `/finance/expenses/filter?${params.toString()}`;
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || `Request failed (${response.status})`);
+                }
+                return data;
+            })
+            .then(data => {
+                const expenses = Array.isArray(data.expenses) ? data.expenses : [];
+                updateTable(expenses);
+                updateStats(expenses);
+                updateApproverFilter(expenses);
+            })
+            .catch(error => {
+                console.error('Failed to load expenses:', error);
+                const tbody = DOM.get('expenses-table-body');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-3 py-8 text-center text-red-600">
+                                <i class="fas fa-circle-exclamation mb-2 block"></i>
+                                <p>Unable to load expenses</p>
+                                <button type="button" onclick="window.expensesManager.filterExpenses()"
+                                    class="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700">Try again</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .finally(() => {
+                state.isLoading = false;
+            });
+    }
 
-function updateExpensesTable(expenses) {
-    const tbody = document.getElementById('expenses-table-body');
-    
-    if (!expenses || expenses.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                    <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
-                    <p>No expenses recorded yet.</p>
-                    <p class="text-xs mt-1 text-gray-400">Click "Save Expense" to create your first expense record</p>
+    function resetFilters() {
+        ['filterStatus', 'filterApprover'].forEach(id => { const el = DOM.get(id); if (el) el.value = 'all'; });
+        const year = new Date().getFullYear();
+        DOM.get('filterStartDate').value = `${year}-01-01`;
+        DOM.get('filterEndDate').value = `${year}-12-31`;
+        filterExpenses();
+    }
+
+    function updateApproverFilter(expenses) {
+        const sel = DOM.get('filterApprover');
+        if (!sel) return;
+        const approvers = {};
+        expenses.forEach(e => {
+            if (e.approver_id_1 && e.approver_1_name) approvers[e.approver_id_1] = e.approver_1_name;
+            if (e.approver_id_2 && e.approver_2_name) approvers[e.approver_id_2] = e.approver_2_name;
+        });
+        const val = sel.value;
+        sel.innerHTML = '<option value="all">All Approvers</option>';
+        Object.keys(approvers).forEach(id => {
+            const o = document.createElement('option');
+            o.value = id;
+            o.textContent = approvers[id];
+            sel.appendChild(o);
+        });
+        if (val && sel.querySelector(`option[value="${val}"]`)) sel.value = val;
+    }
+
+    function updateStats(expenses) {
+        const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+        const pending = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + parseFloat(e.amount), 0);
+        const approved = expenses.filter(e => e.status === 'approved').reduce((s, e) => s + parseFloat(e.amount), 0);
+        const now = new Date();
+        const monthly = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((s, e) => s + parseFloat(e.amount), 0);
+        
+        DOM.get('totalExpenses').textContent = 'RWF ' + total.toLocaleString();
+        DOM.get('pendingExpenses').textContent = 'RWF ' + pending.toLocaleString();
+        DOM.get('approvedExpenses').textContent = 'RWF ' + approved.toLocaleString();
+        DOM.get('monthlyExpenses').textContent = 'RWF ' + monthly.toLocaleString();
+    }
+
+    function updateTable(expenses) {
+        const tbody = DOM.get('expenses-table-body');
+        if (!expenses || !expenses.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-3 py-8 text-center text-gray-500"><i class="fas fa-inbox text-xl mb-2 block text-gray-300"></i><p>No expenses for this date range</p></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = expenses.map((e, i) => {
+            const approvers = [e.approver_1_name, e.approver_2_name].filter(Boolean).join(', ') || '-';
+            return `
+            <tr class="border-b hover:bg-gray-50 transition">
+                <td class="px-3 py-2 text-xs text-gray-400" data-label="#">${i + 1}</td>
+                <td class="px-3 py-2 text-xs text-gray-600 whitespace-nowrap" data-label="Date">${formatDate(e.date)}</td>
+                <td class="px-3 py-2 text-sm text-gray-800 max-w-xs" data-label="Reason">${escapeHtml(e.description || '-')}</td>
+                <td class="px-3 py-2 text-sm font-semibold text-blue-600 whitespace-nowrap" data-label="Amount">RWF ${parseFloat(e.amount).toLocaleString()}</td>
+                <td class="px-3 py-2" data-label="Status"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(e.status)}">${e.status || 'Pending'}</span></td>
+                <td class="px-3 py-2 text-xs text-gray-600" data-label="Approvers">${escapeHtml(approvers)}</td>
+                <td class="px-3 py-2" data-label="Actions">
+                    <div class="flex items-center gap-1">
+                        <button onclick="window.expensesManager.viewExpense(${e.id})" class="h-7 w-7 inline-flex items-center justify-center rounded-md text-blue-600 hover:bg-blue-50 transition" title="View"><i class="fas fa-file-lines text-sm"></i></button>
+                        ${e.status === 'pending' ? `<button onclick="window.expensesManager.approveExpense(${e.id})" class="h-7 w-7 inline-flex items-center justify-center rounded-md text-green-600 hover:bg-green-50 transition" title="Approve"><i class="fas fa-check text-sm"></i></button>` : ''}
+                        <button onclick="window.expensesManager.deleteExpense(${e.id})" class="h-7 w-7 inline-flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 transition" title="Delete"><i class="fas fa-trash-alt text-sm"></i></button>
+                    </div>
                 </td>
             </tr>
         `;
-        return;
+        }).join('');
     }
-    
-    tbody.innerHTML = expenses.map((expense, index) => `
-        <tr class="border-b hover:bg-gray-50 transition">
-            <td class="px-6 py-4 text-sm text-gray-400">${index + 1}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">${formatDate(expense.date)}</td>
-            <td class="px-6 py-4 text-sm text-gray-800 max-w-xs truncate">${escapeHtml(expense.description || '-')}</td>
-            <td class="px-6 py-4 text-sm capitalize">${expense.category || '-'}</td>
-            <td class="px-6 py-4 text-sm font-semibold text-red-600">RWF ${parseFloat(expense.amount).toLocaleString()}</td>
-            <td class="px-6 py-4">
-                <span class="px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(expense.status)}">
-                    ${expense.status === 'approved' ? 'Approved' : (expense.status === 'pending' ? 'Pending' : (expense.status || 'Pending'))}
-                </span>
-            </td>
-            <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                    <button onclick="viewExpense(${expense.id})" class="text-blue-500 hover:text-blue-700 transition" title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${expense.status === 'pending' ? `
-                        <button onclick="approveExpense(${expense.id})" class="text-green-500 hover:text-green-700 transition" title="Approve">
-                            <i class="fas fa-check-circle"></i>
-                        </button>
-                    ` : ''}
-                    <button onclick="deleteExpense(${expense.id})" class="text-red-500 hover:text-red-700 transition" title="Delete">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
 
-function viewExpense(id) {
-    fetch(`/finance/expenses/${id}/details`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const e = data.expense;
-            document.getElementById('viewExpenseContent').innerHTML = `
-                <div class="bg-gray-50 rounded-lg p-3">
-                    <p class="text-xs text-gray-500">Amount</p>
-                    <p class="text-xl font-bold text-red-600">RWF ${parseFloat(e.amount).toLocaleString()}</p>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Category</p>
-                        <p class="font-medium capitalize">${e.category || '-'}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Date</p>
-                        <p class="font-medium">${formatDate(e.date)}</p>
-                    </div>
-                </div>
-                <div class="bg-gray-50 rounded-lg p-3">
-                    <p class="text-xs text-gray-500">Description</p>
-                    <p class="text-sm">${escapeHtml(e.description || '-')}</p>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Status</p>
-                        <p class="font-medium capitalize">${e.status || 'Pending'}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
-                        <p class="text-xs text-gray-500">Recorded By</p>
-                        <p class="font-medium text-sm">${escapeHtml(e.created_by_name || 'System')}</p>
-                    </div>
-                </div>
-                ${e.approved_by_name ? `
-                <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-green-500">
-                    <p class="text-xs text-gray-500">Approved By</p>
-                    <p class="font-medium text-sm">${escapeHtml(e.approved_by_name)}</p>
-                </div>
-                ` : ''}
-            `;
-            document.getElementById('viewExpenseModal').classList.remove('hidden');
-        }
-    });
-}
+    function viewExpense(id) {
+        fetch(`/finance/expenses/${id}/details`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    const e = d.expense;
+                    DOM.get('viewExpenseContent').innerHTML = `
+                        <div class="bg-blue-50 rounded-lg p-4 text-center"><p class="text-xs text-gray-500">Amount</p><p class="text-2xl font-bold text-blue-600">RWF ${parseFloat(e.amount).toLocaleString()}</p></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Date</p><p class="font-medium">${formatDate(e.date)}</p></div>
+                            <div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Status</p><p class="font-medium capitalize">${e.status || 'Pending'}</p></div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Description</p><p class="text-sm">${escapeHtml(e.description || '-')}</p></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500"><p class="text-xs text-gray-500">Recorded By</p><p class="font-medium text-sm">${escapeHtml(e.created_by_name || 'System')}</p></div>
+                            ${(e.approver_1_name || e.approver_2_name) ? `<div class="bg-gray-50 rounded-lg p-3 border-l-4 border-green-500"><p class="text-xs text-gray-500">Approvers</p><p class="font-medium text-sm">${escapeHtml([e.approver_1_name, e.approver_2_name].filter(Boolean).join(', '))}</p></div>` : ''}
+                        </div>
+                    `;
+                    openModal('viewExpenseModal');
+                }
+            });
+    }
 
-function approveExpense(id) {
-    if (confirm('Approve this expense?')) {
+    function approveExpense(id) {
+        if (!confirm('Approve this expense?')) return;
         fetch(`/finance/expenses/${id}/approve`, {
             method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                filterExpenses();
-                showNotification('Expense approved successfully!', 'success');
-            } else {
-                showNotification('Error: ' + (data.message || 'Failed to approve expense'), 'error');
-            }
-        });
+        .then(r => r.json())
+        .then(d => { if (d.success) { filterExpenses(); showNotification('Approved!', 'success'); } else { showNotification('Error', 'error'); } });
     }
-}
 
-function deleteExpense(id) {
-    if (confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
+    function deleteExpense(id) {
+        if (!confirm('Delete this expense?')) return;
         fetch(`/finance/expenses/${id}`, {
             method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                filterExpenses();
-                showNotification('Expense deleted successfully', 'success');
-            } else {
-                showNotification('Error: ' + (data.message || 'Failed to delete expense'), 'error');
-            }
-        });
+        .then(r => r.json())
+        .then(d => { if (d.success) { filterExpenses(); showNotification('Deleted!', 'success'); } else { showNotification('Error', 'error'); } });
     }
-}
 
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-20 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in max-w-md`;
-    notification.style.backgroundColor = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6';
-    notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-white"></i>
-        <span class="text-white text-sm">${message}</span>
-        <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white transition">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100px)';
-            setTimeout(() => notification.remove(), 300);
+    // ============================================
+    // UTILITY
+    // ============================================
+
+    function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function formatDate(s) { if (!s) return '-'; const d = new Date(s); return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+    function statusBadge(s) { return s === 'approved' ? 'bg-green-100 text-green-700' : s === 'pending' ? 'bg-yellow-100 text-yellow-700' : s === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'; }
+
+    function showNotification(msg, type) {
+        const n = document.createElement('div');
+        n.className = `fixed top-20 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in max-w-md`;
+        n.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+        n.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-white"></i><span class="text-white text-sm">${msg}</span><button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white">×</button>`;
+        document.body.appendChild(n);
+        setTimeout(() => { if (n.parentElement) { n.style.opacity = '0'; n.style.transform = 'translateX(100px)'; setTimeout(() => n.remove(), 300); } }, 3000);
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+
+    function init() {
+    if (state.initialized) return;
+    state.initialized = true;
+    const year = new Date().getFullYear();
+    state.currentYear = year;
+    
+    ['filterStatus', 'filterApprover'].forEach(id => {
+        const el = DOM.get(id);
+        if (el) el.addEventListener('change', () => filterExpenses());
+    });
+    ['filterStartDate', 'filterEndDate'].forEach(id => {
+        const el = DOM.get(id);
+        if (el) el.addEventListener('change', () => filterExpenses());
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal:not(.hidden)').forEach(m => { 
+                if (m.id) closeModal(m.id); 
+            });
         }
-    }, 3000);
+    });
+
+    filterExpenses();
+    console.log('Expenses Manager initialized');
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+    // ============================================
+    // EXPOSE
+    // ============================================
 
-function getStatusBadge(status) {
-    switch(status) {
-        case 'approved': return 'bg-green-100 text-green-700';
-        case 'pending': return 'bg-yellow-100 text-yellow-700';
-        case 'rejected': return 'bg-red-100 text-red-700';
-        default: return 'bg-gray-100 text-gray-700';
-    }
-}
+    window.expensesManager = {
+        state,
+        searchApprovers, selectApprover, clearApprover,
+        openModal, closeModal, openExpenseModal,
+        submitExpense, filterExpenses, resetFilters, updateStats, updateTable,
+        viewExpense, approveExpense, deleteExpense,
+        showNotification, escapeHtml, formatDate,
+        init
+    };
 
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Auto-filter with debounce
-let filterTimeout = null;
-document.getElementById('filterCategory')?.addEventListener('change', function() { 
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => filterExpenses(), 300);
-});
-document.getElementById('filterStatus')?.addEventListener('change', function() { 
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => filterExpenses(), 300);
-});
-document.getElementById('filterStartDate')?.addEventListener('change', function() { 
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => filterExpenses(), 300);
-});
-document.getElementById('filterEndDate')?.addEventListener('change', function() { 
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => filterExpenses(), 300);
-});
-
-// Load initial data
-filterExpenses();
-
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    .animate-slide-in {
-        animation: slideIn 0.3s ease-out;
-    }
-    .modal {
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-    .modal .relative {
-        animation: modalIn 0.3s ease-out;
-    }
-    @keyframes modalIn {
-        from { transform: scale(0.9); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
-`;
-document.head.appendChild(style);
+})();
 </script>
+
+<style>
+    .rotate-180 { transform: rotate(180deg); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .animate-slide-in { animation: slideIn 0.3s ease-out; }
+    .modal { background-color: rgba(0,0,0,0.5); }
+    .modal .relative { animation: modalIn 0.3s ease-out; }
+    @keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal:not(.hidden) { display: flex !important; align-items: flex-start !important; }
+
+    @media (max-width: 639px) {
+        .expenses-responsive-table {
+            overflow: visible;
+        }
+
+        .expenses-responsive-table table,
+        .expenses-responsive-table tbody {
+            display: block;
+            width: 100%;
+        }
+
+        .expenses-responsive-table thead {
+            display: none;
+        }
+
+        .expenses-responsive-table tbody {
+            display: grid;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .expenses-responsive-table tbody tr {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+        }
+
+        .expenses-responsive-table tbody td {
+            display: grid;
+            grid-template-columns: 82px minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: none !important;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .expenses-responsive-table tbody td::before {
+            content: attr(data-label);
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .expenses-responsive-table tbody td[data-label="#"] {
+            display: none;
+        }
+
+        .expenses-responsive-table tbody td[data-label="Reason"] {
+            order: -1;
+            display: block;
+            padding: 12px;
+            background: #f9fafb;
+            font-weight: 600;
+        }
+
+        .expenses-responsive-table tbody td[data-label="Reason"]::before {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .expenses-responsive-table tbody td[data-label="Actions"] {
+            border-bottom: 0;
+        }
+
+        .expenses-responsive-table tbody td[data-label="Actions"] button {
+            width: 36px;
+            height: 36px;
+        }
+
+        .expenses-responsive-table tbody tr > td[colspan] {
+            display: block;
+            padding: 24px 12px;
+            text-align: center;
+            border-bottom: 0;
+        }
+
+        .expenses-responsive-table tbody tr > td[colspan]::before {
+            display: none;
+        }
+    }
+</style>

@@ -417,7 +417,7 @@ class PermissionManagerController extends Controller
             RolePageFeature::where('role_id', $roleId)->delete();
             
             // Insert new assignments
-            foreach ($request->assignments as $assignment) {
+            foreach ($request->assignments ?? [] as $assignment) {
                 RolePageFeature::create([
                     'role_id' => $roleId,
                     'page_id' => $assignment['page_id'],

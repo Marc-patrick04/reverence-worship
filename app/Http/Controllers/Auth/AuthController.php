@@ -72,14 +72,14 @@ class AuthController extends Controller
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users',
         'password' => 'required|min:6|confirmed',
-        'phone' => 'nullable|string|max:20',
-        'gender' => 'nullable|string|max:20',
-        'date_of_birth' => 'nullable|date',
-        'province' => 'nullable|string|max:100',
-        'district' => 'nullable|string|max:100',
-        'sector' => 'nullable|string|max:100',
-        'village' => 'nullable|string|max:100',
-        'marital_status' => 'nullable|string|max:50'
+        'phone' => 'required|string|max:20',
+        'gender' => 'required|string|max:20',
+        'date_of_birth' => 'required|date',
+        'province' => 'required|string|max:100',
+        'district' => 'required|string|max:100',
+        'sector' => 'required|string|max:100',
+        'village' => 'required|string|max:100',
+        'marital_status' => 'required|string|max:50'
     ]);
     
     $user = User::create([

@@ -20,9 +20,6 @@
             <button class="tab-btn px-4 lg:px-6 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="budget">
                 <i class="fas fa-chart-pie mr-2"></i> Budget
             </button>
-            <button class="tab-btn px-4 lg:px-6 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="reports">
-                <i class="fas fa-file-alt mr-2"></i> Reports
-            </button>
             <button class="tab-btn px-4 lg:px-6 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="settings">
                 <i class="fas fa-cog mr-2"></i> Settings
             </button>
@@ -49,9 +46,6 @@
             </button>
             <button class="tab-btn px-4 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="budget">
                 <i class="fas fa-chart-pie mr-1"></i> Budget
-            </button>
-            <button class="tab-btn px-4 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="reports">
-                <i class="fas fa-file-alt mr-1"></i> Reports
             </button>
             <button class="tab-btn px-4 py-3 text-sm font-medium transition whitespace-nowrap" data-tab="settings">
                 <i class="fas fa-cog mr-1"></i> Settings
@@ -100,10 +94,6 @@
                 <button class="mobile-tab-btn flex items-center gap-2 px-3 py-2.5 text-sm rounded-lg transition" data-tab="budget" data-icon="chart-pie">
                     <i class="fas fa-chart-pie text-yellow-500 w-4"></i>
                     <span>Budget</span>
-                </button>
-                <button class="mobile-tab-btn flex items-center gap-2 px-3 py-2.5 text-sm rounded-lg transition" data-tab="reports" data-icon="file-alt">
-                    <i class="fas fa-file-alt text-indigo-500 w-4"></i>
-                    <span>Reports</span>
                 </button>
                 <button class="mobile-tab-btn flex items-center gap-2 px-3 py-2.5 text-sm rounded-lg transition" data-tab="settings" data-icon="cog">
                     <i class="fas fa-cog text-gray-500 w-4"></i>
@@ -195,7 +185,6 @@ const mobileTabConfig = {
     sponsors: { icon: 'users', label: 'Sponsors' },
     expenses: { icon: 'receipt', label: 'Expenses' },
     budget: { icon: 'chart-pie', label: 'Budget' },
-    reports: { icon: 'file-alt', label: 'Reports' },
     settings: { icon: 'cog', label: 'Settings' }
 };
 

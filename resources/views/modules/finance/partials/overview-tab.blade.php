@@ -1,45 +1,22 @@
 <div class="space-y-6">
-    <!-- Header with Year Selection -->
+    <!-- Header with Date Range Selection -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Financial Dashboard</h2>
             <p class="text-sm text-gray-500 mt-1">Overview of your financial performance</p>
         </div>
-        <div class="flex items-center gap-2">
-            <!-- Year Picker -->
-            <div class="relative">
-                <div onclick="toggleOverviewYearPicker()" 
-                    class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all min-w-[120px]">
-                    <span id="overviewYearDisplay" class="text-sm font-semibold text-gray-800">{{ date('Y') }}</span>
-                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="overviewYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                </div>
-                <input type="hidden" id="overviewSelectedYear" value="{{ date('Y') }}">
-                
-                <!-- Year Picker Dropdown - 3x3 Grid -->
-                <div id="overviewYearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
-                    <div class="flex items-center justify-between mb-2">
-                        <button type="button" onclick="changeOverviewYearPage(-1)" 
-                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                            </svg>
-                        </button>
-                        <span id="overviewYearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
-                        <button type="button" onclick="changeOverviewYearPage(1)" 
-                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1" id="overviewYearGrid">
-                        <!-- Years populated by JavaScript -->
-                    </div>
-                </div>
+        <div class="flex flex-wrap items-end gap-2">
+            <div>
+                <label for="overviewFromDate" class="block text-xs font-medium text-gray-500 mb-1">From date</label>
+                <input type="date" id="overviewFromDate" value="{{ date('Y-01-01') }}"
+                    class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm text-gray-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
             </div>
-            <button onclick="refreshAllCharts()" 
+            <div>
+                <label for="overviewToDate" class="block text-xs font-medium text-gray-500 mb-1">To date</label>
+                <input type="date" id="overviewToDate" value="{{ date('Y-12-31') }}"
+                    class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm text-gray-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            </div>
+            <button onclick="refreshAllCharts()" title="Refresh overview"
                     class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -49,16 +26,16 @@
     </div>
 
     <!-- KPI Cards Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- Total Revenue Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewTotalIncome">RWF 0</p>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-gray-500 uppercase">Total Revenue</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 break-words" id="overviewTotalIncome">RWF 0</p>
                 </div>
-                <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
@@ -66,14 +43,14 @@
         </div>
 
         <!-- Total Expenses Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewTotalExpenses">RWF 0</p>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-gray-500 uppercase">Total Expenses</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 break-words" id="overviewTotalExpenses">RWF 0</p>
                 </div>
-                <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                 </div>
@@ -81,17 +58,17 @@
         </div>
 
         <!-- Collection Rate Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Collection Rate</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewCollectionRate">0%</p>
-                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                        <div id="collectionBar" class="bg-blue-600 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+        <div class="sm:col-span-2 lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-gray-500 uppercase">Collection Rate</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-1" id="overviewCollectionRate">0%</p>
+                    <div class="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
+                        <div id="collectionBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
                     </div>
                 </div>
-                <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                     </svg>
                 </div>
@@ -204,101 +181,22 @@
 
 <script>
 // ============================================
-// OVERVIEW YEAR PICKER
+// OVERVIEW DATE RANGE
 // ============================================
 
-let overviewCurrentYear = new Date().getFullYear();
-let overviewYearPageOffset = 0;
+function handleOverviewDateChange() {
+    const fromDate = document.getElementById('overviewFromDate');
+    const toDate = document.getElementById('overviewToDate');
 
-// Toggle Year Picker
-function toggleOverviewYearPicker() {
-    const dropdown = document.getElementById('overviewYearPickerDropdown');
-    const arrow = document.getElementById('overviewYearArrow');
-    
-    if (dropdown.classList.contains('hidden')) {
-        dropdown.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
-        renderOverviewYearGrid();
-    } else {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
+    fromDate.setCustomValidity('');
+    toDate.setCustomValidity('');
+
+    if (fromDate.value && toDate.value && fromDate.value > toDate.value) {
+        toDate.setCustomValidity('To date must be on or after from date.');
+        toDate.reportValidity();
+        return;
     }
-}
 
-// Close year picker
-function closeOverviewYearPicker() {
-    const dropdown = document.getElementById('overviewYearPickerDropdown');
-    const arrow = document.getElementById('overviewYearArrow');
-    
-    if (dropdown && !dropdown.classList.contains('hidden')) {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
-    }
-}
-
-// Change year page
-function changeOverviewYearPage(direction) {
-    overviewYearPageOffset += direction;
-    renderOverviewYearGrid();
-}
-
-// Render 3x3 Year Grid
-function renderOverviewYearGrid() {
-    const currentYear = new Date().getFullYear();
-    const startYear = currentYear + (overviewYearPageOffset * 9) - 4;
-    
-    const grid = document.getElementById('overviewYearGrid');
-    const title = document.getElementById('overviewYearPageTitle');
-    
-    if (!grid) return;
-    
-    const endYear = startYear + 8;
-    title.textContent = `${startYear} - ${endYear}`;
-    
-    grid.innerHTML = '';
-    
-    for (let i = 0; i < 9; i++) {
-        const year = startYear + i;
-        const isSelected = year == overviewCurrentYear;
-        const isCurrentYear = year == currentYear;
-        const isDisabled = year < 2000 || year > 2100;
-        
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = year;
-        btn.className = 'year-grid-btn py-1.5 px-2 rounded text-xs transition-all text-center';
-        
-        if (isSelected) {
-            btn.classList.add('bg-blue-600', 'text-white', 'font-semibold', 'shadow-sm');
-        } else if (isCurrentYear) {
-            btn.classList.add('bg-blue-50', 'text-blue-600', 'font-medium', 'border', 'border-blue-200');
-        } else {
-            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
-        }
-        
-        if (isDisabled) {
-            btn.classList.add('text-gray-300', 'cursor-not-allowed');
-            btn.disabled = true;
-        } else {
-            btn.onclick = function() {
-                selectOverviewYear(year);
-            };
-        }
-        
-        grid.appendChild(btn);
-    }
-}
-
-// Select a year
-function selectOverviewYear(year) {
-    overviewCurrentYear = year;
-    document.getElementById('overviewSelectedYear').value = year;
-    document.getElementById('overviewYearDisplay').textContent = year;
-    
-    closeOverviewYearPicker();
-    renderOverviewYearGrid();
-    
-    // Reload data with new year
     loadFinanceOverview();
 }
 
@@ -323,10 +221,17 @@ function formatNumber(num) {
 // ============================================
 
 async function loadFinanceOverview() {
-    const year = overviewCurrentYear || new Date().getFullYear();
+    const fromDate = document.getElementById('overviewFromDate').value;
+    const toDate = document.getElementById('overviewToDate').value;
+
+    if (!fromDate || !toDate || fromDate > toDate) return;
     
     try {
-        const response = await fetch(`/finance/overview/stats?year=${year}`, {
+        const params = new URLSearchParams({
+            from_date: fromDate,
+            to_date: toDate
+        });
+        const response = await fetch(`/finance/overview/stats?${params.toString()}`, {
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
@@ -409,11 +314,8 @@ function refreshAllCharts() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    const currentYear = new Date().getFullYear();
-    overviewCurrentYear = currentYear;
-    document.getElementById('overviewSelectedYear').value = currentYear;
-    document.getElementById('overviewYearDisplay').textContent = currentYear;
-    renderOverviewYearGrid();
+    document.getElementById('overviewFromDate').addEventListener('change', handleOverviewDateChange);
+    document.getElementById('overviewToDate').addEventListener('change', handleOverviewDateChange);
     loadFinanceOverview();
     removeDollarSigns();
 });
@@ -433,52 +335,8 @@ window.addEventListener('beforeunload', function() {
     }
 });
 
-// Close year picker when clicking outside
-document.addEventListener('click', function(event) {
-    const picker = document.getElementById('overviewYearPickerDropdown');
-    const display = document.querySelector('#overviewYearDisplay');
-    
-    if (picker && !picker.classList.contains('hidden') && display) {
-        const parentDiv = display.closest('.relative');
-        if (parentDiv && !parentDiv.contains(event.target)) {
-            closeOverviewYearPicker();
-        }
-    }
-});
-
 // Expose functions globally
 window.refreshFinanceOverview = loadFinanceOverview;
 window.refreshAllCharts = refreshAllCharts;
 window.removeDollarSigns = removeDollarSigns;
 </script>
-
-<style>
-.year-grid-btn {
-    transition: all 0.2s ease;
-    cursor: pointer;
-    min-height: 32px;
-}
-
-.year-grid-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-
-.year-grid-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-#overviewYearPickerDropdown {
-    animation: fade-in 0.15s ease-out;
-}
-
-.rotate-180 {
-    transform: rotate(180deg);
-}
-
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-</style>

@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\Finance\ContributionController;
 use App\Http\Controllers\Finance\MyContributionController;
+use App\Http\Controllers\Finance\PaymentController;
+use App\Http\Controllers\Finance\SponsorController;
+use App\Http\Controllers\Finance\ExpenseController;
+use App\Http\Controllers\Finance\ActionPlanController as FinanceActionPlanController;
 
 // Existing financial routes
 Route::prefix('financial')->name('financial.')->middleware('auth')->group(function () {
@@ -17,6 +21,9 @@ Route::prefix('finance')->name('finance.')->middleware('auth')->group(function (
     
     // Main view
     Route::get('/', [ContributionController::class, 'index'])->name('index');
+    
+    // ==================== FAMILY FILTER ROUTE ====================
+    Route::get('/families/filter-options', [ContributionController::class, 'getFamilyFilterOptions'])->name('families.filter-options');
     
     // ==================== OVERVIEW / DASHBOARD ROUTES ====================
     Route::prefix('overview')->name('overview.')->group(function () {
@@ -37,6 +44,7 @@ Route::prefix('finance')->name('finance.')->middleware('auth')->group(function (
     // ==================== CONTRIBUTIONS ROUTES ====================
     Route::prefix('contributions')->name('contributions.')->group(function () {
         Route::get('/filter', [ContributionController::class, 'filterMemberContributions'])->name('filter');
+        Route::get('/export', [ContributionController::class, 'exportContributions'])->name('export');
         Route::post('/set-annual', [ContributionController::class, 'setMemberAnnualContribution'])->name('set-annual');
         Route::post('/pay', [ContributionController::class, 'payMemberContribution'])->name('pay');
         Route::post('/update', [ContributionController::class, 'updateMemberContribution'])->name('update');
@@ -47,26 +55,40 @@ Route::prefix('finance')->name('finance.')->middleware('auth')->group(function (
     
     // ==================== PAYMENTS ROUTES ====================
     Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/', [ContributionController::class, 'getPaymentsList'])->name('data');
-        Route::get('/filter', [ContributionController::class, 'filterPaymentsList'])->name('filter');
-        Route::post('/', [ContributionController::class, 'storePayment'])->name('store');
-        Route::put('/{id}', [ContributionController::class, 'updatePayment'])->name('update');
-        Route::delete('/{id}', [ContributionController::class, 'deletePayment'])->name('delete');
-        Route::get('/{id}', [ContributionController::class, 'showPayment'])->name('show');
-        Route::get('/{paymentId}/history', [ContributionController::class, 'getPaymentHistory'])->name('history');
+        Route::get('/', [PaymentController::class, 'getPaymentsList'])->name('data');
+        Route::get('/filter', [PaymentController::class, 'filterPaymentsList'])->name('filter');
+        Route::get('/export', [PaymentController::class, 'exportPayments'])->name('export');
+        Route::post('/', [PaymentController::class, 'storePayment'])->name('store');
+        Route::get('/{id}/details', [PaymentController::class, 'getPaymentDetails'])->name('details');
+        Route::put('/{id}', [PaymentController::class, 'updatePayment'])->name('update');
+        Route::delete('/{id}', [PaymentController::class, 'deletePayment'])->name('delete');
+        Route::get('/{id}', [PaymentController::class, 'showPayment'])->name('show');
+        Route::get('/{paymentId}/history', [PaymentController::class, 'getPaymentHistory'])->name('history');
     });
     
     // ==================== SPONSORS ROUTES ====================
     Route::prefix('sponsors')->name('sponsors.')->group(function () {
-        Route::get('/', [ContributionController::class, 'getSponsors'])->name('data');
-        Route::get('/filter', [ContributionController::class, 'filterSponsors'])->name('filter');
-        Route::post('/', [ContributionController::class, 'storeSponsor'])->name('store');
-        Route::put('/{id}', [ContributionController::class, 'updateSponsor'])->name('update');
-        Route::delete('/{id}', [ContributionController::class, 'deleteSponsor'])->name('delete');
-        Route::get('/{id}/edit', [ContributionController::class, 'editSponsor'])->name('edit');
-        Route::get('/{id}', [ContributionController::class, 'showSponsor'])->name('show');
-        Route::post('/payment', [ContributionController::class, 'recordSponsorPayment'])->name('record-payment');
-        Route::get('/{id}/payments', [ContributionController::class, 'getSponsorPayments'])->name('payments');
+        Route::get('/', [SponsorController::class, 'getSponsors'])->name('data');
+        Route::get('/filter', [SponsorController::class, 'filterSponsors'])->name('filter');
+        Route::get('/export', [SponsorController::class, 'exportSponsors'])->name('export');
+        Route::post('/', [SponsorController::class, 'storeSponsor'])->name('store');
+        Route::put('/{id}', [SponsorController::class, 'updateSponsor'])->name('update');
+        Route::delete('/{id}', [SponsorController::class, 'deleteSponsor'])->name('delete');
+        Route::get('/{id}/edit', [SponsorController::class, 'editSponsor'])->name('edit');
+        Route::get('/{id}', [SponsorController::class, 'showSponsor'])->name('show');
+        Route::post('/payment', [SponsorController::class, 'recordSponsorPayment'])->name('record-payment');
+        Route::get('/{id}/payments', [SponsorController::class, 'getSponsorPayments'])->name('payments');
+    });
+    
+    // ==================== EXPENSES ROUTES - FIXED ====================
+    Route::prefix('expenses')->name('expenses.')->group(function () {
+        Route::get('/', [ExpenseController::class, 'getExpenses'])->name('data');
+        Route::get('/filter', [ExpenseController::class, 'filterExpenses'])->name('filter');
+        Route::post('/', [ExpenseController::class, 'storeExpense'])->name('store');  // Changed from /store to /
+        Route::put('/{id}', [ExpenseController::class, 'updateExpense'])->name('update');
+        Route::delete('/{id}', [ExpenseController::class, 'deleteExpense'])->name('delete');
+        Route::get('/{id}/details', [ExpenseController::class, 'getExpenseDetails'])->name('details');
+        Route::post('/{id}/approve', [ExpenseController::class, 'approveExpense'])->name('approve');
     });
     
     // ==================== GIFTS ROUTES ====================
@@ -79,18 +101,6 @@ Route::prefix('finance')->name('finance.')->middleware('auth')->group(function (
         Route::get('/{id}', [ContributionController::class, 'showGift'])->name('show');
     });
     
-    // ==================== EXPENSES ROUTES ====================
-    Route::prefix('expenses')->name('expenses.')->group(function () {
-        Route::get('/', [ContributionController::class, 'getExpenses'])->name('data');
-        Route::get('/filter', [ContributionController::class, 'filterExpenses'])->name('filter');
-        Route::post('/', [ContributionController::class, 'storeExpense'])->name('store');
-        Route::put('/{id}', [ContributionController::class, 'updateExpense'])->name('update');
-        Route::delete('/{id}', [ContributionController::class, 'deleteExpense'])->name('delete');
-        Route::get('/{id}', [ContributionController::class, 'showExpense'])->name('show');
-        Route::get('/{id}/details', [ContributionController::class, 'getExpenseDetails'])->name('details');
-        Route::post('/{id}/approve', [ContributionController::class, 'approveExpense'])->name('approve');
-    });
-    
     // ==================== BUDGET ROUTES ====================
     Route::prefix('budget')->name('budget.')->group(function () {
         Route::get('/', [ContributionController::class, 'getBudget'])->name('data');
@@ -101,12 +111,14 @@ Route::prefix('finance')->name('finance.')->middleware('auth')->group(function (
     
     // ==================== ACTION PLANS ROUTES ====================
     Route::prefix('action-plans')->name('action-plans.')->group(function () {
-        Route::get('/filter', [ContributionController::class, 'filterActionPlans'])->name('filter');
-        Route::post('/', [ContributionController::class, 'storeActionPlan'])->name('store');
-        Route::put('/{id}', [ContributionController::class, 'updateActionPlan'])->name('update');
-        Route::delete('/{id}', [ContributionController::class, 'deleteActionPlan'])->name('delete');
-        Route::get('/{id}/edit', [ContributionController::class, 'editActionPlan'])->name('edit');
-        Route::get('/{id}', [ContributionController::class, 'showActionPlan'])->name('show');
+        Route::get('/filter', [FinanceActionPlanController::class, 'filterActionPlans'])->name('filter');
+        Route::post('/store', [FinanceActionPlanController::class, 'storeActionPlan'])->name('store');
+        Route::post('/', [FinanceActionPlanController::class, 'storeActionPlan']);
+        Route::get('/{id}/edit', [FinanceActionPlanController::class, 'editActionPlan'])->name('edit');
+        Route::get('/{id}', [FinanceActionPlanController::class, 'showActionPlan'])->name('show');
+        Route::put('/{id}', [FinanceActionPlanController::class, 'updateActionPlan'])->name('update');
+        Route::post('/{id}', [FinanceActionPlanController::class, 'updateActionPlan']);
+        Route::delete('/{id}', [FinanceActionPlanController::class, 'deleteActionPlan'])->name('delete');
     });
     
     // ==================== REPORTS ROUTES ====================

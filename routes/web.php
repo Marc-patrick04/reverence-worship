@@ -6,6 +6,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ModuleAssignmentController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\LandingPageController;
+
+Route::get('/', [LandingPageController::class, 'index'])->name('home');
 
 // Google Login Routes
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
@@ -91,17 +94,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/users/{id}/approve', [UserController::class, 'approve'])->name('users.approve');
     Route::post('/users/{id}/activate', [UserController::class, 'activate'])->name('users.activate');
     Route::post('/users/{id}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
-
-    // Home Route - Redirect based on role
-    Route::get('/', function () {
-        $user = auth()->user();
-
-        if ($user->isSuperAdmin()) {
-            return redirect()->route('super-admin.dashboard');
-        }
-
-        return redirect()->route('user.dashboard');
-    })->name('home');
 
     // Test PDF Route
     Route::get('/test-pdf', function () {

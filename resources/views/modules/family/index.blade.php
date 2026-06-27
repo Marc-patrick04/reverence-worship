@@ -158,11 +158,12 @@
             <!-- Tasks List -->
             <div class="divide-y divide-gray-100 max-h-[500px] overflow-y-auto" id="tasksList">
                 @forelse($familyTasks as $task)
-                <div class="task-item p-3 hover:bg-gray-50 transition" data-status="{{ $task->status }}" id="task-{{ $task->id }}">
+                @php($isTaskCompleted = $task->status === 'completed')
+                <div class="task-item p-3 transition {{ $isTaskCompleted ? 'bg-green-50/60' : 'hover:bg-gray-50' }}" data-status="{{ $task->status }}" id="task-{{ $task->id }}">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1.5 flex-wrap mb-1">
-                                <span class="font-medium text-gray-800 text-sm">{{ $task->title }}</span>
+                                <span class="font-medium text-sm {{ $isTaskCompleted ? 'text-gray-500 line-through' : 'text-gray-800' }}">{{ $task->title }}</span>
                                 <span class="text-xs px-1.5 py-0.5 rounded-full font-medium
                                     {{ $task->status == 'completed' ? 'bg-green-100 text-green-600' : 
                                        ($task->status == 'in-progress' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-500') }}">
@@ -173,7 +174,7 @@
                                     @else
                                         <i class="fas fa-clock text-xs mr-0.5"></i> 
                                     @endif
-                                    {{ $task->status == 'in-progress' ? 'Progress' : ucfirst($task->status) }}
+                                    {{ $task->status == 'completed' ? 'Done' : ($task->status == 'in-progress' ? 'In Progress' : 'Pending') }}
                                 </span>
                             </div>
                             
@@ -193,13 +194,13 @@
                         @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
                         <div class="flex items-center gap-1.5">
                             @if($task->status != 'completed')
-                            <button onclick="updateTaskStatus({{ $task->id }}, 'completed')" 
+                            <button onclick="updateTaskStatus({{ $task->id }}, 'completed', this)" 
                                     class="px-2 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-600 rounded transition" title="Mark Complete">
                                 <i class="fas fa-check"></i>
                             </button>
                             @endif
                             @if($task->status == 'pending')
-                            <button onclick="updateTaskStatus({{ $task->id }}, 'in-progress')" 
+                            <button onclick="updateTaskStatus({{ $task->id }}, 'in-progress', this)" 
                                     class="px-2 py-1 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded transition" title="Start Progress">
                                 <i class="fas fa-play"></i>
                             </button>
@@ -336,6 +337,33 @@
 
 
     @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
+    function updateTaskStatus(taskId, status, button) {
+        if (button) button.disabled = true;
+
+        fetch(`/family/task/${taskId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Failed to update task');
+            }
+
+            showNotification('success', data.message || 'Task status updated.');
+            window.setTimeout(() => window.location.reload(), 500);
+        })
+        .catch(error => {
+            showNotification('error', error.message || 'Failed to update task');
+            if (button) button.disabled = false;
+        });
+    }
+
     function editMember(memberId) {
         fetch(`/my-family/member/${memberId}/json`)
             .then(response => response.json())

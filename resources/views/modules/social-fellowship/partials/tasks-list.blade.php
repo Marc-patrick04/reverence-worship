@@ -5,7 +5,7 @@
             <h2 class="text-xl font-bold text-gray-800">Family Tasks</h2>
             <p class="text-gray-500 text-sm mt-1">Manage tasks with subtasks and track progress</p>
         </div>
-        <button onclick="openTaskModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition">
+        <button onclick="openTaskModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition">
             <i class="fas fa-plus text-xs"></i> New Task
         </button>
     </div>
@@ -44,7 +44,7 @@
             <i class="fas fa-filter mr-1"></i> Filter
         </button>
         <button onclick="resetFilters()" class="text-gray-500 hover:text-gray-700 text-sm px-2">
-            Reset
+        
         </button>
     </div>
     
@@ -77,11 +77,11 @@
                                 $dueDate = \Carbon\Carbon::parse($task->due_date);
                                 $isOverdue = $dueDate->isPast();
                             @endphp
-                            <span class="flex items-center gap-1 text-xs {{ $isOverdue ? 'text-red-500 font-medium' : 'text-gray-500' }}">
+                            <span class="flex items-center gap-1 text-xs {{ $isOverdue ? 'text-black-500 font-medium' : 'text-gray-500' }}">
                                 <i class="fas fa-calendar"></i> 
                                 Due: {{ $dueDate->format('d M Y') }}
                                 @if($isOverdue)
-                                    <span class="text-red-500">(Overdue)</span>
+                                    <span class="text-black-500">(Overdue)</span>
                                 @endif
                             </span>
                         @elseif($task->due_date && $isCompleted)
@@ -123,7 +123,7 @@
                     <div class="mt-3">
                         <div class="flex items-center gap-2">
                             <div class="w-full max-w-xs bg-gray-200 rounded-full h-2">
-                                <div class="bg-purple-600 h-2 rounded-full" style="width: {{ $progress }}%"></div>
+                                <div class="bg-green-600 h-2 rounded-full" style="width: {{ $progress }}%"></div>
                             </div>
                             <span class="text-xs text-gray-500">{{ $progress }}%</span>
                             @if($totalSubtasks > 0)
@@ -166,7 +166,7 @@
     <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="taskModalTitle" class="text-base font-bold text-gray-800">
-                <i class="fas fa-plus-circle text-purple-600"></i> New Task
+                <i class="fas fa-plus-circle text-blue-600"></i> New Task
             </h3>
             <button onclick="closeModal('taskModal')" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-lg"></i>
@@ -236,7 +236,7 @@
                             </button>
                         </div>
                     </div>
-                    <button type="button" onclick="addSubtaskField()" class="text-xs text-purple-600 hover:text-purple-700 mt-0.5">
+                    <button type="button" onclick="addSubtaskField()" class="text-xs text-black-600 hover:text-black-700 mt-0.5">
                         <i class="fas fa-plus"></i> Add Another Subtask
                     </button>
                 </div>
@@ -248,7 +248,7 @@
                     Cancel
                 </button>
                 <button type="submit" 
-                        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition">
+                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
                     Create Task
                 </button>
             </div>
@@ -322,7 +322,7 @@
                     <div id="editSubtasksContainer">
                         <!-- Subtasks will be loaded here -->
                     </div>
-                    <button type="button" onclick="addEditSubtaskField()" class="text-xs text-purple-600 hover:text-purple-700 mt-0.5">
+                    <button type="button" onclick="addEditSubtaskField()" class="text-xs text-black-600 hover:text-black-700 mt-0.5">
                         <i class="fas fa-plus"></i> Add Another Subtask
                     </button>
                 </div>
@@ -334,7 +334,7 @@
                     Cancel
                 </button>
                 <button type="submit" 
-                        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition">
+                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
                     Update Task
                 </button>
             </div>
@@ -565,7 +565,7 @@ function viewTask(id) {
                         <div class="mt-2">
                             <div class="flex items-center gap-2">
                                 <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div class="bg-purple-600 h-1.5 rounded-full" style="width: ${progress}%"></div>
+                                    <div class="bg-green-600 h-1.5 rounded-full" style="width: ${progress}%"></div>
                                 </div>
                                 <span class="text-xs font-medium text-gray-600">${progress}%</span>
                             </div>

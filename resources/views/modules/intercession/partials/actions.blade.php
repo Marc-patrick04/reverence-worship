@@ -51,7 +51,7 @@
         <div class="border rounded-lg p-3 hover:shadow-sm transition-all duration-200 hover:border-blue-200">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <h4 class="font-medium text-gray-800 text-sm truncate">{{ $plan->title }}</h4>
                         @if($plan->status == 'completed')
                             <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-green-100 text-green-700 flex-shrink-0">
@@ -70,14 +70,12 @@
                     @if($plan->description)
                         <p class="text-xs text-gray-500 mt-0.5 truncate">{{ Str::limit($plan->description, 80) }}</p>
                     @endif
-                    <div class="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-gray-400">
-                        <span class="flex items-center gap-0.5">
-                            <i class="fas fa-tasks"></i> {{ $plan->tasks_count ?? 0 }} tasks
-                        </span>
-                        <span class="flex items-center gap-0.5">
-                            <i class="fas fa-check-circle text-green-500"></i> {{ $plan->completed_tasks ?? 0 }} done
-                        </span>
-                    </div>
+                    @if($plan->due_date)
+                        <div class="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
+                            <i class="fas fa-calendar"></i>
+                            <span>Due: {{ \Carbon\Carbon::parse($plan->due_date)->format('M d, Y') }}</span>
+                        </div>
+                    @endif
                 </div>
                 
                 <!-- Actions -->
@@ -109,33 +107,280 @@
     </div>
 </div>
 
+<!-- ==================== CREATE ACTION PLAN MODAL ==================== -->
+<div id="createActionPlanModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-2xl rounded-2xl bg-white">
+        <div class="flex justify-between items-center pb-4 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Create Action Plan</h3>
+            <button onclick="closeModal('createActionPlanModal')" class="text-gray-400 hover:text-gray-600 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="createActionPlanForm" onsubmit="submitActionPlan(event)" class="mt-4">
+            @csrf
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+                    <input type="text" id="planTitle" name="title" placeholder="Enter plan title" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="planDescription" name="description" rows="3" placeholder="Describe your action plan..." 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input type="date" id="planDueDate" name="due_date" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" onclick="closeModal('createActionPlanModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
+                    Cancel
+                </button>
+                <button type="submit" id="submitPlanBtn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Create Plan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== EDIT ACTION PLAN MODAL ==================== -->
+<div id="editActionPlanModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-2xl rounded-2xl bg-white">
+        <div class="flex justify-between items-center pb-4 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Edit Action Plan</h3>
+            <button onclick="closeModal('editActionPlanModal')" class="text-gray-400 hover:text-gray-600 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="editActionPlanForm" onsubmit="updateActionPlan(event)" class="mt-4">
+            @csrf
+            @method('PUT')
+            <input type="hidden" id="editPlanId" name="plan_id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+                    <input type="text" id="editPlanTitle" name="title" placeholder="Enter plan title" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="editPlanDescription" name="description" rows="3" placeholder="Describe your action plan..." 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input type="date" id="editPlanDueDate" name="due_date" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" onclick="closeModal('editActionPlanModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
+                    Cancel
+                </button>
+                <button type="submit" id="updatePlanBtn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition flex items-center gap-2">
+                    <i class="fas fa-save"></i> Update Plan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-// ==================== DELETE PLAN ====================
-function deletePlan(planId) {
-    if (confirm('Delete this action plan and all its tasks?')) {
-        const btn = event.target.closest('button');
+// ==================== MODAL FUNCTIONS ====================
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// ==================== CREATE ACTION PLAN ====================
+function openCreateActionPlanModal() {
+    document.getElementById('createActionPlanForm').reset();
+    openModal('createActionPlanModal');
+}
+
+function submitActionPlan(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('createActionPlanForm');
+    const formData = new FormData(form);
+    
+    const submitBtn = document.getElementById('submitPlanBtn');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    fetch('/intercession/action-plans', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('createActionPlanModal');
+            showNotification('Action plan created successfully!', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to create plan'), 'error');
+            submitBtn.innerHTML = '<i class="fas fa-plus"></i> Create Plan';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Network error: ' + error.message, 'error');
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Create Plan';
+        submitBtn.disabled = false;
+    });
+}
+
+// ==================== EDIT ACTION PLAN ====================
+function editPlan(planId) {
+    // Show loading state on the edit button
+    const btn = event?.target?.closest('button');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+    }
+    
+    fetch(`/intercession/action-plans/${planId}/edit`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
         if (btn) {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-edit"></i>';
+            btn.disabled = false;
         }
         
-        fetch(`/intercession/action-plans/${planId}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Plan deleted successfully!', 'success');
-                setTimeout(() => location.reload(), 800);
-            } else {
-                showNotification('Error deleting plan', 'error');
-            }
-        });
+        if (data.success && data.plan) {
+            // Populate the edit form with existing data
+            document.getElementById('editPlanId').value = data.plan.id;
+            document.getElementById('editPlanTitle').value = data.plan.title || '';
+            document.getElementById('editPlanDescription').value = data.plan.description || '';
+            document.getElementById('editPlanDueDate').value = data.plan.due_date || '';
+            
+            // Open the modal
+            openModal('editActionPlanModal');
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to load plan'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Network error: ' + error.message, 'error');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-edit"></i>';
+            btn.disabled = false;
+        }
+    });
+}
+
+function updateActionPlan(event) {
+    event.preventDefault();
+    
+    const planId = document.getElementById('editPlanId').value;
+    const form = document.getElementById('editActionPlanForm');
+    const formData = new FormData(form);
+    
+    const submitBtn = document.getElementById('updatePlanBtn');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    submitBtn.disabled = true;
+    
+    fetch(`/intercession/action-plans/${planId}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('editActionPlanModal');
+            showNotification('Plan updated successfully!', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to update plan'), 'error');
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Plan';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Network error: ' + error.message, 'error');
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Plan';
+        submitBtn.disabled = false;
+    });
+}
+
+// ==================== VIEW PLAN ====================
+function viewPlan(planId) {
+    window.location.href = `/intercession/action-plans/${planId}`;
+}
+
+// ==================== DELETE PLAN ====================
+function deletePlan(planId) {
+    if (!confirm('Delete this action plan?')) return;
+    
+    const btn = event?.target?.closest('button');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
     }
+    
+    fetch(`/intercession/action-plans/${planId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Plan deleted successfully!', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to delete plan'), 'error');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-trash"></i>';
+                btn.disabled = false;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Network error: ' + error.message, 'error');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-trash"></i>';
+            btn.disabled = false;
+        }
+    });
 }
 
 // ==================== TOAST NOTIFICATION ====================
@@ -168,18 +413,21 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+// ==================== ADD ANIMATION STYLES ====================
+(function addStyles() {
+    if (!document.getElementById('intercession-animation-styles')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'intercession-animation-styles';
+        styleEl.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            .animate-slide-in {
+                animation: slideIn 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(styleEl);
     }
-    .animate-slide-in {
-        animation: slideIn 0.3s ease-out;
-    }
-`;
-document.head.appendChild(style);
+})();
 </script>
-
-@include('modules.intercession.partials.modals')

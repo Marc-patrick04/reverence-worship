@@ -118,6 +118,31 @@ class NotificationController extends Controller
                 ");
                 $notifications = array_merge($notifications, $permissions);
             }
+
+            // 5. Expenses awaiting this user's approval
+            if ($this->tableExists('expenses')) {
+                $expenses = DB::select("
+                    SELECT
+                        'expense_approval' as type,
+                        e.id as source_id,
+                        'Expense Approval Required' as title,
+                        CONCAT(
+                            COALESCE(creator.name, 'A member'),
+                            ' submitted an expense of RWF ',
+                            e.amount
+                        ) as message,
+                        e.created_at,
+                        NULL as read_at,
+                        '/finance?tab=expenses' as link
+                    FROM expenses e
+                    LEFT JOIN users creator ON creator.id = e.created_by
+                    WHERE e.status = 'pending'
+                    AND (e.approver_id_1 = ? OR e.approver_id_2 = ?)
+                    ORDER BY e.created_at DESC
+                    LIMIT 10
+                ", [$userId, $userId]);
+                $notifications = array_merge($notifications, $expenses);
+            }
             
             // Sort by created_at
             usort($notifications, function($a, $b) {
@@ -207,6 +232,16 @@ class NotificationController extends Controller
                     WHERE p.status = 'pending'
                 ");
                 $total += $permissions[0]->count ?? 0;
+            }
+
+            if ($this->tableExists('expenses')) {
+                $expenses = DB::select("
+                    SELECT COUNT(*) as count
+                    FROM expenses e
+                    WHERE e.status = 'pending'
+                    AND (e.approver_id_1 = ? OR e.approver_id_2 = ?)
+                ", [$userId, $userId]);
+                $total += $expenses[0]->count ?? 0;
             }
             
             return response()->json([

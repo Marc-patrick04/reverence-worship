@@ -1,87 +1,67 @@
 <div>
-    <!-- Header with Year Selection -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800">Sponsors</h3>
-        <div class="flex flex-wrap gap-3">
-            <!-- Year Selector - Same as Contributions -->
-            <div class="flex items-center gap-2">
-                <label class="text-sm text-gray-600">Year:</label>
-                <div class="relative">
-                    <div onclick="toggleSponsorYearPicker()" 
-                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all min-w-[120px]">
-                        <span id="sponsorYearDisplay" class="text-sm font-semibold text-gray-800">{{ date('Y') }}</span>
-                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="sponsorYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </div>
-                    <input type="hidden" id="sponsorSelectedYear" value="{{ date('Y') }}">
-                    
-                    <div id="sponsorYearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
-                        <div class="flex items-center justify-between mb-2">
-                            <button type="button" onclick="changeSponsorYearPage(-1)" 
-                                class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                                </svg>
-                            </button>
-                            <span id="sponsorYearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
-                            <button type="button" onclick="changeSponsorYearPage(1)" 
-                                class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-3 gap-1" id="sponsorYearGrid"></div>
-                    </div>
-                </div>
-                <span id="sponsorYearBadge" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 hidden">
-                    <i class="fas fa-history mr-1"></i> <span id="sponsorYearStatus">Current</span>
-                </span>
+    <!-- Header with Date Range -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-4">
+        <h3 class="text-base font-semibold text-gray-800">Sponsors</h3>
+        <div class="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+            <div class="min-w-0">
+                <label for="sponsorFromDate" class="block text-xs font-medium text-gray-600 mb-1">From</label>
+                <input type="date" id="sponsorFromDate" value="{{ date('Y-01-01') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
-            <button onclick="openSponsorModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+            <div class="min-w-0">
+                <label for="sponsorToDate" class="block text-xs font-medium text-gray-600 mb-1">To</label>
+                <input type="date" id="sponsorToDate" value="{{ date('Y-12-31') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <button type="button" onclick="window.sponsorsManager.exportSponsors()"
+                class="h-9 sm:h-8 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-3 py-0 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                title="Export filtered sponsors for Excel">
+                <i class="fas fa-file-excel" aria-hidden="true"></i>
+                <span>Export Excel</span>
+            </button>
+            <button onclick="window.sponsorsManager.openSponsorModal()" class="h-9 sm:h-8 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-0 rounded-lg text-xs flex items-center justify-center gap-1.5">
                 <i class="fas fa-plus-circle"></i> Add Sponsor
             </button>
         </div>
     </div>
     
     <!-- Info Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-blue-50 rounded-lg p-4">
-            <p class="text-sm text-gray-600">Total Sponsors</p>
-            <p class="text-2xl font-bold text-blue-600" id="totalSponsors">0</p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 max-w-3xl">
+        <div class="bg-blue-50 rounded-lg p-2.5 sm:p-3 min-w-0">
+            <p class="text-xs text-gray-600">Total Sponsors</p>
+            <p class="text-sm sm:text-lg font-bold text-blue-600" id="totalSponsors">0</p>
         </div>
-        <div class="bg-green-50 rounded-lg p-4">
-            <p class="text-sm text-gray-600">Total Received</p>
-            <p class="text-2xl font-bold text-green-600" id="totalReceived">RWF 0</p>
+        <div class="bg-green-50 rounded-lg p-2.5 sm:p-3 min-w-0">
+            <p class="text-xs text-gray-600">Total Received</p>
+            <p class="text-sm sm:text-lg font-bold text-green-600" id="totalReceived">RWF 0</p>
         </div>
-        <div class="bg-purple-50 rounded-lg p-4">
-            <p class="text-sm text-gray-600">Commitments</p>
-            <p class="text-2xl font-bold text-purple-600" id="totalCommitments">RWF 0</p>
+        <div class="col-span-2 sm:col-span-1 bg-purple-50 rounded-lg px-2.5 py-2 sm:p-3 flex items-center justify-between sm:block">
+            <p class="text-xs text-gray-600">Commitments</p>
+            <p class="text-sm sm:text-lg font-bold text-purple-600" id="totalCommitments">RWF 0</p>
         </div>
     </div>
     
     <!-- Search -->
-    <div class="mb-4">
+    <div class="mb-4 max-w-xl">
         <div class="relative">
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input type="text" id="searchSponsor" placeholder="Search by sponsor name or email..." 
-                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                   class="h-9 sm:h-8 w-full pl-9 pr-3 py-0 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
         </div>
         <p id="sponsorsCount" class="text-xs text-gray-500 mt-1">0 sponsors found</p>
     </div>
     
     <!-- Sponsors Table -->
-    <div class="overflow-x-auto">
+    <div class="sponsors-responsive-table overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">SPONSOR</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">COMMITMENT</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">RECEIVED</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">REMAINING</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">STATUS</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">ACTIONS</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">SPONSOR</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">COMMITMENT</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">RECEIVED</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">REMAINING</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">STATUS</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">ACTIONS</th>
                 </tr>
             </thead>
             <tbody id="sponsors-table-body">
@@ -93,438 +73,414 @@
     </div>
 </div>
 
-<!-- Add/Edit Sponsor Modal -->
-<div id="sponsorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 id="modalTitle" class="text-xl font-bold text-gray-800">Add Sponsor</h3>
-            <button onclick="closeFinanceModal('sponsorModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <form id="sponsorForm" onsubmit="saveSponsor(event)" class="mt-4">
-            @csrf
-            <input type="hidden" id="sponsorId">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sponsor Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="name" placeholder="Enter sponsor name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" placeholder="Enter email address" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input type="text" id="phone" placeholder="Enter phone number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Commitment Amount (RWF) <span class="text-red-500">*</span></label>
-                    <input type="number" id="commitment_amount" placeholder="Enter commitment amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea id="notes" rows="2" placeholder="Additional notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeFinanceModal('sponsorModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
-                    Cancel
-                </button>
-                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition flex items-center gap-2">
-                    <i class="fas fa-save"></i> Save
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Record Payment Modal -->
-<div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Record Payment</h3>
-            <button onclick="closeFinanceModal('paymentModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <form id="paymentForm" onsubmit="savePayment(event)" class="mt-4">
-            @csrf
-            <input type="hidden" id="payment_sponsor_id">
-            <div class="space-y-4">
-                <div class="bg-gray-50 rounded-lg p-3">
-                    <p class="text-xs text-gray-500">Sponsor</p>
-                    <p id="payment_sponsor_name" class="text-sm font-medium text-gray-800"></p>
-                </div>
-                <div class="bg-gray-50 rounded-lg p-3">
-                    <p class="text-xs text-gray-500">Year</p>
-                    <p id="payment_year_display" class="text-sm font-medium text-gray-800"></p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount (RWF) <span class="text-red-500">*</span></label>
-                    <input type="number" id="amount" placeholder="Enter amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                    <select id="payment_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="cash">Cash</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="mobile_money">Mobile Money</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea id="payment_notes" rows="2" placeholder="Payment notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeFinanceModal('paymentModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
-                    Cancel
-                </button>
-                <button type="submit" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition flex items-center gap-2">
-                    <i class="fas fa-check"></i> Record
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- View Payments Modal -->
-<div id="viewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Payment History</h3>
-            <button onclick="closeFinanceModal('viewModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="paymentHistoryList" class="mt-4 space-y-2 max-h-96 overflow-y-auto">
-            <p class="text-center text-gray-500 py-4">Loading payments...</p>
-        </div>
-        <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeFinanceModal('viewModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
 <script>
-let currentSponsorYear = new Date().getFullYear();
-let sponsorYearPageOffset = 0;
-
 // ============================================
-// YEAR PICKER FUNCTIONS
+// SPONSORS MANAGER - Complete Module
 // ============================================
 
-function toggleSponsorYearPicker() {
-    const dropdown = document.getElementById('sponsorYearPickerDropdown');
-    const arrow = document.getElementById('sponsorYearArrow');
+(function() {
+    'use strict';
+
+    // ============================================
+    // STATE
+    // ============================================
     
-    if (dropdown.classList.contains('hidden')) {
-        dropdown.classList.remove('hidden');
-        arrow.classList.add('rotate-180');
-        renderSponsorYearGrid();
-    } else {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
+    const state = {
+        currentYear: new Date().getFullYear(),
+        isLoading: false,
+        initialized: false
+    };
+
+    // ============================================
+    // DOM CACHE
+    // ============================================
+    
+    const DOM = {
+        get: (id) => document.getElementById(id),
+        qs: (selector, context = document) => context.querySelector(selector)
+    };
+
+    // ============================================
+    // MODAL FUNCTIONS
+    // ============================================
+    
+    function openFinanceModal(modalId) {
+        const modal = DOM.get(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
     }
-}
 
-function closeSponsorYearPicker() {
-    const dropdown = document.getElementById('sponsorYearPickerDropdown');
-    const arrow = document.getElementById('sponsorYearArrow');
-    
-    if (dropdown && !dropdown.classList.contains('hidden')) {
-        dropdown.classList.add('hidden');
-        arrow.classList.remove('rotate-180');
+    function closeFinanceModal(modalId) {
+        const modal = DOM.get(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
     }
-}
 
-function changeSponsorYearPage(direction) {
-    sponsorYearPageOffset += direction;
-    renderSponsorYearGrid();
-}
+    // ============================================
+    // SPONSOR FUNCTIONS
+    // ============================================
 
-function renderSponsorYearGrid() {
-    const currentYear = new Date().getFullYear();
-    const startYear = currentYear + (sponsorYearPageOffset * 9) - 4;
-    
-    const grid = document.getElementById('sponsorYearGrid');
-    const title = document.getElementById('sponsorYearPageTitle');
-    
-    if (!grid) return;
-    
-    const endYear = startYear + 8;
-    title.textContent = `${startYear} - ${endYear}`;
-    
-    grid.innerHTML = '';
-    
-    for (let i = 0; i < 9; i++) {
-        const year = startYear + i;
-        const isSelected = year == currentSponsorYear;
-        const isCurrentYear = year == currentYear;
-        const isDisabled = year < 2000 || year > 2100;
+    function loadSponsors() {
+        if (state.isLoading) return;
+        state.isLoading = true;
         
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = year;
-        btn.className = 'py-1.5 px-2 rounded text-xs transition-all text-center';
+        const search = DOM.get('searchSponsor')?.value || '';
+        const fromDate = DOM.get('sponsorFromDate')?.value || '';
+        const toDate = DOM.get('sponsorToDate')?.value || '';
         
-        if (isSelected) {
-            btn.classList.add('bg-blue-600', 'text-white', 'font-semibold', 'shadow-sm');
-        } else if (isCurrentYear) {
-            btn.classList.add('bg-blue-50', 'text-blue-600', 'font-medium', 'border', 'border-blue-200');
-        } else {
-            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
-        }
-        
-        if (isDisabled) {
-            btn.classList.add('text-gray-300', 'cursor-not-allowed');
-            btn.disabled = true;
-        } else {
-            btn.onclick = function() {
-                selectSponsorYear(year);
-            };
-        }
-        
-        grid.appendChild(btn);
+        const params = new URLSearchParams({
+            search: search,
+            from_date: fromDate,
+            to_date: toDate,
+            status: 'all'
+        });
+
+        fetch(`/finance/sponsors/filter?${params.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displaySponsors(data.sponsors);
+                updateStats(data.sponsors);
+            }
+            state.isLoading = false;
+        })
+        .catch(error => {
+            console.error('Error loading sponsors:', error);
+            const tbody = DOM.get('sponsors-table-body');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading sponsors. Please try again.</td></tr>`;
+            }
+            state.isLoading = false;
+        });
     }
-}
 
-function selectSponsorYear(year) {
-    currentSponsorYear = year;
-    document.getElementById('sponsorSelectedYear').value = year;
-    document.getElementById('sponsorYearDisplay').textContent = year;
-    
-    closeSponsorYearPicker();
-    renderSponsorYearGrid();
-    updateSponsorYearBadge();
-    loadSponsors();
-}
+    function exportSponsors() {
+        const fromDate = DOM.get('sponsorFromDate');
+        const toDate = DOM.get('sponsorToDate');
 
-function updateSponsorYearBadge() {
-    const currentYearNow = new Date().getFullYear();
-    const yearBadge = document.getElementById('sponsorYearBadge');
-    const yearStatus = document.getElementById('sponsorYearStatus');
-    
-    if (!yearBadge) return;
-    
-    if (currentSponsorYear === currentYearNow) {
-        yearBadge.classList.add('hidden');
-    } else if (currentSponsorYear < currentYearNow) {
-        yearBadge.classList.remove('hidden');
-        yearStatus.innerHTML = 'Archived Year';
-        yearBadge.className = 'px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700';
-    } else {
-        yearBadge.classList.remove('hidden');
-        yearStatus.innerHTML = 'Future Year';
-        yearBadge.className = 'px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700';
+        if (fromDate.value > toDate.value) {
+            toDate.setCustomValidity('To date must be on or after from date.');
+            toDate.reportValidity();
+            return;
+        }
+
+        const params = new URLSearchParams({
+            search: DOM.get('searchSponsor')?.value || '',
+            from_date: fromDate.value,
+            to_date: toDate.value
+        });
+
+        window.location.href = `/finance/sponsors/export?${params.toString()}`;
     }
-}
 
-// ============================================
-// MODAL FUNCTIONS
-// ============================================
-
-function openFinanceModal(modalId) {
-    document.getElementById(modalId).classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeFinanceModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
-// ============================================
-// SPONSOR FUNCTIONS
-// ============================================
-
-function loadSponsors() {
-    const search = document.getElementById('searchSponsor')?.value || '';
-    const year = currentSponsorYear;
-    
-    fetch(`/finance/sponsors/filter?search=${encodeURIComponent(search)}&year=${year}&status=all`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            displaySponsors(data.sponsors);
-            updateStats(data.sponsors);
-        }
-    })
-    .catch(error => {
-        console.error('Error loading sponsors:', error);
-        const tbody = document.getElementById('sponsors-table-body');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading sponsors. Please try again.</td></tr>`;
-        }
-    });
-}
-
-function displaySponsors(sponsors) {
-    const tbody = document.getElementById('sponsors-table-body');
-    
-    if (!sponsors || sponsors.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No sponsors found for ${currentSponsorYear}</td></tr>`;
-        return;
-    }
-    
-    tbody.innerHTML = sponsors.map(s => {
-        const commitment = parseFloat(s.commitment_amount || 0);
-        const received = parseFloat(s.received_amount || 0);
-        const remaining = commitment - received;
+    function displaySponsors(sponsors) {
+        const tbody = DOM.get('sponsors-table-body');
         
-        let status = 'Active';
-        let statusClass = 'bg-blue-100 text-blue-700';
-        if (received >= commitment && commitment > 0) {
-            status = 'Completed';
-            statusClass = 'bg-green-100 text-green-700';
-        } else if (received > commitment) {
-            status = 'Overpaid';
-            statusClass = 'bg-orange-100 text-orange-700';
+        if (!sponsors || sponsors.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No sponsors found for this date range</td></tr>`;
+            return;
         }
         
-        return `
-            <tr class="border-b hover:bg-gray-50 transition">
-                <td class="px-4 py-3">
-                    <div>
-                        <p class="font-medium text-gray-800">${escapeHtml(s.name)}</p>
-                        <p class="text-xs text-gray-500">${escapeHtml(s.email || 'No email')}</p>
-                    </div>
-                </td>
-                <td class="px-4 py-3 text-sm font-medium text-gray-700">
-                    RWF ${commitment.toLocaleString()}
-                </td>
-                <td class="px-4 py-3 text-sm font-medium text-green-600">
-                    RWF ${received.toLocaleString()}
-                </td>
-                <td class="px-4 py-3 text-sm font-medium text-gray-600">
-                    RWF ${Math.max(remaining, 0).toLocaleString()}
-                </td>
-                <td class="px-4 py-3">
-                    <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
-                        ${status}
-                    </span>
-                </td>
-                <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                        <button onclick="openPaymentModal(${s.id}, '${escapeHtml(s.name)}')" 
-                                class="text-green-500 hover:text-green-700 transition" title="Record Payment">
-                            <i class="fas fa-plus-circle text-lg"></i>
-                        </button>
-                        <button onclick="viewPayments(${s.id})" 
-                                class="text-yellow-500 hover:text-yellow-700 transition" title="View History">
-                            <i class="fas fa-history text-lg"></i>
-                        </button>
-                        <button onclick="editSponsor(${s.id})" 
-                                class="text-blue-500 hover:text-blue-700 transition" title="Edit Sponsor">
-                            <i class="fas fa-edit text-lg"></i>
-                        </button>
-                        <button onclick="deleteSponsor(${s.id}, '${escapeHtml(s.name)}')" 
-                                class="text-red-500 hover:text-red-700 transition" title="Delete Sponsor">
-                            <i class="fas fa-trash text-lg"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+        tbody.innerHTML = sponsors.map(s => {
+            const commitment = parseFloat(s.commitment_amount || 0);
+            const received = parseFloat(s.received_amount || 0);
+            const remaining = commitment - received;
+            
+            // Determine status
+            let status = 'Active';
+            let statusClass = 'bg-blue-100 text-blue-700';
+            
+            if (commitment === 0 && received === 0) {
+                status = 'No Commitment';
+                statusClass = 'bg-gray-100 text-gray-600';
+            } else if (commitment === 0 && received > 0) {
+                status = 'Direct Gift';
+                statusClass = 'bg-purple-100 text-purple-700';
+            } else if (received >= commitment && commitment > 0) {
+                status = 'Completed';
+                statusClass = 'bg-green-100 text-green-700';
+            } else if (received > commitment && commitment > 0) {
+                status = 'Overpaid';
+                statusClass = 'bg-orange-100 text-orange-700';
+            } else if (received > 0 && received < commitment) {
+                status = 'Active';
+                statusClass = 'bg-blue-100 text-blue-700';
+            }
+            
+            // Show year badge
+            const yearBadge = s.year ? 
+                `<span class="text-xs text-gray-400 ml-1">(${s.year})</span>` : 
+                `<span class="text-xs text-gray-400 ml-1">(No year set)</span>`;
+            
+            return `
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="px-3 py-2" data-label="Sponsor">
+                        <div>
+                            <p class="font-medium text-gray-800">
+                                ${escapeHtml(s.name)} 
+                                ${yearBadge}
+                            </p>
+                            <p class="text-xs text-gray-500">${escapeHtml(s.email || 'No email')}</p>
+                        </div>
+                    </td>
+                    <td class="px-3 py-2 text-sm font-medium text-gray-700" data-label="Commitment">
+                        ${commitment > 0 ? 'RWF ' + commitment.toLocaleString() : '-'}
+                    </td>
+                    <td class="px-3 py-2 text-sm font-medium text-green-600" data-label="Received">
+                        RWF ${received.toLocaleString()}
+                    </td>
+                    <td class="px-3 py-2 text-sm font-medium text-gray-600" data-label="Remaining">
+                        ${commitment > 0 ? 'RWF ' + Math.max(remaining, 0).toLocaleString() : '-'}
+                    </td>
+                    <td class="px-3 py-2" data-label="Status">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                            ${status}
+                        </span>
+                    </td>
+                    <td class="px-3 py-2" data-label="Actions">
+                        <div class="flex items-center gap-1">
+                            <button onclick="window.sponsorsManager.openPaymentModal(${s.id}, '${escapeHtml(s.name)}')" 
+                                    class="h-7 w-7 inline-flex items-center justify-center rounded-md text-green-600 hover:bg-green-50 transition" title="Record Payment">
+                                <i class="fas fa-plus-circle text-sm"></i>
+                            </button>
+                            <button onclick="window.sponsorsManager.viewPayments(${s.id})" 
+                                    class="h-7 w-7 inline-flex items-center justify-center rounded-md text-amber-600 hover:bg-amber-50 transition" title="View History">
+                                <i class="fas fa-history text-sm"></i>
+                            </button>
+                            <button onclick="window.sponsorsManager.editSponsor(${s.id})" 
+                                    class="h-7 w-7 inline-flex items-center justify-center rounded-md text-blue-600 hover:bg-blue-50 transition" title="Edit Sponsor">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button onclick="window.sponsorsManager.deleteSponsor(${s.id}, '${escapeHtml(s.name)}')" 
+                                    class="h-7 w-7 inline-flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 transition" title="Delete Sponsor">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
 
-function updateStats(sponsors) {
-    const total = sponsors.length;
-    const commitments = sponsors.reduce((s, p) => s + parseFloat(p.commitment_amount || 0), 0);
-    const received = sponsors.reduce((s, p) => s + parseFloat(p.received_amount || 0), 0);
+    function updateStats(sponsors) {
+        const total = sponsors.length;
+        const commitments = sponsors.reduce((s, p) => s + parseFloat(p.commitment_amount || 0), 0);
+        const received = sponsors.reduce((s, p) => s + parseFloat(p.received_amount || 0), 0);
+        
+        const totalEl = DOM.get('totalSponsors');
+        const commitmentsEl = DOM.get('totalCommitments');
+        const receivedEl = DOM.get('totalReceived');
+        const countEl = DOM.get('sponsorsCount');
+        
+        if (totalEl) totalEl.innerText = total;
+        if (commitmentsEl) commitmentsEl.innerHTML = 'RWF ' + commitments.toLocaleString();
+        if (receivedEl) receivedEl.innerHTML = 'RWF ' + received.toLocaleString();
+        if (countEl) countEl.innerText = total + ' sponsors found';
+    }
+
+    // ============================================
+    // SPONSOR CRUD OPERATIONS
+    // ============================================
+
+    function openSponsorModal() {
+    const title = DOM.get('sponsorModalTitle');
+    const submitBtn = DOM.get('sponsorSubmitBtnText');
+    const idField = DOM.get('sponsorId');
+    const nameField = DOM.get('name');
+    const emailField = DOM.get('email');
+    const phoneField = DOM.get('phone');
+    const commitmentField = DOM.get('commitment_amount');
+    const notesField = DOM.get('notes');
+    const yearDisplay = DOM.get('sponsorYearDisplay');
+    const yearInput = DOM.get('sponsorYear');
     
-    document.getElementById('totalSponsors').innerText = total;
-    document.getElementById('totalCommitments').innerHTML = 'RWF ' + commitments.toLocaleString();
-    document.getElementById('totalReceived').innerHTML = 'RWF ' + received.toLocaleString();
-    document.getElementById('sponsorsCount').innerText = total + ' sponsors found';
-}
-
-// ============================================
-// SPONSOR CRUD OPERATIONS
-// ============================================
-
-function openSponsorModal() {
-    document.getElementById('modalTitle').innerText = 'Add Sponsor';
-    document.getElementById('sponsorId').value = '';
-    document.getElementById('name').value = '';
-    document.getElementById('email').value = '';
-    document.getElementById('phone').value = '';
-    document.getElementById('commitment_amount').value = '';
-    document.getElementById('notes').value = '';
+    // Get the current year from the filter - use the displayed year
+    const yearDisplayElement = DOM.get('sponsorYearDisplay');
+    const currentYear = yearDisplayElement ? parseInt(yearDisplayElement.textContent) : new Date().getFullYear();
+    
+    // Also update state.currentYear to match
+    state.currentYear = currentYear;
+    
+    if (title) title.innerText = 'Add Sponsor';
+    if (submitBtn) submitBtn.innerText = 'Add Sponsor';
+    if (idField) idField.value = '';
+    if (nameField) {
+        nameField.value = '';
+        nameField.required = true;
+    }
+    if (emailField) {
+        emailField.value = '';
+        emailField.required = false;
+    }
+    if (phoneField) {
+        phoneField.value = '';
+        phoneField.required = false;
+    }
+    if (commitmentField) {
+        commitmentField.value = '';
+        commitmentField.placeholder = 'Optional - Enter amount or leave empty';
+        commitmentField.required = false;
+    }
+    if (notesField) {
+        notesField.value = '';
+        notesField.required = false;
+    }
+    if (yearDisplay) yearDisplay.textContent = currentYear;
+    if (yearInput) yearInput.value = currentYear;
+    
     openFinanceModal('sponsorModal');
 }
 
-function editSponsor(id) {
+function openPaymentModal(id, name) {
+    const sponsorId = DOM.get('payment_sponsor_id');
+    const sponsorName = DOM.get('payment_sponsor_name');
+    const yearDisplay = DOM.get('payment_year_display');
+    const yearInput = DOM.get('payment_year');
+    const amountField = DOM.get('amount');
+    const notesField = DOM.get('payment_notes');
+    
+    // Get the current year from the filter - use the displayed year
+    const yearDisplayElement = DOM.get('sponsorYearDisplay');
+    const currentYear = yearDisplayElement ? parseInt(yearDisplayElement.textContent) : new Date().getFullYear();
+    
+    // Also update state.currentYear to match
+    state.currentYear = currentYear;
+    
+    if (sponsorId) sponsorId.value = id;
+    if (sponsorName) sponsorName.innerText = name;
+    if (yearDisplay) yearDisplay.innerText = currentYear;
+    if (yearInput) yearInput.value = currentYear;
+    if (amountField) amountField.value = '';
+    if (notesField) notesField.value = '';
+    
+    openFinanceModal('paymentModal');
+}
+
+    function editSponsor(id) {
+    showNotification('Loading sponsor details...', 'info');
+    
     fetch(`/finance/sponsors/${id}/edit`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to load sponsor details');
+            }
+            return res.json();
+        })
         .then(data => {
             if (data.success) {
-                document.getElementById('modalTitle').innerText = 'Edit Sponsor';
-                document.getElementById('sponsorId').value = data.sponsor.id;
-                document.getElementById('name').value = data.sponsor.name;
-                document.getElementById('email').value = data.sponsor.email || '';
-                document.getElementById('phone').value = data.sponsor.phone || '';
-                document.getElementById('commitment_amount').value = data.sponsor.commitment_amount;
-                document.getElementById('notes').value = data.sponsor.notes || '';
+                const title = DOM.get('sponsorModalTitle');
+                const submitBtn = DOM.get('sponsorSubmitBtnText');
+                const idField = DOM.get('sponsorId');
+                const nameField = DOM.get('name');
+                const emailField = DOM.get('email');
+                const phoneField = DOM.get('phone');
+                const commitmentField = DOM.get('commitment_amount');
+                const notesField = DOM.get('notes');
+                const yearDisplay = DOM.get('sponsorYearDisplay');
+                const yearInput = DOM.get('sponsorYear');
+                
+                // Get the current year from the filter
+                const yearDisplayElement = DOM.get('sponsorYearDisplay');
+                const filterYear = yearDisplayElement ? parseInt(yearDisplayElement.textContent) : new Date().getFullYear();
+                
+                // Use the sponsor's year or the current filter year
+                const sponsorYear = data.sponsor.year || filterYear;
+                
+                if (title) title.innerText = 'Edit Sponsor';
+                if (submitBtn) submitBtn.innerText = 'Update Sponsor';
+                if (idField) idField.value = data.sponsor.id;
+                if (nameField) {
+                    nameField.value = data.sponsor.name || '';
+                    nameField.required = true;
+                }
+                if (emailField) {
+                    emailField.value = data.sponsor.email || '';
+                    emailField.required = false;
+                }
+                if (phoneField) {
+                    phoneField.value = data.sponsor.phone || '';
+                    phoneField.required = false;
+                }
+                if (commitmentField) {
+                    commitmentField.value = data.sponsor.commitment_amount || '';
+                    commitmentField.placeholder = 'Optional - Enter amount or leave empty';
+                    commitmentField.required = false;
+                }
+                if (notesField) {
+                    notesField.value = data.sponsor.notes || '';
+                    notesField.required = false;
+                }
+                if (yearDisplay) yearDisplay.textContent = sponsorYear;
+                if (yearInput) yearInput.value = sponsorYear;
+                
                 openFinanceModal('sponsorModal');
+            } else {
+                showNotification(data.message || 'Failed to load sponsor details', 'error');
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error loading sponsor details. Please try again.', 'error');
+        });
 }
 
-function saveSponsor(event) {
-    event.preventDefault();
-    const id = document.getElementById('sponsorId').value;
-    const formData = new FormData();
-    formData.append('name', document.getElementById('name').value);
-    formData.append('email', document.getElementById('email').value);
-    formData.append('phone', document.getElementById('phone').value);
-    formData.append('commitment_amount', document.getElementById('commitment_amount').value);
-    formData.append('notes', document.getElementById('notes').value);
-    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-    
-    const url = id ? `/finance/sponsors/${id}` : '/finance/sponsors';
-    if (id) formData.append('_method', 'PUT');
-    
-    fetch(url, { 
-        method: 'POST', 
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
+    function saveSponsor(event) {
+        event.preventDefault();
+        
+        const id = DOM.get('sponsorId').value;
+        const name = DOM.get('name').value;
+        const email = DOM.get('email').value;
+        const phone = DOM.get('phone').value;
+        const commitment_amount = DOM.get('commitment_amount').value;
+        const notes = DOM.get('notes').value;
+        const year = DOM.get('sponsorYear')?.value || state.currentYear || new Date().getFullYear();
+        
+        // Validate required fields
+        if (!name || name.trim() === '') {
+            showNotification('Please enter the sponsor name', 'error');
+            return;
         }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            closeFinanceModal('sponsorModal');
-            loadSponsors();
-            showNotification(id ? 'Sponsor updated successfully!' : 'Sponsor added successfully!', 'success');
-        } else {
-            showNotification('Error: ' + (data.message || 'Failed to save sponsor'), 'error');
+        
+        // Validate commitment amount if provided
+        if (commitment_amount && commitment_amount.trim() !== '') {
+            const amount = parseFloat(commitment_amount);
+            if (isNaN(amount) || amount < 0) {
+                showNotification('Please enter a valid commitment amount', 'error');
+                return;
+            }
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Network error: ' + error.message, 'error');
-    });
-}
-
-function deleteSponsor(id, name) {
-    if (confirm(`Are you sure you want to delete "${name}"? This will also delete all associated payments.`)) {
-        fetch(`/finance/sponsors/${id}`, {
-            method: 'DELETE',
-            headers: { 
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        
+        // Prepare data
+        const formData = new FormData();
+        formData.append('name', name.trim());
+        formData.append('email', email ? email.trim() : '');
+        formData.append('phone', phone ? phone.trim() : '');
+        formData.append('commitment_amount', commitment_amount ? commitment_amount : 0);
+        formData.append('notes', notes ? notes.trim() : '');
+        formData.append('year', year);
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+        
+        const url = id ? `/finance/sponsors/${id}` : '/finance/sponsors';
+        if (id) formData.append('_method', 'PUT');
+        
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        fetch(url, { 
+            method: 'POST', 
+            body: formData,
+            headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
@@ -532,165 +488,382 @@ function deleteSponsor(id, name) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                closeFinanceModal('sponsorModal');
                 loadSponsors();
-                showNotification('Sponsor deleted successfully', 'success');
+                showNotification(id ? 'Sponsor updated successfully!' : 'Sponsor added successfully!', 'success');
             } else {
-                showNotification('Error: ' + (data.message || 'Failed to delete sponsor'), 'error');
+                showNotification('Error: ' + (data.message || 'Failed to save sponsor'), 'error');
             }
+            submitBtn.innerHTML = originalHtml;
+            submitBtn.disabled = false;
         })
         .catch(error => {
             console.error('Error:', error);
             showNotification('Network error: ' + error.message, 'error');
+            submitBtn.innerHTML = originalHtml;
+            submitBtn.disabled = false;
         });
     }
-}
 
-// ============================================
-// PAYMENT FUNCTIONS
-// ============================================
-
-function openPaymentModal(id, name) {
-    document.getElementById('payment_sponsor_id').value = id;
-    document.getElementById('payment_sponsor_name').innerText = name;
-    document.getElementById('payment_year_display').innerText = currentSponsorYear;
-    document.getElementById('amount').value = '';
-    document.getElementById('payment_notes').value = '';
-    openFinanceModal('paymentModal');
-}
-
-function savePayment(event) {
-    event.preventDefault();
-    
-    const formData = new FormData();
-    formData.append('sponsor_id', document.getElementById('payment_sponsor_id').value);
-    formData.append('amount', document.getElementById('amount').value);
-    formData.append('year', currentSponsorYear);
-    formData.append('payment_method', document.getElementById('payment_method').value);
-    formData.append('notes', document.getElementById('payment_notes').value);
-    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-    
-    fetch('/finance/sponsors/payment', { 
-        method: 'POST', 
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            closeFinanceModal('paymentModal');
-            loadSponsors();
-            showNotification('Payment recorded successfully!', 'success');
-        } else {
-            showNotification('Error: ' + (data.message || 'Failed to record payment'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Network error: ' + error.message, 'error');
-    });
-}
-
-function viewPayments(id) {
-    fetch(`/finance/sponsors/${id}/payments?year=${currentSponsorYear}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        const container = document.getElementById('paymentHistoryList');
-        if (data.success && data.payments && data.payments.length) {
-            container.innerHTML = data.payments.map(p => `
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-2 hover:shadow-sm transition">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-sm font-medium text-gray-800">RWF ${parseFloat(p.amount).toLocaleString()}</p>
-                            <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
-                                <span><i class="far fa-calendar mr-1"></i> ${new Date(p.payment_date).toLocaleDateString()}</span>
-                                <span><i class="fas fa-credit-card mr-1"></i> ${p.payment_method || 'Cash'}</span>
-                            </div>
-                        </div>
-                        <span class="text-xs text-gray-400">${p.recorded_by || 'System'}</span>
-                    </div>
-                    ${p.notes ? `<p class="text-xs text-gray-500 mt-2">${escapeHtml(p.notes)}</p>` : ''}
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = `
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
-                    <p>No payments recorded for ${currentSponsorYear}</p>
-                </div>
-            `;
-        }
-        openFinanceModal('viewModal');
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Error loading payment history', 'error');
-    });
-}
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 transition-all transform ${
-        type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    }`;
-    notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i> ${message}`;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-10px)';
-        setTimeout(() => notification.remove(), 300);
-    }, 4000);
-}
-
-// Event listeners
-document.getElementById('searchSponsor')?.addEventListener('keyup', function() {
-    loadSponsors();
-});
-
-// Close year picker when clicking outside
-document.addEventListener('click', function(event) {
-    const picker = document.getElementById('sponsorYearPickerDropdown');
-    const display = document.querySelector('#sponsorYearDisplay');
-    
-    if (picker && !picker.classList.contains('hidden') && display) {
-        const parentDiv = display.closest('.relative');
-        if (parentDiv && !parentDiv.contains(event.target)) {
-            closeSponsorYearPicker();
+    function deleteSponsor(id, name) {
+        if (confirm(`Are you sure you want to delete "${name}"? This will also delete all associated payments.`)) {
+            fetch(`/finance/sponsors/${id}`, {
+                method: 'DELETE',
+                headers: { 
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    loadSponsors();
+                    showNotification('Sponsor deleted successfully', 'success');
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to delete sponsor'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            });
         }
     }
-});
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    const currentYear = new Date().getFullYear();
-    currentSponsorYear = currentYear;
-    document.getElementById('sponsorSelectedYear').value = currentYear;
-    document.getElementById('sponsorYearDisplay').textContent = currentYear;
+    // ============================================
+    // PAYMENT FUNCTIONS
+    // ============================================
+
+    function openPaymentModal(id, name) {
+        const sponsorId = DOM.get('payment_sponsor_id');
+        const sponsorName = DOM.get('payment_sponsor_name');
+        const yearDisplay = DOM.get('payment_year_display');
+        const yearInput = DOM.get('payment_year');
+        const amountField = DOM.get('amount');
+        const notesField = DOM.get('payment_notes');
+        
+        // Get the current year from the filter
+        const currentYear = state.currentYear || new Date().getFullYear();
+        
+        if (sponsorId) sponsorId.value = id;
+        if (sponsorName) sponsorName.innerText = name;
+        if (yearDisplay) yearDisplay.innerText = currentYear;
+        if (yearInput) yearInput.value = currentYear;
+        if (amountField) amountField.value = '';
+        if (notesField) notesField.value = '';
+        
+        openFinanceModal('paymentModal');
+    }
+
+    function savePayment(event) {
+        event.preventDefault();
+        
+        const sponsorId = DOM.get('payment_sponsor_id').value;
+        const amount = DOM.get('amount').value;
+        const paymentMethod = DOM.get('payment_method').value;
+        const notes = DOM.get('payment_notes').value;
+        const year = DOM.get('payment_year')?.value || state.currentYear || new Date().getFullYear();
+        
+        if (!sponsorId || !amount) {
+            showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('sponsor_id', sponsorId);
+        formData.append('amount', amount);
+        formData.append('year', year);
+        formData.append('payment_method', paymentMethod);
+        formData.append('notes', notes);
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+        
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        fetch('/finance/sponsors/payment', { 
+            method: 'POST', 
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                closeFinanceModal('paymentModal');
+                loadSponsors();
+                showNotification('Payment recorded successfully!', 'success');
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to record payment'), 'error');
+            }
+            submitBtn.innerHTML = originalHtml;
+            submitBtn.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Network error: ' + error.message, 'error');
+            submitBtn.innerHTML = originalHtml;
+            submitBtn.disabled = false;
+        });
+    }
+
+    function viewPayments(id) {
+        const container = DOM.get('paymentHistoryList');
+        const year = state.currentYear || new Date().getFullYear();
+        
+        fetch(`/finance/sponsors/${id}/payments?year=${year}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.payments && data.payments.length) {
+                container.innerHTML = data.payments.map(p => `
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-2 hover:shadow-sm transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">RWF ${parseFloat(p.amount).toLocaleString()}</p>
+                                <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
+                                    <span><i class="far fa-calendar mr-1"></i> ${new Date(p.payment_date).toLocaleDateString()}</span>
+                                    <span><i class="fas fa-credit-card mr-1"></i> ${p.payment_method || 'Cash'}</span>
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-400">${p.recorded_by || 'System'}</span>
+                        </div>
+                        ${p.notes ? `<p class="text-xs text-gray-500 mt-2">${escapeHtml(p.notes)}</p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
+                        <p>No payments recorded for ${year}</p>
+                    </div>
+                `;
+            }
+            openFinanceModal('viewModal');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error loading payment history', 'error');
+        });
+    }
+
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                     type === 'error' ? 'fa-exclamation-circle' : 
+                     type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle';
+        const bgColor = type === 'success' ? 'bg-green-500' : 
+                        type === 'error' ? 'bg-red-500' : 
+                        type === 'info' ? 'bg-blue-500' : 'bg-red-500';
+        
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 transition-all transform ${bgColor}`;
+        notification.innerHTML = `<i class="fas ${icon} mr-2"></i> ${message}`;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-10px)';
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+
+    function init() {
+        if (state.initialized) return;
+        state.initialized = true;
+        
+        const currentYear = new Date().getFullYear();
+        state.currentYear = currentYear;
+        
+        // Search input
+        const searchInput = DOM.get('searchSponsor');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                loadSponsors();
+            });
+        }
+
+        [DOM.get('sponsorFromDate'), DOM.get('sponsorToDate')].forEach(input => {
+            input?.addEventListener('change', function() {
+                const fromDate = DOM.get('sponsorFromDate');
+                const toDate = DOM.get('sponsorToDate');
+                toDate.setCustomValidity('');
+                if (fromDate.value > toDate.value) {
+                    toDate.setCustomValidity('To date must be on or after from date.');
+                    toDate.reportValidity();
+                    return;
+                }
+                loadSponsors();
+            });
+        });
+        
+        // Close modals on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const openModals = document.querySelectorAll('.fixed:not(.hidden)');
+                openModals.forEach(modal => {
+                    if (modal.id && modal.id.endsWith('Modal')) {
+                        closeFinanceModal(modal.id);
+                    }
+                });
+            }
+        });
+        
+        // Load initial data
+        loadSponsors();
+        
+        console.log('Sponsors Manager initialized');
+    }
+
+    // ============================================
+    // EXPOSE PUBLIC API
+    // ============================================
     
-    loadSponsors();
-});
+    window.sponsorsManager = {
+        // State
+        state: state,
+        
+        // Modal functions
+        openFinanceModal: openFinanceModal,
+        closeFinanceModal: closeFinanceModal,
+        
+        // Sponsor functions
+        loadSponsors: loadSponsors,
+        exportSponsors: exportSponsors,
+        displaySponsors: displaySponsors,
+        updateStats: updateStats,
+        openSponsorModal: openSponsorModal,
+        editSponsor: editSponsor,
+        saveSponsor: saveSponsor,
+        deleteSponsor: deleteSponsor,
+        
+        // Payment functions
+        openPaymentModal: openPaymentModal,
+        savePayment: savePayment,
+        viewPayments: viewPayments,
+        
+        // Utility
+        showNotification: showNotification,
+        escapeHtml: escapeHtml,
+        
+        // Init
+        init: init
+    };
+
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();
 </script>
 
 <style>
 .rotate-180 {
     transform: rotate(180deg);
+}
+
+@media (max-width: 639px) {
+    .sponsors-responsive-table {
+        overflow: visible;
+    }
+
+    .sponsors-responsive-table table,
+    .sponsors-responsive-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .sponsors-responsive-table thead {
+        display: none;
+    }
+
+    .sponsors-responsive-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .sponsors-responsive-table tbody tr {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    }
+
+    .sponsors-responsive-table tbody td {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        border-bottom: 1px solid #f3f4f6;
+        white-space: normal;
+    }
+
+    .sponsors-responsive-table tbody td::before {
+        content: attr(data-label);
+        color: #6b7280;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .sponsors-responsive-table tbody td[data-label="Sponsor"] {
+        order: -1;
+        display: block;
+        padding: 12px;
+        background: #f9fafb;
+    }
+
+    .sponsors-responsive-table tbody td[data-label="Sponsor"]::before {
+        display: none;
+    }
+
+    .sponsors-responsive-table tbody td[data-label="Actions"] {
+        border-bottom: 0;
+    }
+
+    .sponsors-responsive-table tbody td[data-label="Actions"] button {
+        width: 36px;
+        height: 36px;
+    }
+
+    .sponsors-responsive-table tbody tr > td[colspan] {
+        display: block;
+        padding: 24px 12px;
+        text-align: center;
+        border-bottom: 0;
+    }
+
+    .sponsors-responsive-table tbody tr > td[colspan]::before {
+        display: none;
+    }
 }
 </style>

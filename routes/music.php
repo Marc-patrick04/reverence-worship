@@ -42,6 +42,9 @@ Route::middleware('auth')->prefix('music')->group(function () {
     
     // Public Board
     Route::post('/board/store', [MusicController::class, 'storeBoardPost'])->name('music.board.store');
+    Route::get('/board/{id}/edit', [MusicController::class, 'editBoardPost'])->name('music.board.edit');
+    Route::put('/board/{id}', [MusicController::class, 'updateBoardPost'])->name('music.board.update');
+    Route::post('/board/{id}/toggle-publish', [MusicController::class, 'togglePublishBoard'])->name('music.board.toggle-publish');
     Route::post('/board/{id}/toggle-pin', [MusicController::class, 'togglePinBoard'])->name('music.board.toggle-pin');
     Route::delete('/board/{id}', [MusicController::class, 'deleteBoardPost'])->name('music.board.delete');
     
@@ -89,6 +92,7 @@ Route::middleware('auth')->prefix('music')->group(function () {
         Route::get('/featured/{id}/edit', [MusicController::class, 'editFeaturedImage'])->name('music.landing.featured.edit');
         Route::delete('/featured/{id}', [MusicController::class, 'deleteFeaturedImage'])->name('music.landing.featured.delete');
         Route::post('/featured/{id}/toggle-publish', [MusicController::class, 'toggleFeaturedPublish'])->name('music.landing.featured.toggle-publish');
+        Route::post('/featured/{id}/toggle-hero', [MusicController::class, 'toggleFeaturedHero'])->name('music.landing.featured.toggle-hero');
         
         // Update order
         Route::post('/update-order', [MusicController::class, 'updateLandingOrder'])->name('music.landing.update-order');

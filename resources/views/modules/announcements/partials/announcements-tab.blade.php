@@ -29,12 +29,6 @@
                 <input type="text" id="searchInput" placeholder="Search messages..." 
                        class="pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64">
             </div>
-            <select id="statusFilter" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-                <option value="all">All Status</option>
-                <option value="active">Sent</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="draft">Draft</option>
-            </select>
             <button onclick="window.applyFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm transition">
                 <i class="fas fa-search"></i>
             </button>
@@ -102,7 +96,6 @@ window.loadAnnouncements = function() {
     isLoading = true;
     
     const search = document.getElementById('searchInput')?.value || '';
-    const status = document.getElementById('statusFilter')?.value || 'all';
     
     // Show loading state
     const container = document.getElementById('announcementsList');
@@ -116,7 +109,7 @@ window.loadAnnouncements = function() {
     }
     
     // Use a single API call instead of multiple sequential calls
-    fetch(`/announcements/filter?search=${encodeURIComponent(search)}&status=${status}&limit=20`, {
+    fetch(`/announcements/filter?search=${encodeURIComponent(search)}&limit=20`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
@@ -358,10 +351,6 @@ window.renderAnnouncementsList = function(announcements, recipients) {
                                 class="p-1 text-gray-400 hover:text-green-600 rounded transition" title="Resend">
                             <i class="fas fa-paper-plane text-sm"></i>
                         </button>
-                        <button onclick="event.stopPropagation(); window.duplicateAnnouncement(${announcement.id})" 
-                                class="p-1 text-gray-400 hover:text-purple-600 rounded transition" title="Duplicate">
-                            <i class="fas fa-copy text-sm"></i>
-                        </button>
                         <button onclick="event.stopPropagation(); window.deleteAnnouncement(${announcement.id})" 
                                 class="p-1 text-gray-400 hover:text-red-600 rounded transition" title="Delete">
                             <i class="fas fa-trash-alt text-sm"></i>
@@ -478,7 +467,7 @@ window.resendAnnouncement = function(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Announcement resent successfully!');
+                alert(data.message || 'Message resent successfully!');
                 window.loadAnnouncements();
             } else {
                 alert('Error: ' + (data.message || 'Failed to resend'));
@@ -489,30 +478,6 @@ window.resendAnnouncement = function(id) {
             alert('Error resending announcement');
         });
     }
-};
-
-window.duplicateAnnouncement = function(id) {
-    fetch(`/announcements/${id}/duplicate`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Announcement duplicated successfully!');
-            window.loadAnnouncements();
-        } else {
-            alert('Error: ' + (data.message || 'Failed to duplicate'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error duplicating announcement');
-    });
 };
 
 window.deleteAnnouncement = function(id) {
@@ -660,7 +625,6 @@ window.applyFilters = function() {
 
 window.resetFilters = function() {
     document.getElementById('searchInput').value = '';
-    document.getElementById('statusFilter').value = 'all';
     window.loadAnnouncements();
 };
 
@@ -733,7 +697,6 @@ document.addEventListener('DOMContentLoaded', function() {
             timeout = setTimeout(() => window.applyFilters(), 300);
         });
     }
-    document.getElementById('statusFilter')?.addEventListener('change', window.applyFilters);
 });
 
 window.refreshAnnouncementsList = function() {

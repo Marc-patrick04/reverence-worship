@@ -59,6 +59,10 @@ class FamilyController extends Controller
     public function updateTaskStatus(Request $request, $id)
     {
         try {
+            $validated = $request->validate([
+                'status' => 'required|in:pending,in-progress,completed',
+            ]);
+
             $userFamilyId = DB::table('family_members')
                 ->where('user_id', auth()->id())
                 ->value('family_id');
@@ -72,11 +76,17 @@ class FamilyController extends Controller
             }
             
             DB::table('family_tasks')->where('id', $id)->update([
-                'status' => $request->status,
+                'status' => $validated['status'],
                 'updated_at' => now()
             ]);
             
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'status' => $validated['status'],
+                'message' => $validated['status'] === 'completed'
+                    ? 'Task marked as done.'
+                    : 'Task status updated.',
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }

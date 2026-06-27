@@ -1,102 +1,86 @@
 <div>
-    <!-- Filters -->
-    <div class="bg-gray-50 rounded-xl p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search Member</label>
+    <!-- Payment Filters -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-3 mb-4">
+        <div class="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+           
+            
+           
+            <!-- Filters -->
+            <div class="min-w-0">
+                <label for="paymentFromDate" class="block text-xs font-medium text-gray-600 mb-1">From</label>
+                <input type="date" id="paymentFromDate" value="{{ date('Y-01-01') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="min-w-0">
+                <label for="paymentToDate" class="block text-xs font-medium text-gray-600 mb-1">To</label>
+                <input type="date" id="paymentToDate" value="{{ date('Y-12-31') }}"
+                    class="h-9 sm:h-8 w-full min-w-0 px-2 py-0 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="col-span-2 sm:col-auto">
+                <label for="paymentSearchInput" class="block text-xs font-medium text-gray-600 mb-1">Search Member</label>
                 <div class="relative">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" aria-hidden="true"></i>
                     <input type="text" id="paymentSearchInput" placeholder="Search by member name or email..." 
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                           class="h-9 sm:h-8 w-full sm:w-72 pl-9 pr-3 py-0 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           aria-label="Search payments by member">
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Term</label>
-                <select id="paymentTermFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">All Terms</option>
-                    @for($i = 1; $i <= ($numberOfTerms ?? 3); $i++)
-                        <option value="{{ $i }}">Term {{ $i }}</option>
-                    @endfor
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select id="paymentMethodFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">All Methods</option>
-                    <option value="cash">Cash</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="mobile_money">Mobile Money</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                <input type="month" id="paymentMonthFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-        </div>
-        <div class="flex justify-end mt-4">
-            <button onclick="resetFilters()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded-lg text-sm transition flex items-center gap-2">
-                <i class="fas fa-undo"></i> Reset Filters
+            <button type="button" onclick="window.paymentsManager.exportPayments()"
+                class="col-span-2 h-9 w-full sm:h-8 sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-0 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition"
+                title="Export filtered payments for Excel">
+                <i class="fas fa-file-excel" aria-hidden="true"></i>
+                <span>Export Excel</span>
             </button>
+            
         </div>
     </div>
     
     <!-- Stats Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-md p-4 border border-gray-200">
+    <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-4 max-w-2xl">
+        <div class="bg-white rounded-lg shadow-sm p-2.5 sm:p-3 border border-gray-200 min-w-0">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Total Payments</p>
-                    <p class="text-2xl font-bold text-gray-800" id="totalPayments">RWF 0</p>
+                    <p class="text-gray-500 text-xs">Total Payments</p>
+                    <p class="text-sm sm:text-lg font-bold text-gray-800" id="totalPayments" role="status">RWF 0</p>
                 </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-blue-600 text-xl"></i>
+                <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center" aria-hidden="true">
+                    <i class="fas fa-chart-line text-blue-600 text-sm"></i>
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-4 border border-gray-200">
+        <div class="bg-white rounded-lg shadow-sm p-2.5 sm:p-3 border border-gray-200 min-w-0">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Total Transactions</p>
-                    <p class="text-2xl font-bold text-gray-800" id="paymentCount">0</p>
+                    <p class="text-gray-500 text-xs">Total Transactions</p>
+                    <p class="text-sm sm:text-lg font-bold text-gray-800" id="paymentCount" role="status">0</p>
                 </div>
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-receipt text-green-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-        <div class="bg-white rounded-xl shadow-md p-4 border border-gray-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Payment Methods</p>
-                    <p class="text-2xl font-bold text-gray-800" id="paymentMethodsCount">0</p>
-                </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-credit-card text-purple-600 text-xl"></i>
+                <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center" aria-hidden="true">
+                    <i class="fas fa-receipt text-green-600 text-sm"></i>
                 </div>
             </div>
         </div>
     </div>
     
     <!-- Payments Table -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200" id="paymentsTable">
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <div class="payments-responsive-table overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="paymentsTable" aria-label="Payments table">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MEMBER</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TERM</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AMOUNT</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">METHOD</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NOTES</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">DATE</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">MEMBER</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">TERM</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">AMOUNT</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">METHOD</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NOTES</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody id="payments-table-body">
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <td colspan="8" class="px-3 py-8 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-lg mb-2" aria-hidden="true"></i>
                             <p>Loading payments...</p>
                         </td>
                     </tr>
@@ -106,151 +90,156 @@
     </div>
 </div>
 
-<!-- View Payment Details Modal -->
-<div id="viewPaymentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Payment Details</h3>
-            <button onclick="closeModal('viewPaymentModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="viewPaymentContent" class="mt-4 space-y-3"></div>
-        <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('viewPaymentModal')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Payment Modal -->
-<div id="editPaymentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-2xl bg-white">
-        <div class="flex justify-between items-center pb-4 border-b">
-            <h3 class="text-xl font-bold text-gray-800">Edit Payment</h3>
-            <button onclick="closeModal('editPaymentModal')" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <form id="editPaymentForm" class="mt-4 space-y-4">
-            <input type="hidden" id="editPaymentId">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (RWF)</label>
-                <input type="number" id="editAmount" step="0.01" min="0" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select id="editPaymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="cash">Cash</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="mobile_money">Mobile Money</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
-                <input type="date" id="editPaymentDate" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Term</label>
-                <select id="editTerm" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @for($i = 1; $i <= ($numberOfTerms ?? 3); $i++)
-                        <option value="{{ $i }}">Term {{ $i }}</option>
-                    @endfor
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea id="editNotes" rows="3" 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Optional notes..."></textarea>
-            </div>
-            <div class="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onclick="closeModal('editPaymentModal')" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg text-sm transition">
-                    Cancel
-                </button>
-                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition flex items-center gap-2">
-                    <i class="fas fa-save"></i> Update Payment
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <script>
+// ============================================
+// PAYMENTS MANAGER - Complete Module
+// ============================================
+
 (function() {
     'use strict';
-    
-    // Local variables
-    let searchTimeout = null;
-    
-    // Load payments on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            loadPayments();
-        });
-    } else {
-        loadPayments();
-    }
 
-    function loadPayments() {
-        filterPayments();
-    }
-
-    window.resetFilters = function() {
-        document.getElementById('paymentSearchInput').value = '';
-        document.getElementById('paymentTermFilter').value = '';
-        document.getElementById('paymentMethodFilter').value = '';
-        document.getElementById('paymentMonthFilter').value = '';
-        filterPayments();
+    // ============================================
+    // CONFIGURATION & CONSTANTS
+    // ============================================
+    
+    const CONFIG = {
+        SUBMIT_COOLDOWN: 3000,
+        SEARCH_DEBOUNCE: 400,
+        MAX_RETRIES: 3,
+        RETRY_DELAY: 1000,
+        API: {
+            FILTER: '/finance/payments/filter',
+            DETAILS: '/finance/payments',
+            UPDATE: '/finance/payments/update'
+        }
     };
 
-    window.filterPayments = function() {
-        const search = document.getElementById('paymentSearchInput')?.value || '';
-        const term = document.getElementById('paymentTermFilter')?.value || '';
-        const method = document.getElementById('paymentMethodFilter')?.value || '';
-        const month = document.getElementById('paymentMonthFilter')?.value || '';
+    // ============================================
+    // STATE
+    // ============================================
+    
+    const state = {
+        isLoading: false,
+        lastSubmitTime: 0,
+        searchTimeout: null,
+        initialized: false,
+        initialLoadDone: false,
+        currentYear: new Date().getFullYear(),
+        numberOfTerms: {{ $numberOfTerms ?? 3 }}
+    };
+
+    // ============================================
+    // DOM CACHE
+    // ============================================
+    
+    const DOM = {
+        get: (id) => document.getElementById(id),
+        qs: (selector, context = document) => context.querySelector(selector)
+    };
+
+    const elements = {
+        tableBody: DOM.get('payments-table-body'),
+        searchInput: DOM.get('paymentSearchInput'),
+        fromDate: DOM.get('paymentFromDate'),
+        toDate: DOM.get('paymentToDate'),
+        totalPayments: DOM.get('totalPayments'),
+        paymentCount: DOM.get('paymentCount')
+    };
+
+    // ============================================
+    // FORCE LOAD PAYMENTS
+    // ============================================
+    
+    function forceLoadPayments() {
+        state.isLoading = false;
+        console.log('Forcing payments load...');
+        filterPayments();
+    }
+
+    // ============================================
+    // PAYMENT FUNCTIONS
+    // ============================================
+    
+    async function filterPayments() {
+        if (state.isLoading && state.initialLoadDone) {
+            console.log('Already loading payments, skipping...');
+            return;
+        }
         
-        let url = `/finance/payments/filter?search=${encodeURIComponent(search)}&term=${term}&method=${method}&month=${month}`;
+        const search = elements.searchInput?.value || '';
+        const fromDate = elements.fromDate?.value || '';
+        const toDate = elements.toDate?.value || '';
         
-        fetch(url, {
-            headers: { 
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
+        const params = new URLSearchParams({
+            search: search,
+            from_date: fromDate,
+            to_date: toDate
+        });
+        const url = `${CONFIG.API.FILTER}?${params.toString()}`;
+        
+        state.isLoading = true;
+        
+        // Show loading state
+        if (elements.tableBody) {
+            elements.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-3 py-8 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-lg mb-2" aria-hidden="true"></i>
+                        <p>Loading payments...</p>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        try {
+            const data = await fetchWithRetry(url, { headers: getHeaders() });
+            
             if (data.success) {
-                updatePaymentsTable(data.payments);
-                updatePaymentStats(data.payments);
+                updatePaymentsTable(data.payments || []);
+                updatePaymentStats(data.payments || []);
+                state.initialLoadDone = true;
             } else {
                 console.error('Error loading payments:', data.message);
-                showNotification('Error loading payments: ' + data.message, 'error');
+                showNotification('Error loading payments: ' + (data.message || 'Unknown error'), 'error');
+                updatePaymentsTable([]);
+                updatePaymentStats([]);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        } catch (error) {
+            console.error('Error loading payments:', error);
             showNotification('Error loading payments. Please try again.', 'error');
+            updatePaymentsTable([]);
+            updatePaymentStats([]);
+        } finally {
+            state.isLoading = false;
+        }
+    }
+
+    function exportPayments() {
+        if (elements.fromDate.value > elements.toDate.value) {
+            elements.toDate.setCustomValidity('To date must be on or after from date.');
+            elements.toDate.reportValidity();
+            return;
+        }
+
+        const params = new URLSearchParams({
+            search: elements.searchInput?.value || '',
+            from_date: elements.fromDate?.value || '',
+            to_date: elements.toDate?.value || ''
         });
-    };
+
+        window.location.href = `/finance/payments/export?${params.toString()}`;
+    }
 
     function updatePaymentsTable(payments) {
-        const tbody = document.getElementById('payments-table-body');
+        if (!elements.tableBody) return;
         
         if (!payments || payments.length === 0) {
-            tbody.innerHTML = `
+            elements.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                        <i class="fas fa-inbox text-4xl mb-2 text-gray-300"></i>
-                        <p>No payment records found</p>
+                    <td colspan="8" class="px-3 py-8 text-center text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-2 text-gray-300" aria-hidden="true"></i>
+                        <p>No payment records found for this date range</p>
                         <p class="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
                     </td>
                 </tr>
@@ -258,35 +247,41 @@
             return;
         }
         
-        tbody.innerHTML = payments.map((payment, index) => `
+        elements.tableBody.innerHTML = payments.map((payment, index) => `
             <tr class="border-b hover:bg-gray-50 transition">
-                <td class="px-6 py-4 text-sm text-gray-400">${index + 1}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">${formatDate(payment.payment_date)}</td>
-                <td class="px-6 py-4">
+                <td class="px-3 py-2 text-xs text-gray-400" data-label="#">${index + 1}</td>
+                <td class="px-3 py-2 text-xs text-gray-600 whitespace-nowrap" data-label="Date">${formatDate(payment.payment_date)}</td>
+                <td class="px-3 py-2" data-label="Member">
                     <div>
-                        <p class="font-medium text-gray-800">${escapeHtml(payment.member_name)}</p>
+                        <p class="text-sm font-medium text-gray-800">${escapeHtml(payment.member_name)}</p>
                         <p class="text-xs text-gray-500">${escapeHtml(payment.member_email || '')}</p>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-600">Term ${payment.term}</td>
-                <td class="px-6 py-4">
-                    <span class="font-semibold text-green-600">RWF ${parseFloat(payment.amount).toLocaleString()}</span>
+                <td class="px-3 py-2 text-xs text-gray-600 whitespace-nowrap" data-label="Term">Term ${payment.term}</td>
+                <td class="px-3 py-2" data-label="Amount">
+                    <span class="text-sm font-semibold text-green-600 whitespace-nowrap">${formatCurrency(payment.amount)}</span>
                 </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded-full text-xs ${getMethodBadge(payment.payment_method)}">
+                <td class="px-3 py-2" data-label="Method">
+                    <span class="px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${getMethodBadge(payment.payment_method)}">
                         ${getMethodName(payment.payment_method)}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                <td class="px-3 py-2 text-xs text-gray-500 max-w-[180px] truncate" data-label="Notes">
                     ${payment.notes ? escapeHtml(payment.notes) : '-'}
                 </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-2">
-                        <button onclick="window.viewPaymentDetails(${payment.id})" class="text-blue-500 hover:text-blue-700 transition" title="View Details">
-                            <i class="fas fa-eye"></i>
+                <td class="px-3 py-2" data-label="Actions">
+                    <div class="flex items-center gap-1">
+                        <button onclick="window.paymentsManager.viewPaymentDetails(${payment.id})" 
+                                class="h-7 w-7 inline-flex items-center justify-center rounded-md text-blue-600 hover:bg-blue-50 transition" 
+                                title="View Details"
+                                aria-label="View payment details for ${escapeHtml(payment.member_name)}">
+                            <i class="fas fa-file-lines text-sm" aria-hidden="true"></i>
                         </button>
-                        <button onclick="window.openEditModal(${payment.id})" class="text-green-500 hover:text-green-700 transition" title="Edit Payment">
-                            <i class="fas fa-edit"></i>
+                        <button onclick="window.paymentsManager.openEditModal(${payment.id})" 
+                                class="h-7 w-7 inline-flex items-center justify-center rounded-md text-green-600 hover:bg-green-50 transition" 
+                                title="Edit Payment"
+                                aria-label="Edit payment for ${escapeHtml(payment.member_name)}">
+                            <i class="fas fa-edit text-sm" aria-hidden="true"></i>
                         </button>
                     </div>
                 </td>
@@ -298,213 +293,259 @@
         const total = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
         const count = payments.length;
         
-        const methods = new Set(payments.map(p => p.payment_method));
-        const methodCount = methods.size;
-        
-        document.getElementById('totalPayments').textContent = 'RWF ' + total.toLocaleString();
-        document.getElementById('paymentCount').textContent = count;
-        document.getElementById('paymentMethodsCount').textContent = methodCount;
+        if (elements.totalPayments) {
+            elements.totalPayments.textContent = formatCurrency(total);
+        }
+        if (elements.paymentCount) {
+            elements.paymentCount.textContent = count;
+        }
     }
 
-    window.viewPaymentDetails = function(id) {
-        fetch(`/finance/payments/${id}/details`, {
-            headers: { 
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Payment not found');
-            }
-            return response.json();
-        })
-        .then(data => {
+    // ============================================
+    // PAYMENT DETAILS
+    // ============================================
+    
+    async function viewPaymentDetails(id) {
+        try {
+            const data = await fetchWithRetry(
+                `${CONFIG.API.DETAILS}/${id}/details`,
+                { headers: getHeaders() }
+            );
+            
             if (data.success) {
                 const p = data.payment;
-                document.getElementById('viewPaymentContent').innerHTML = `
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Member</p>
-                        <p class="font-medium text-gray-800">${escapeHtml(p.member_name)}</p>
-                        <p class="text-sm text-gray-600">${escapeHtml(p.member_email || '')}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Amount</p>
-                        <p class="text-xl font-bold text-green-600">RWF ${parseFloat(p.amount).toLocaleString()}</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-xs text-gray-500">Term</p>
-                            <p class="font-medium">Term ${p.term}</p>
+                const content = DOM.get('viewPaymentContent');
+                
+                if (content) {
+                    content.innerHTML = `
+                        <div class="bg-green-50 border border-green-100 rounded-lg p-3 flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs text-green-700">Payment Amount</p>
+                                <p class="text-xl font-bold text-green-700">${formatCurrency(p.amount)}</p>
+                            </div>
+                            <div class="h-9 w-9 rounded-lg bg-white text-green-600 flex items-center justify-center">
+                                <i class="fas fa-receipt" aria-hidden="true"></i>
+                            </div>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-xs text-gray-500">Payment Date</p>
-                            <p class="font-medium">${formatDate(p.payment_date)}</p>
+                        <div class="border-b border-gray-100 pb-3">
+                            <p class="text-xs text-gray-500">Member</p>
+                            <p class="text-sm font-semibold text-gray-800">${escapeHtml(p.member_name)}</p>
+                            <p class="text-xs text-gray-500">${escapeHtml(p.member_email || '')}</p>
                         </div>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Payment Method</p>
-                        <p class="font-medium capitalize">${getMethodName(p.payment_method)}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500">Notes</p>
-                        <p class="text-sm">${p.notes || 'No notes'}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
-                        <p class="text-xs text-gray-500">Recorded By</p>
-                        <p class="font-medium text-gray-800">${escapeHtml(p.recorded_by_name || 'System')}</p>
-                        <p class="text-xs text-gray-400">${p.created_at ? formatDateTime(p.created_at) : ''}</p>
-                    </div>
-                `;
-                document.getElementById('viewPaymentModal').classList.remove('hidden');
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <div>
+                                <p class="text-xs text-gray-500">Term</p>
+                                <p class="text-sm font-medium text-gray-800">Term ${p.term}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Year</p>
+                                <p class="text-sm font-medium text-gray-800">${p.year || state.currentYear}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Payment Date</p>
+                                <p class="text-sm font-medium text-gray-800">${formatDate(p.payment_date)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Payment Method</p>
+                                <p class="text-sm font-medium text-gray-800 capitalize">${getMethodName(p.payment_method)}</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg px-3 py-2">
+                            <p class="text-xs text-gray-500">Notes</p>
+                            <p class="text-sm text-gray-700">${escapeHtml(p.notes || 'No notes')}</p>
+                        </div>
+                        <div class="border-t border-gray-100 pt-3">
+                            <p class="text-xs text-gray-500">Recorded By</p>
+                            <p class="text-sm font-medium text-gray-800">${escapeHtml(p.recorded_by_name || 'System')}</p>
+                            <p class="text-xs text-gray-400">${formatDateTime(p.created_at)}</p>
+                        </div>
+                    `;
+                }
+                
+                openModal('viewPaymentModal');
             } else {
                 showNotification(data.message || 'Error loading payment details', 'error');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        } catch (error) {
+            console.error('Error loading payment details:', error);
             showNotification('Payment not found or error loading details', 'error');
-        });
-    };
+        }
+    }
 
-    window.openEditModal = function(id) {
-        fetch(`/finance/payments/${id}/details`, {
-            headers: { 
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Payment not found');
-            }
-            return response.json();
-        })
-        .then(data => {
+    // ============================================
+    // EDIT PAYMENT
+    // ============================================
+    
+    async function openEditModal(id) {
+        try {
+            const data = await fetchWithRetry(
+                `${CONFIG.API.DETAILS}/${id}/details`,
+                { headers: getHeaders() }
+            );
+            
             if (data.success) {
                 const p = data.payment;
-                document.getElementById('editPaymentId').value = p.id;
-                document.getElementById('editAmount').value = p.amount;
-                document.getElementById('editPaymentMethod').value = p.payment_method;
-                document.getElementById('editPaymentDate').value = p.payment_date;
-                document.getElementById('editTerm').value = p.term;
-                document.getElementById('editNotes').value = p.notes || '';
-                document.getElementById('editPaymentModal').classList.remove('hidden');
+                
+                // Populate form fields
+                const idInput = DOM.get('editPaymentId');
+                const userIdInput = DOM.get('editPaymentUserId');
+                const memberName = DOM.get('editPaymentMemberName');
+                const yearDisplay = DOM.get('editPaymentYearDisplay');
+                const yearInput = DOM.get('editPaymentYear');
+                const amountInput = DOM.get('editPaymentAmount');
+                const methodSelect = DOM.get('editPaymentMethod');
+                const dateInput = DOM.get('editPaymentDate');
+                const termSelect = DOM.get('editPaymentTerm');
+                const notesInput = DOM.get('editPaymentNotes');
+                
+                if (idInput) idInput.value = p.id;
+                if (userIdInput) userIdInput.value = p.user_id;
+                if (memberName) memberName.textContent = p.member_name;
+                if (yearDisplay) yearDisplay.textContent = p.year || state.currentYear;
+                if (yearInput) yearInput.value = p.year || state.currentYear;
+                if (amountInput) amountInput.value = p.amount;
+                if (methodSelect) methodSelect.value = p.payment_method || 'cash';
+                if (dateInput) dateInput.value = p.payment_date || '';
+                if (termSelect) termSelect.value = p.term;
+                if (notesInput) notesInput.value = '';
+                
+                // Update current details display
+                const currentAmount = DOM.get('currentPaymentAmount');
+                const currentTerm = DOM.get('currentPaymentTerm');
+                const currentMethod = DOM.get('currentPaymentMethod');
+                const currentDate = DOM.get('currentPaymentDate');
+                
+                if (currentAmount) currentAmount.textContent = formatCurrency(p.amount);
+                if (currentTerm) currentTerm.textContent = 'Term ' + p.term;
+                if (currentMethod) currentMethod.textContent = getMethodName(p.payment_method);
+                if (currentDate) currentDate.textContent = formatDate(p.payment_date);
+                
+                // Populate term options
+                updateTermSelectors();
+                
+                openModal('editPaymentModal');
             } else {
                 showNotification(data.message || 'Error loading payment details', 'error');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        } catch (error) {
+            console.error('Error loading payment details:', error);
             showNotification('Payment not found or error loading details', 'error');
-        });
-    };
+        }
+    }
 
-    window.closeModal = function(modalId) {
-        document.getElementById(modalId).classList.add('hidden');
-    };
-
-    // Edit payment form submission
-    document.getElementById('editPaymentForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    function updateTermSelectors() {
+        const selectors = ['editPaymentTerm'];
         
-        const id = document.getElementById('editPaymentId').value;
-        const formData = {
-            amount: document.getElementById('editAmount').value,
-            payment_method: document.getElementById('editPaymentMethod').value,
-            payment_date: document.getElementById('editPaymentDate').value,
-            term: document.getElementById('editTerm').value,
-            notes: document.getElementById('editNotes').value
-        };
-        
-        fetch(`/finance/payments/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+        selectors.forEach(selectorId => {
+            const select = DOM.get(selectorId);
+            if (select) {
+                const currentValue = select.value;
+                select.innerHTML = '';
+                for (let i = 1; i <= state.numberOfTerms; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `Term ${i}`;
+                    select.appendChild(option);
+                }
+                if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+                    select.value = currentValue;
+                }
             }
-            return response.json();
-        })
-        .then(data => {
+        });
+    }
+
+    // ============================================
+    // SUBMIT EDIT PAYMENT
+    // ============================================
+    
+    async function submitEditPayment(event) {
+        event.preventDefault();
+        
+        if (isWithinCooldown()) return;
+        
+        const paymentId = DOM.get('editPaymentId')?.value;
+        const userId = DOM.get('editPaymentUserId')?.value;
+        const term = DOM.get('editPaymentTerm')?.value;
+        const amount = DOM.get('editPaymentAmount')?.value;
+        const year = DOM.get('editPaymentYear')?.value || state.currentYear;
+        const paymentMethod = DOM.get('editPaymentMethod')?.value;
+        const paymentDate = DOM.get('editPaymentDate')?.value;
+        const notes = DOM.get('editPaymentNotes')?.value;
+        
+        if (!paymentId) {
+            showNotification('Payment ID is missing', 'error');
+            return;
+        }
+        
+        if (!validateAmount(amount)) return;
+        
+        const submitBtn = DOM.get('submitEditPaymentBtn');
+        const originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        try {
+            const formData = new FormData();
+            formData.append('payment_id', paymentId);
+            formData.append('user_id', userId);
+            formData.append('term', term);
+            formData.append('amount', amount);
+            formData.append('year', year);
+            formData.append('payment_method', paymentMethod || 'cash');
+            formData.append('payment_date', paymentDate || '');
+            formData.append('notes', notes || '');
+            
+            const data = await fetchWithRetry(CONFIG.API.UPDATE, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
             if (data.success) {
+                closeModal('editPaymentModal');
+                forceLoadPayments();
                 showNotification('Payment updated successfully!', 'success');
-                window.closeModal('editPaymentModal');
-                window.filterPayments();
             } else {
                 showNotification('Error: ' + (data.message || 'Failed to update payment'), 'error');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        } catch (error) {
+            console.error('Error updating payment:', error);
             showNotification('Network error: ' + error.message, 'error');
-        });
-    });
-
-    function showNotification(message, type) {
-        const notification = document.createElement('div');
-        notification.className = `fixed top-20 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in max-w-md`;
-        notification.style.backgroundColor = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6';
-        notification.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-white"></i>
-            <span class="text-white text-sm">${message}</span>
-            <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white transition">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateX(100px)';
-                setTimeout(() => notification.remove(), 300);
-            }
-        }, 3000);
-    }
-
-    function formatDate(dateString) {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-
-    function formatDateTime(dateString) {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleString('en-GB', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-
-    function getMethodBadge(method) {
-        switch(method) {
-            case 'cash': return 'bg-green-100 text-green-700';
-            case 'bank_transfer': return 'bg-blue-100 text-blue-700';
-            case 'mobile_money': return 'bg-purple-100 text-purple-700';
-            default: return 'bg-gray-100 text-gray-700';
+        } finally {
+            submitBtn.innerHTML = originalHtml;
+            submitBtn.disabled = false;
         }
     }
 
-    function getMethodName(method) {
-        switch(method) {
-            case 'cash': return 'Cash';
-            case 'bank_transfer': return 'Bank Transfer';
-            case 'mobile_money': return 'Mobile Money';
-            default: return method || '-';
+    // ============================================
+    // MODAL FUNCTIONS
+    // ============================================
+    
+    function openModal(modalId) {
+        const modal = DOM.get(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            const focusable = modal.querySelector('button, input, select, textarea');
+            if (focusable) setTimeout(() => focusable.focus(), 100);
         }
     }
 
+    function closeModal(modalId) {
+        const modal = DOM.get(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+    
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -512,73 +553,399 @@
         return div.innerHTML;
     }
 
-    // Auto-filter with debounce
-    document.getElementById('paymentSearchInput')?.addEventListener('keyup', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => window.filterPayments(), 400);
-    });
+    function formatCurrency(amount) {
+        return 'RWF ' + (parseFloat(amount) || 0).toLocaleString();
+    }
 
-    document.getElementById('paymentTermFilter')?.addEventListener('change', function() {
-        window.filterPayments();
-    });
-    document.getElementById('paymentMethodFilter')?.addEventListener('change', function() {
-        window.filterPayments();
-    });
-    document.getElementById('paymentMonthFilter')?.addEventListener('change', function() {
-        window.filterPayments();
-    });
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('en-GB', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric' 
+            });
+        } catch {
+            return '-';
+        }
+    }
 
-    // Add animation styles (only if not already added)
-    if (!document.getElementById('payments-tab-styles')) {
-        const style = document.createElement('style');
-        style.id = 'payments-tab-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
+    function formatDateTime(dateString) {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toLocaleString('en-GB', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch {
+            return '';
+        }
+    }
+
+    function getMethodBadge(method) {
+        const map = {
+            'cash': 'bg-green-100 text-green-700',
+            'bank_transfer': 'bg-blue-100 text-blue-700',
+            'mobile_money': 'bg-purple-100 text-purple-700',
+            'cheque': 'bg-yellow-100 text-yellow-700',
+            'other': 'bg-gray-100 text-gray-700'
+        };
+        return map[method] || 'bg-gray-100 text-gray-700';
+    }
+
+    function getMethodName(method) {
+        const map = {
+            'cash': 'Cash',
+            'bank_transfer': 'Bank Transfer',
+            'mobile_money': 'Mobile Money',
+            'cheque': 'Cheque',
+            'other': 'Other'
+        };
+        return map[method] || method || '-';
+    }
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (!meta) {
+            console.error('CSRF token meta tag not found');
+            return null;
+        }
+        return meta.content;
+    }
+
+    function getHeaders() {
+        return {
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        };
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async function fetchWithRetry(url, options, retries = CONFIG.MAX_RETRIES) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.ok) {
+                    return await response.json();
+                }
+                if (response.status === 429 && i < retries - 1) {
+                    await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY * (i + 1)));
+                    continue;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY * (i + 1)));
             }
-            .animate-slide-in {
-                animation: slideIn 0.3s ease-out;
-            }
+        }
+    }
+
+    function validateAmount(amount) {
+        const num = parseFloat(amount);
+        if (isNaN(num) || num <= 0) {
+            showNotification('Please enter a valid positive amount', 'error');
+            return false;
+        }
+        return true;
+    }
+
+    function isWithinCooldown() {
+        const now = Date.now();
+        if (now - state.lastSubmitTime < CONFIG.SUBMIT_COOLDOWN) {
+            showNotification('Please wait before submitting again', 'warning');
+            return true;
+        }
+        state.lastSubmitTime = now;
+        return false;
+    }
+
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                    type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle';
+        const bgColor = type === 'success' ? 'bg-green-500' : 
+                       type === 'warning' ? 'bg-yellow-500' : 'bg-red-500';
+        
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 transition-all transform ${bgColor}`;
+        notification.setAttribute('role', 'alert');
+        notification.innerHTML = `
+            <i class="fas ${icon} mr-2" aria-hidden="true"></i>
+            <span>${escapeHtml(message)}</span>
+            <button onclick="this.parentElement.remove()" class="ml-3 text-white/70 hover:text-white transition" aria-label="Dismiss notification">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
         `;
-        document.head.appendChild(style);
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                if (notification.parentNode) notification.remove();
+            }, 300);
+        }, 4000);
+    }
+
+    function createModalOverlay(html, onClose) {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center modal-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = html;
+        document.body.appendChild(overlay);
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                if (onClose) onClose();
+                overlay.remove();
+            }
+        });
+        
+        return overlay;
+    }
+
+    // ============================================
+    // EVENT LISTENERS & INITIALIZATION
+    // ============================================
+    
+    function init() {
+        if (state.initialized) return;
+        state.initialized = true;
+        
+        console.log('Payments Manager initializing...');
+        
+        // Search input with debounce
+        if (elements.searchInput) {
+            elements.searchInput.addEventListener('input', debounce(() => {
+                if (!state.isLoading) {
+                    forceLoadPayments();
+                }
+            }, CONFIG.SEARCH_DEBOUNCE));
+        }
+        
+        [elements.fromDate, elements.toDate].forEach(input => {
+            input?.addEventListener('change', () => {
+                elements.toDate.setCustomValidity('');
+                if (elements.fromDate.value > elements.toDate.value) {
+                    elements.toDate.setCustomValidity('To date must be on or after from date.');
+                    elements.toDate.reportValidity();
+                    return;
+                }
+                forceLoadPayments();
+            });
+        });
+        
+        // Close modals on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.fixed:not(.hidden)');
+                openModals.forEach(modal => {
+                    if (modal.id && modal.id.endsWith('Modal')) {
+                        closeModal(modal.id);
+                    }
+                });
+            }
+        });
+        
+        // Update term selectors when number of terms changes
+        updateTermSelectors();
+        
+        // Force initial load of payments
+        setTimeout(function() {
+            console.log('Initial payments load triggered');
+            forceLoadPayments();
+        }, 100);
+        
+        console.log('Payments Manager initialized');
+    }
+
+    // ============================================
+    // EXPOSE PUBLIC API
+    // ============================================
+    
+    window.paymentsManager = {
+        // State
+        state: state,
+        
+        // Payment functions
+        filterPayments: filterPayments,
+        forceLoadPayments: forceLoadPayments,
+        updatePaymentsTable: updatePaymentsTable,
+        updatePaymentStats: updatePaymentStats,
+        exportPayments: exportPayments,
+        
+        // Details & Edit
+        viewPaymentDetails: viewPaymentDetails,
+        openEditModal: openEditModal,
+        submitEditPayment: submitEditPayment,
+        
+        // Modal functions
+        openModal: openModal,
+        closeModal: closeModal,
+        
+        // Utility
+        updateTermSelectors: updateTermSelectors,
+        showNotification: showNotification,
+        formatDate: formatDate,
+        formatCurrency: formatCurrency,
+        getMethodName: getMethodName,
+        getMethodBadge: getMethodBadge,
+        
+        // Init
+        init: init
+    };
+
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 
 })();
 </script>
 
 <style>
-/* Table hover effect */
-tbody tr {
-    transition: background-color 0.2s ease;
-}
+    @media (max-width: 639px) {
+        .payments-responsive-table {
+            overflow: visible;
+        }
 
-/* Modal backdrop */
-.modal {
-    background-color: rgba(0, 0, 0, 0.5);
-}
+        .payments-responsive-table table,
+        .payments-responsive-table tbody {
+            display: block;
+            width: 100%;
+        }
 
-.modal .relative {
-    animation: modalIn 0.3s ease-out;
-}
+        .payments-responsive-table thead {
+            display: none;
+        }
 
-@keyframes modalIn {
-    from {
-        transform: scale(0.9);
-        opacity: 0;
+        .payments-responsive-table tbody {
+            display: grid;
+            gap: 12px;
+        }
+
+        .payments-responsive-table tbody tr {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+        }
+
+        .payments-responsive-table tbody td {
+            display: grid;
+            grid-template-columns: 76px minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: none !important;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            white-space: normal;
+        }
+
+        .payments-responsive-table tbody td::before {
+            content: attr(data-label);
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .payments-responsive-table tbody td[data-label="#"] {
+            display: none;
+        }
+
+        .payments-responsive-table tbody td[data-label="Member"] {
+            order: -1;
+            display: block;
+            padding: 12px;
+            background: #f9fafb;
+        }
+
+        .payments-responsive-table tbody td[data-label="Member"]::before {
+            display: none;
+        }
+
+        .payments-responsive-table tbody td[data-label="Notes"] {
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        .payments-responsive-table tbody td[data-label="Actions"] {
+            border-bottom: 0;
+        }
+
+        .payments-responsive-table tbody td[data-label="Actions"] button {
+            width: 36px;
+            height: 36px;
+        }
+
+        .payments-responsive-table tbody tr > td[colspan] {
+            display: block;
+            text-align: center;
+        }
+
+        .payments-responsive-table tbody tr > td[colspan]::before {
+            display: none;
+        }
     }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
 
-/* Card hover effect */
-.bg-white.rounded-xl {
-    transition: all 0.2s ease;
-}
-.bg-white.rounded-xl:hover {
-    transform: translateY(-2px);
-    shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.1);
-}
+    /* Modal overlay blur effect */
+    .modal-overlay {
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+
+    /* Table hover effect */
+    tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    /* Card hover effect */
+    .bg-white.rounded-xl {
+        transition: all 0.2s ease;
+    }
+    .bg-white.rounded-xl:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Notification slide animation */
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .fixed.top-4.right-4 {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* Year picker rotation */
+    .rotate-180 {
+        transform: rotate(180deg);
+    }
 </style>

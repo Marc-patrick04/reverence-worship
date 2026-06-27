@@ -3,11 +3,52 @@
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Families</h2>
-            <p class="text-gray-500 text-sm mt-1">Manage fellowship families and groups</p>
+           
+            @if(request()->get('year'))
+                <p class="text-xs text-gray-400 mt-0.5">Showing families for year: <span class="font-medium">{{ request()->get('year') }}</span></p>
+            @endif
         </div>
-        <button onclick="openFamilyModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
-            <i class="fas fa-plus"></i> Add Family
-        </button>
+        <div class="flex items-center gap-3">
+            <!-- Year Selector -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600">Year:</label>
+                <div class="relative">
+                    <div onclick="toggleFamilyYearPicker()" 
+                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-400 transition-all min-w-[120px]">
+                        <span id="familyYearDisplay" class="text-sm font-semibold text-gray-800">{{ request()->get('year', date('Y')) }}</span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="familyYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <input type="hidden" id="familySelectedYear" value="{{ request()->get('year', date('Y')) }}">
+                    
+                    <div id="familyYearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
+                        <div class="flex items-center justify-between mb-2">
+                            <button type="button" onclick="changeFamilyYearPage(-1)" 
+                                class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                </svg>
+                            </button>
+                            <span id="familyYearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
+                            <button type="button" onclick="changeFamilyYearPage(1)" 
+                                class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1" id="familyYearGrid"></div>
+                    </div>
+                </div>
+                <span id="familyYearBadge" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 hidden">
+                    <i class="fas fa-history mr-1"></i> <span id="familyYearStatus">Current</span>
+                </span>
+            </div>
+            <button onclick="openFamilyModal()" class="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+                <i class="fas fa-plus"></i> Add Family
+            </button>
+        </div>
     </div>
     
     <!-- Search Bar -->
@@ -21,7 +62,7 @@
     
     <!-- Families Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="familiesGrid">
-        @foreach($families as $family)
+        @forelse($families as $family)
         <div class="border rounded-xl p-4 hover:shadow-lg transition-all duration-300 family-card" data-name="{{ strtolower($family->name) }}" data-family-id="{{ $family->id }}">
             <div class="flex justify-between items-start mb-2">
                 <h3 class="font-bold text-gray-800 text-lg">{{ $family->name }}</h3>
@@ -52,7 +93,15 @@
                 </div>
             </div>
         </div>
-        @endforeach
+        @empty
+        <div class="col-span-full text-center py-8">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fas fa-users text-2xl text-gray-400"></i>
+            </div>
+            <p class="text-gray-500">No families found</p>
+            <p class="text-sm text-gray-400 mt-1">Click "Add Family" to create your first family</p>
+        </div>
+        @endforelse
     </div>
 </div>
 
@@ -73,6 +122,15 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Family Name *</label>
                     <input type="text" name="name" required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gray-500 focus:border-gray-500">
+                </div>
+                
+                <!-- Year Display -->
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-calendar mr-2 text-gray-400"></i>
+                        Year: <strong id="familyModalYear">{{ request()->get('year', date('Y')) }}</strong>
+                    </p>
+                    <input type="hidden" name="year" value="{{ request()->get('year', date('Y')) }}">
                 </div>
                 
                 <div>
@@ -134,7 +192,7 @@
             </div>
             <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('familyModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                <button type="submit" id="submitFamilyBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm transition">Save Family</button>
+                <button type="submit" id="submitFamilyBtn" class="px-4 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-lg text-sm transition">Save Family</button>
             </div>
         </form>
     </div>
@@ -159,6 +217,15 @@
                     <p class="text-sm text-gray-600 mb-2">
                         <strong>Family:</strong> <span id="changeParentFamilyName"></span>
                     </p>
+                </div>
+                
+                <!-- Year Display -->
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-calendar mr-2 text-gray-400"></i>
+                        Year: <strong id="changeParentModalYear">{{ request()->get('year', date('Y')) }}</strong>
+                    </p>
+                    <input type="hidden" name="year" value="{{ request()->get('year', date('Y')) }}">
                 </div>
                 
                 <div>
@@ -287,10 +354,127 @@
 </div>
 
 <script>
+// ============================================
+// YEAR PICKER FUNCTIONS
+// ============================================
+let currentFamilyYear = parseInt(document.getElementById('familySelectedYear')?.value) || new Date().getFullYear();
+let familyYearPageOffset = 0;
+
+function toggleFamilyYearPicker() {
+    const dropdown = document.getElementById('familyYearPickerDropdown');
+    const arrow = document.getElementById('familyYearArrow');
+    
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+        renderFamilyYearGrid();
+    } else {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+function closeFamilyYearPicker() {
+    const dropdown = document.getElementById('familyYearPickerDropdown');
+    const arrow = document.getElementById('familyYearArrow');
+    
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+function changeFamilyYearPage(direction) {
+    familyYearPageOffset += direction;
+    renderFamilyYearGrid();
+}
+
+function renderFamilyYearGrid() {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear + (familyYearPageOffset * 9) - 4;
+    
+    const grid = document.getElementById('familyYearGrid');
+    const title = document.getElementById('familyYearPageTitle');
+    
+    if (!grid) return;
+    
+    const endYear = startYear + 8;
+    title.textContent = `${startYear} - ${endYear}`;
+    
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < 9; i++) {
+        const year = startYear + i;
+        const isSelected = year == currentFamilyYear;
+        const isCurrentYear = year == currentYear;
+        const isDisabled = year < 2000 || year > 2100;
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = year;
+        btn.className = 'py-1.5 px-2 rounded text-xs transition-all text-center';
+        
+        if (isSelected) {
+            btn.classList.add('bg-gray-800', 'text-white', 'font-semibold', 'shadow-sm');
+        } else if (isCurrentYear) {
+            btn.classList.add('bg-gray-100', 'text-gray-700', 'font-medium', 'border', 'border-gray-300');
+        } else {
+            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
+        }
+        
+        if (isDisabled) {
+            btn.classList.add('text-gray-300', 'cursor-not-allowed');
+            btn.disabled = true;
+        } else {
+            btn.onclick = function() {
+                selectFamilyYear(year);
+            };
+        }
+        
+        grid.appendChild(btn);
+    }
+}
+
+function selectFamilyYear(year) {
+    currentFamilyYear = year;
+    document.getElementById('familySelectedYear').value = year;
+    document.getElementById('familyYearDisplay').textContent = year;
+    
+    closeFamilyYearPicker();
+    renderFamilyYearGrid();
+    updateFamilyYearBadge();
+    
+    // Reload page with year parameter
+    window.location.href = '?year=' + year;
+}
+
+function updateFamilyYearBadge() {
+    const currentYearNow = new Date().getFullYear();
+    const yearBadge = document.getElementById('familyYearBadge');
+    const yearStatus = document.getElementById('familyYearStatus');
+    
+    if (!yearBadge) return;
+    
+    if (currentFamilyYear === currentYearNow) {
+        yearBadge.classList.add('hidden');
+    } else if (currentFamilyYear < currentYearNow) {
+        yearBadge.classList.remove('hidden');
+        yearStatus.innerHTML = 'Archived Year';
+        yearBadge.className = 'px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700';
+    } else {
+        yearBadge.classList.remove('hidden');
+        yearStatus.innerHTML = 'Future Year';
+        yearBadge.className = 'px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700';
+    }
+}
+
+// ============================================
+// EXISTING FUNCTIONS (keeping all your existing code)
+// ============================================
+
 let currentFamilyId = null;
 let changeParentFamilyId = null;
 
-// Escape HTML function
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -499,15 +683,12 @@ function removeMember(userId, familyId) {
 // CHANGE PARENT FUNCTIONALITY
 // ============================================
 
-// Open Change Parent Modal
 function openChangeParentModal(familyId, familyName, currentParentId) {
     changeParentFamilyId = familyId;
     
-    // Set family info
     document.getElementById('changeParentFamilyName').textContent = familyName;
     document.getElementById('changeParentFamilyId').value = familyId;
     
-    // Show current parent
     const currentParentName = document.querySelector(`.family-card[data-family-id="${familyId}"]`) 
         ?.querySelector('p.text-gray-500') 
         ?.textContent 
@@ -515,20 +696,17 @@ function openChangeParentModal(familyId, familyName, currentParentId) {
     
     document.getElementById('changeParentCurrentParentName').textContent = currentParentName || 'None';
     
-    // Reset form
     document.getElementById('changeParentForm').reset();
     document.getElementById('changeParentSearchInput').value = '';
     document.getElementById('changeSelectedParentId').value = '';
     document.getElementById('changeSelectedParentName').value = '';
     document.getElementById('changeSelectedParentDisplay').classList.add('hidden');
     
-    // Load available parents (family members)
     loadAvailableParents(familyId, currentParentId);
     
     document.getElementById('changeParentModal').classList.remove('hidden');
 }
 
-// Load available parents for change parent modal - ONLY FAMILY MEMBERS
 function loadAvailableParents(familyId, currentParentId) {
     const container = document.getElementById('changeParentListItems');
     container.innerHTML = `
@@ -589,41 +767,33 @@ function loadAvailableParents(familyId, currentParentId) {
     });
 }
 
-// Select parent from change parent list
 function selectChangeParent(userId, userName, userEmail) {
-    // Remove selected class from all items
     document.querySelectorAll('#changeParentListItems .parent-select-item').forEach(item => {
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
     
-    // Add selected class to clicked item
     const selectedItem = document.querySelector(`#changeParentListItems .parent-select-item[data-user-id="${userId}"]`);
     if (selectedItem) {
         selectedItem.classList.add('bg-gray-200', 'border-gray-500');
     }
     
-    // Set hidden input values
     document.getElementById('changeSelectedParentId').value = userId;
     document.getElementById('changeSelectedParentName').value = userName;
     
-    // Show selected parent display
     document.getElementById('changeSelectedParentDisplay').classList.remove('hidden');
     document.getElementById('changeSelectedParentDisplayName').innerHTML = `${escapeHtml(userName)} (${escapeHtml(userEmail)})`;
 }
 
-// Clear selected parent in change parent modal
 function clearChangeSelectedParent() {
     document.getElementById('changeSelectedParentId').value = '';
     document.getElementById('changeSelectedParentName').value = '';
     document.getElementById('changeSelectedParentDisplay').classList.add('hidden');
     
-    // Remove selected class from all items
     document.querySelectorAll('#changeParentListItems .parent-select-item').forEach(item => {
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
 }
 
-// Search parents in change parent modal
 document.getElementById('changeParentSearchInput')?.addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const parentItems = document.querySelectorAll('#changeParentListItems .parent-select-item');
@@ -640,7 +810,6 @@ document.getElementById('changeParentSearchInput')?.addEventListener('keyup', fu
     });
 });
 
-// Change Parent Form Submission
 document.getElementById('changeParentForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -676,7 +845,6 @@ document.getElementById('changeParentForm')?.addEventListener('submit', function
 // FAMILY FORM (Create)
 // ============================================
 
-// Family form submission
 document.getElementById('familyForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -703,7 +871,6 @@ document.getElementById('familyForm')?.addEventListener('submit', function(e) {
     });
 });
 
-// Search parents functionality
 document.getElementById('searchParentInput')?.addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const parentItems = document.querySelectorAll('.parent-select-item');
@@ -720,41 +887,33 @@ document.getElementById('searchParentInput')?.addEventListener('keyup', function
     });
 });
 
-// Select parent from list
 function selectParent(userId, userName, userEmail) {
-    // Remove selected class from all items
     document.querySelectorAll('.parent-select-item').forEach(item => {
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
     
-    // Add selected class to clicked item
     const selectedItem = document.querySelector(`.parent-select-item[data-user-id="${userId}"]`);
     if (selectedItem) {
         selectedItem.classList.add('bg-gray-200', 'border-gray-500');
     }
     
-    // Set hidden input values
     document.getElementById('selectedParentId').value = userId;
     document.getElementById('selectedParentName').value = userName;
     
-    // Show selected parent display
     document.getElementById('selectedParentDisplay').classList.remove('hidden');
     document.getElementById('selectedParentDisplayName').innerHTML = `${userName} (${userEmail})`;
 }
 
-// Clear selected parent
 function clearSelectedParent() {
     document.getElementById('selectedParentId').value = '';
     document.getElementById('selectedParentName').value = '';
     document.getElementById('selectedParentDisplay').classList.add('hidden');
     
-    // Remove selected class from all items
     document.querySelectorAll('.parent-select-item').forEach(item => {
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
 }
 
-// Attach click events to parent list items
 document.querySelectorAll('.parent-select-item').forEach(item => {
     item.addEventListener('click', function() {
         const userId = this.dataset.userId;
@@ -764,7 +923,6 @@ document.querySelectorAll('.parent-select-item').forEach(item => {
     });
 });
 
-// Reset modal when opened
 function openFamilyModal() {
     document.getElementById('familyModal').classList.remove('hidden');
     document.getElementById('familyForm').reset();
@@ -773,14 +931,17 @@ function openFamilyModal() {
     document.getElementById('selectedParentName').value = '';
     document.getElementById('selectedParentDisplay').classList.add('hidden');
     
-    // Show all parent items
+    // Set the year in the modal
+    const year = document.getElementById('familySelectedYear').value || new Date().getFullYear();
+    document.getElementById('familyModalYear').textContent = year;
+    document.querySelector('input[name="year"]').value = year;
+    
     document.querySelectorAll('.parent-select-item').forEach(item => {
         item.style.display = '';
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
 }
 
-// Add Member form submission
 document.getElementById('addMemberForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -822,4 +983,38 @@ function showNotification(message, type) {
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
+
+// ============================================
+// CLOSE YEAR PICKER WHEN CLICKING OUTSIDE
+// ============================================
+document.addEventListener('click', function(event) {
+    const picker = document.getElementById('familyYearPickerDropdown');
+    const display = document.querySelector('#familyYearDisplay');
+    
+    if (picker && !picker.classList.contains('hidden') && display) {
+        const parentDiv = display.closest('.relative');
+        if (parentDiv && !parentDiv.contains(event.target)) {
+            closeFamilyYearPicker();
+        }
+    }
+});
+
+// ============================================
+// INITIALIZE
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const currentYear = new Date().getFullYear();
+    const selectedYear = parseInt(document.getElementById('familySelectedYear')?.value) || currentYear;
+    currentFamilyYear = selectedYear;
+    document.getElementById('familySelectedYear').value = selectedYear;
+    document.getElementById('familyYearDisplay').textContent = selectedYear;
+    renderFamilyYearGrid();
+    updateFamilyYearBadge();
+});
 </script>
+
+<style>
+.rotate-180 {
+    transform: rotate(180deg);
+}
+</style>

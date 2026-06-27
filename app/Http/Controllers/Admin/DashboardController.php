@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -12,9 +13,16 @@ class DashboardController extends Controller
         // User Statistics
         $totalUsers = DB::table('users')->count();
         $activeUsers = DB::table('users')->where('is_active', true)->count();
+        $inactiveUsers = DB::table('users')->where('is_active', false)->whereNotNull('created_by')->count();
+        $pendingUsers = DB::table('users')
+            ->where('is_active', false)
+            ->whereNull('created_by')
+            ->whereNull('email_verified_at')
+            ->count();
         $lastMonthUsers = DB::table('users')->whereMonth('created_at', now()->subMonth()->month)->count();
         $newUsersMonth = DB::table('users')->whereMonth('created_at', now()->month)->count();
         $growthRate = $lastMonthUsers > 0 ? round((($totalUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 1) : 0;
+        $pendingPermissionRequests = DB::table('permission_requests')->where('status', 'pending')->count();
         
         // Online users (sessions)
         $onlineUsers = DB::table('sessions')->where('last_activity', '>=', now()->subMinutes(15)->timestamp)->count();
@@ -23,11 +31,14 @@ class DashboardController extends Controller
         $stats = [
             'total_users' => $totalUsers,
             'active_users' => $activeUsers,
+            'inactive_users' => $inactiveUsers,
+            'pending_users' => $pendingUsers,
             'last_month_users' => $lastMonthUsers,
             'new_users_month' => $newUsersMonth,
             'growth_rate' => $growthRate,
             'online_users' => $onlineUsers,
             'total_roles' => DB::table('roles')->count(),
+            'total_pages' => DB::table('pages')->count(),
             'total_families' => DB::table('families')->count(),
             'total_members' => DB::table('family_members')->count(),
             'system_version' => '2.0.0',
@@ -44,8 +55,13 @@ class DashboardController extends Controller
             'total_devotions' => DB::table('devotions')->count() ?? 0,
             'total_songs' => DB::table('songs')->count() ?? 0,
             'total_playlists' => DB::table('playlists')->count() ?? 0,
+            'total_sponsors' => $this->tableCount('sponsors'),
+            'total_announcements' => $this->tableCount('announcements'),
             'total_discipline' => DB::table('discipline_records')->count() ?? 0,
             'total_permissions' => DB::table('permission_requests')->count() ?? 0,
+            'pending_permission_requests' => $pendingPermissionRequests,
+            'total_payment_records' => DB::table('payments')->count() ?? 0,
+            'total_expense_records' => DB::table('expenses')->count() ?? 0,
             
             // Financial statistics
             'total_expected' => DB::table('contributions')->sum('annual_amount') ?? 0,
@@ -134,6 +150,11 @@ class DashboardController extends Controller
         });
         
         return array_slice($activities, 0, 10);
+    }
+
+    private function tableCount(string $table): int
+    {
+        return Schema::hasTable($table) ? DB::table($table)->count() : 0;
     }
     
     public function adminDashboard()

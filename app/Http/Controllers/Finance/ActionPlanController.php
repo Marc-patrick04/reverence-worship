@@ -58,7 +58,8 @@ class ActionPlanController extends Controller
                 'description' => 'nullable|string',
                 'due_date' => 'nullable|date',
                 'priority' => 'nullable|string',
-                'budget' => 'nullable|numeric'
+                'budget' => 'nullable|numeric',
+                'assigned_to' => 'nullable|exists:users,id'
             ]);
             
             $id = DB::table('action_plans')->insertGetId([
@@ -69,6 +70,7 @@ class ActionPlanController extends Controller
                 'status' => 'pending',
                 'progress' => 0,
                 'budget' => $request->budget ?? 0,
+                'assigned_to' => $request->assigned_to,
                 'department' => 'finance',
                 'created_by' => auth()->id(),
                 'created_at' => now(),
@@ -85,29 +87,32 @@ class ActionPlanController extends Controller
     public function updateActionPlan(Request $request, $id)
     {
         try {
-            $request->validate([
-                'title' => 'required|string|max:255',
+            $validated = $request->validate([
+                'title' => 'sometimes|required|string|max:255',
                 'description' => 'nullable|string',
                 'due_date' => 'nullable|date',
                 'priority' => 'nullable|string',
                 'status' => 'nullable|string',
                 'progress' => 'nullable|integer|min:0|max:100',
-                'budget' => 'nullable|numeric'
+                'budget' => 'nullable|numeric',
+                'assigned_to' => 'nullable|exists:users,id'
             ]);
-            
-            DB::table('action_plans')
+
+            $allowed = [
+                'title', 'description', 'due_date', 'priority',
+                'status', 'progress', 'budget', 'assigned_to'
+            ];
+            $updates = array_intersect_key($validated, array_flip($allowed));
+            $updates['updated_at'] = now();
+
+            $updated = DB::table('action_plans')
                 ->where('id', $id)
                 ->where('department', 'finance')
-                ->update([
-                    'title' => $request->title,
-                    'description' => $request->description,
-                    'due_date' => $request->due_date,
-                    'priority' => $request->priority ?? 'medium',
-                    'status' => $request->status ?? 'pending',
-                    'progress' => $request->progress ?? 0,
-                    'budget' => $request->budget ?? 0,
-                    'updated_at' => now()
-                ]);
+                ->update($updates);
+
+            if (!$updated && !DB::table('action_plans')->where('id', $id)->where('department', 'finance')->exists()) {
+                return response()->json(['success' => false, 'message' => 'Action plan not found'], 404);
+            }
             
             return response()->json(['success' => true, 'message' => 'Action plan updated successfully']);
         } catch (\Exception $e) {
@@ -129,5 +134,24 @@ class ActionPlanController extends Controller
             Log::error('deleteActionPlan error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function editActionPlan($id)
+    {
+        $plan = DB::table('action_plans')
+            ->where('id', $id)
+            ->where('department', 'finance')
+            ->first();
+
+        if (!$plan) {
+            return response()->json(['success' => false, 'message' => 'Action plan not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'plan' => $plan]);
+    }
+
+    public function showActionPlan($id)
+    {
+        return $this->editActionPlan($id);
     }
 }
