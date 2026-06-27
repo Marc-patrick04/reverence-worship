@@ -1,17 +1,44 @@
 <div class="space-y-6">
-    <!-- Header with Period Filter -->
+    <!-- Header with Year Selection -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Financial Dashboard</h2>
             <p class="text-sm text-gray-500 mt-1">Overview of your financial performance</p>
         </div>
         <div class="flex items-center gap-2">
-            <select id="periodFilter" onchange="loadFinanceOverview()" 
-                    class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                <option value="current">Current Year</option>
-                <option value="last_year">Last Year</option>
-                <option value="all">All Time</option>
-            </select>
+            <!-- Year Picker -->
+            <div class="relative">
+                <div onclick="toggleOverviewYearPicker()" 
+                    class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all min-w-[120px]">
+                    <span id="overviewYearDisplay" class="text-sm font-semibold text-gray-800">{{ date('Y') }}</span>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="overviewYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+                <input type="hidden" id="overviewSelectedYear" value="{{ date('Y') }}">
+                
+                <!-- Year Picker Dropdown - 3x3 Grid -->
+                <div id="overviewYearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
+                    <div class="flex items-center justify-between mb-2">
+                        <button type="button" onclick="changeOverviewYearPage(-1)" 
+                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+                        <span id="overviewYearPageTitle" class="text-xs font-medium text-gray-600">2018 - 2024</span>
+                        <button type="button" onclick="changeOverviewYearPage(1)" 
+                            class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1" id="overviewYearGrid">
+                        <!-- Years populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
             <button onclick="refreshAllCharts()" 
                     class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,19 +49,13 @@
     </div>
 
     <!-- KPI Cards Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Total Revenue Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</p>
                     <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewTotalIncome">RWF 0</p>
-                    <p class="text-xs text-green-600 mt-2 flex items-center gap-1" id="revenueTrend">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
-                        +0%
-                    </p>
                 </div>
                 <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
                     <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,34 +71,10 @@
                 <div>
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Expenses</p>
                     <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewTotalExpenses">RWF 0</p>
-                    <p class="text-xs text-red-600 mt-2 flex items-center gap-1" id="expenseTrend">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
-                        </svg>
-                        +0%
-                    </p>
                 </div>
                 <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
                     <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-
-        <!-- Net Profit Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Net Profit</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1" id="overviewNetProfit">RWF 0</p>
-                    <p class="text-xs text-blue-600 mt-2 flex items-center gap-1">
-                        Margin: <span id="profitMargin">0%</span>
-                    </p>
-                </div>
-                <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
                 </div>
             </div>
@@ -119,10 +116,12 @@
                     <span class="text-sm text-gray-500">Expected Amount</span>
                     <span class="font-semibold text-gray-800" id="overviewTotalExpected">RWF 0</span>
                 </div>
+               
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-500">Collected Amount</span>
                     <span class="font-semibold text-green-600" id="overviewTotalCollected">RWF 0</span>
                 </div>
+                
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-500">Outstanding</span>
                     <span class="font-semibold text-amber-600" id="overviewOutstanding">RWF 0</span>
@@ -201,85 +200,133 @@
             </div>
         </div>
     </div>
-
-    <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Revenue vs Expenses Chart -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
-                <h3 class="font-semibold text-gray-800 text-sm">Revenue vs Expenses</h3>
-            </div>
-            <div class="p-5">
-                <canvas id="revenueExpenseChart" height="200"></canvas>
-            </div>
-        </div>
-
-        <!-- Monthly Trend Chart -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-5 py-3.5 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-semibold text-gray-800 text-sm">Monthly Trend</h3>
-                <select id="trendYearFilter" onchange="loadMonthlyTrend()" class="text-xs border border-gray-200 rounded px-2 py-1">
-                    @for($i = date('Y'); $i >= date('Y')-5; $i--)
-                        <option value="{{ $i }}" {{ $i == date('Y') ? 'selected' : '' }}>{{ $i }}</option>
-                    @endfor
-                </select>
-            </div>
-            <div class="p-5">
-                <canvas id="monthlyTrendChart" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Income Sources & Expense Categories -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Income Sources Chart -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
-                <h3 class="font-semibold text-gray-800 text-sm">Income Sources</h3>
-            </div>
-            <div class="p-5">
-                <canvas id="incomeSourcesChart" height="200"></canvas>
-            </div>
-        </div>
-
-        <!-- Expense Categories Chart -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
-                <h3 class="font-semibold text-gray-800 text-sm">Expense Categories</h3>
-            </div>
-            <div class="p-5">
-                <canvas id="expenseCategoriesChart" height="200"></canvas>
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Include Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
-// Chart instances
-let revenueExpenseChart = null;
-let incomeSourcesChart = null;
-let monthlyTrendChart = null;
-let expenseCategoriesChart = null;
+// ============================================
+// OVERVIEW YEAR PICKER
+// ============================================
 
-// Format currency in RWF
-function formatCurrency(amount) {
-    return 'RWF ' + Number(amount || 0).toLocaleString('en-RW');
+let overviewCurrentYear = new Date().getFullYear();
+let overviewYearPageOffset = 0;
+
+// Toggle Year Picker
+function toggleOverviewYearPicker() {
+    const dropdown = document.getElementById('overviewYearPickerDropdown');
+    const arrow = document.getElementById('overviewYearArrow');
+    
+    if (dropdown.classList.contains('hidden')) {
+        dropdown.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+        renderOverviewYearGrid();
+    } else {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
 }
 
-// Format number
+// Close year picker
+function closeOverviewYearPicker() {
+    const dropdown = document.getElementById('overviewYearPickerDropdown');
+    const arrow = document.getElementById('overviewYearArrow');
+    
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+    }
+}
+
+// Change year page
+function changeOverviewYearPage(direction) {
+    overviewYearPageOffset += direction;
+    renderOverviewYearGrid();
+}
+
+// Render 3x3 Year Grid
+function renderOverviewYearGrid() {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear + (overviewYearPageOffset * 9) - 4;
+    
+    const grid = document.getElementById('overviewYearGrid');
+    const title = document.getElementById('overviewYearPageTitle');
+    
+    if (!grid) return;
+    
+    const endYear = startYear + 8;
+    title.textContent = `${startYear} - ${endYear}`;
+    
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < 9; i++) {
+        const year = startYear + i;
+        const isSelected = year == overviewCurrentYear;
+        const isCurrentYear = year == currentYear;
+        const isDisabled = year < 2000 || year > 2100;
+        
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = year;
+        btn.className = 'year-grid-btn py-1.5 px-2 rounded text-xs transition-all text-center';
+        
+        if (isSelected) {
+            btn.classList.add('bg-blue-600', 'text-white', 'font-semibold', 'shadow-sm');
+        } else if (isCurrentYear) {
+            btn.classList.add('bg-blue-50', 'text-blue-600', 'font-medium', 'border', 'border-blue-200');
+        } else {
+            btn.classList.add('text-gray-700', 'hover:bg-gray-100');
+        }
+        
+        if (isDisabled) {
+            btn.classList.add('text-gray-300', 'cursor-not-allowed');
+            btn.disabled = true;
+        } else {
+            btn.onclick = function() {
+                selectOverviewYear(year);
+            };
+        }
+        
+        grid.appendChild(btn);
+    }
+}
+
+// Select a year
+function selectOverviewYear(year) {
+    overviewCurrentYear = year;
+    document.getElementById('overviewSelectedYear').value = year;
+    document.getElementById('overviewYearDisplay').textContent = year;
+    
+    closeOverviewYearPicker();
+    renderOverviewYearGrid();
+    
+    // Reload data with new year
+    loadFinanceOverview();
+}
+
+// ============================================
+// CURRENCY FORMATTING
+// ============================================
+
+function formatCurrency(amount) {
+    const num = Number(amount || 0);
+    return 'RWF ' + num.toLocaleString('en-RW', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+}
+
 function formatNumber(num) {
     return Number(num || 0).toLocaleString();
 }
 
-// Load all data and update charts
+// ============================================
+// LOAD FINANCE DATA
+// ============================================
+
 async function loadFinanceOverview() {
-    const period = document.getElementById('periodFilter')?.value || 'current';
+    const year = overviewCurrentYear || new Date().getFullYear();
     
     try {
-        const response = await fetch(`/finance/overview/stats?period=${period}`, {
+        const response = await fetch(`/finance/overview/stats?year=${year}`, {
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
@@ -291,327 +338,147 @@ async function loadFinanceOverview() {
         if (data.success && data.stats) {
             const stats = data.stats;
             
-            // Update KPI Cards
-            const totalIncome = stats.total_income || 0;
-            const totalExpenses = stats.total_expenses || 0;
-            const netProfit = totalIncome - totalExpenses;
-            const profitMargin = totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : 0;
+            // Update KPI Cards (3 cards now)
+            const totalIncome = parseFloat(stats.total_income) || 0;
+            const totalExpenses = parseFloat(stats.total_expenses) || 0;
             
-            document.getElementById('overviewTotalIncome').innerHTML = formatCurrency(totalIncome);
-            document.getElementById('overviewTotalExpenses').innerHTML = formatCurrency(totalExpenses);
-            document.getElementById('overviewNetProfit').innerHTML = formatCurrency(netProfit);
-            document.getElementById('profitMargin').innerHTML = profitMargin + '%';
+            document.getElementById('overviewTotalIncome').textContent = formatCurrency(totalIncome);
+            document.getElementById('overviewTotalExpenses').textContent = formatCurrency(totalExpenses);
             
-            const collectionRate = stats.collection_rate || 0;
-            document.getElementById('overviewCollectionRate').innerHTML = collectionRate + '%';
-            document.getElementById('collectionBar').style.width = collectionRate + '%';
+            const collectionRate = parseFloat(stats.collection_rate) || 0;
+            document.getElementById('overviewCollectionRate').textContent = collectionRate + '%';
+            document.getElementById('collectionBar').style.width = Math.min(collectionRate, 100) + '%';
             
             // Update detailed stats
-            document.getElementById('overviewTotalExpected').innerHTML = formatCurrency(stats.total_expected);
-            document.getElementById('overviewTotalCollected').innerHTML = formatCurrency(stats.total_collected);
-            const outstanding = (stats.total_expected || 0) - (stats.total_collected || 0);
-            document.getElementById('overviewOutstanding').innerHTML = formatCurrency(outstanding);
-            document.getElementById('collectionProgress').innerHTML = collectionRate + '%';
-            document.getElementById('collectionProgressBar').style.width = collectionRate + '%';
+            document.getElementById('overviewTotalExpected').textContent = formatCurrency(stats.total_expected);
             
-            document.getElementById('overviewGiftCommitments').innerHTML = formatCurrency(stats.gift_commitments);
-            document.getElementById('overviewGiftReceived').innerHTML = formatCurrency(stats.gift_received);
-            document.getElementById('overviewGiftPending').innerHTML = formatCurrency((stats.gift_commitments || 0) - (stats.gift_received || 0));
-            document.getElementById('overviewActiveGifts').innerHTML = formatNumber(stats.active_gifts);
+            document.getElementById('overviewTotalCollected').textContent = formatCurrency(stats.total_collected);
+           
             
-            document.getElementById('overviewSponsorCommitments').innerHTML = formatCurrency(stats.sponsor_commitments);
-            document.getElementById('overviewSponsorReceived').innerHTML = formatCurrency(stats.sponsor_received);
-            document.getElementById('overviewSponsorPending').innerHTML = formatCurrency((stats.sponsor_commitments || 0) - (stats.sponsor_received || 0));
-            document.getElementById('overviewActiveFunds').innerHTML = formatNumber(stats.active_funds);
+            const outstanding = (parseFloat(stats.total_expected) || 0) - (parseFloat(stats.total_collected) || 0);
+            document.getElementById('overviewOutstanding').textContent = formatCurrency(outstanding);
+            document.getElementById('collectionProgress').textContent = collectionRate + '%';
+            document.getElementById('collectionProgressBar').style.width = Math.min(collectionRate, 100) + '%';
             
-            // Update trends if available
-            if (stats.revenue_trend) document.getElementById('revenueTrend').innerHTML = stats.revenue_trend;
-            if (stats.expense_trend) document.getElementById('expenseTrend').innerHTML = stats.expense_trend;
+            document.getElementById('overviewGiftCommitments').textContent = formatCurrency(stats.gift_commitments);
+            document.getElementById('overviewGiftReceived').textContent = formatCurrency(stats.gift_received);
+            const giftPending = (parseFloat(stats.gift_commitments) || 0) - (parseFloat(stats.gift_received) || 0);
+            document.getElementById('overviewGiftPending').textContent = formatCurrency(giftPending);
+            document.getElementById('overviewActiveGifts').textContent = formatNumber(stats.active_gifts);
             
-            // Update charts
-            updateRevenueExpenseChart(totalIncome, totalExpenses);
-            updateIncomeSourcesChart(stats.income_breakdown || {});
-            updateExpenseCategoriesChart(stats.expense_breakdown || {});
+            document.getElementById('overviewSponsorCommitments').textContent = formatCurrency(stats.sponsor_commitments);
+            document.getElementById('overviewSponsorReceived').textContent = formatCurrency(stats.sponsor_received);
+            const sponsorPending = (parseFloat(stats.sponsor_commitments) || 0) - (parseFloat(stats.sponsor_received) || 0);
+            document.getElementById('overviewSponsorPending').textContent = formatCurrency(sponsorPending);
+            document.getElementById('overviewActiveFunds').textContent = formatNumber(stats.active_funds);
             
-            // Load monthly trends
-            await loadMonthlyTrend();
+            // Remove any $ signs that might have slipped through
+            setTimeout(removeDollarSigns, 50);
+            
+        } else {
+            console.error('Failed to load finance overview:', data.message);
         }
     } catch (error) {
         console.error('Failed to load finance overview:', error);
     }
 }
 
-// Revenue vs Expenses Pie Chart
-function updateRevenueExpenseChart(income, expenses) {
-    const ctx = document.getElementById('revenueExpenseChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    if (revenueExpenseChart) {
-        revenueExpenseChart.destroy();
-    }
-    
-    revenueExpenseChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Income', 'Expenses'],
-            datasets: [{
-                data: [income, expenses],
-                backgroundColor: ['#10b981', '#f43f5e'],
-                borderWidth: 0,
-                hoverOffset: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { usePointStyle: true, padding: 15 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.raw / total) * 100).toFixed(1);
-                            return `${context.label}: ${formatCurrency(context.raw)} (${percentage}%)`;
-                        }
-                    }
-                }
-            },
-            cutout: '60%'
-        }
-    });
-}
+// ============================================
+// REMOVE $ SIGNS
+// ============================================
 
-// Income Sources Chart
-function updateIncomeSourcesChart(incomeBreakdown) {
-    const ctx = document.getElementById('incomeSourcesChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    const labels = Object.keys(incomeBreakdown);
-    const data = Object.values(incomeBreakdown);
-    const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
-    
-    if (incomeSourcesChart) {
-        incomeSourcesChart.destroy();
-    }
-    
-    if (data.length === 0) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.font = '14px sans-serif';
-        ctx.fillStyle = '#9ca3af';
-        ctx.textAlign = 'center';
-        ctx.fillText('No data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
-        return;
-    }
-    
-    incomeSourcesChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels.map(l => l.replace(/_/g, ' ').toUpperCase()),
-            datasets: [{
-                data: data,
-                backgroundColor: colors.slice(0, data.length),
-                borderWidth: 0,
-                hoverOffset: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { usePointStyle: true, padding: 10, font: { size: 11 } }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.raw / total) * 100).toFixed(1);
-                            return `${context.label}: ${formatCurrency(context.raw)} (${percentage}%)`;
-                        }
-                    }
-                }
+function removeDollarSigns() {
+    const elements = document.querySelectorAll('#overviewTotalIncome, #overviewTotalExpenses, #overviewTotalExpected, #overviewTotalCollected, #overviewOutstanding, #overviewGiftCommitments, #overviewGiftReceived, #overviewGiftPending, #overviewSponsorCommitments, #overviewSponsorReceived, #overviewSponsorPending');
+    elements.forEach(el => {
+        if (el && el.textContent) {
+            let text = el.textContent;
+            if (text.includes('$')) {
+                text = text.replace(/\$/g, 'RWF');
+                el.textContent = text;
             }
         }
     });
 }
 
-// Expense Categories Chart
-function updateExpenseCategoriesChart(expenseBreakdown) {
-    const ctx = document.getElementById('expenseCategoriesChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    const labels = Object.keys(expenseBreakdown);
-    const data = Object.values(expenseBreakdown);
-    const colors = ['#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6'];
-    
-    if (expenseCategoriesChart) {
-        expenseCategoriesChart.destroy();
-    }
-    
-    if (data.length === 0) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.font = '14px sans-serif';
-        ctx.fillStyle = '#9ca3af';
-        ctx.textAlign = 'center';
-        ctx.fillText('No data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
-        return;
-    }
-    
-    expenseCategoriesChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels.map(l => l.replace(/_/g, ' ').toUpperCase()),
-            datasets: [{
-                data: data,
-                backgroundColor: colors.slice(0, data.length),
-                borderWidth: 0,
-                hoverOffset: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { usePointStyle: true, padding: 10, font: { size: 11 } }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.raw / total) * 100).toFixed(1);
-                            return `${context.label}: ${formatCurrency(context.raw)} (${percentage}%)`;
-                        }
-                    }
-                }
-            },
-            cutout: '55%'
-        }
-    });
-}
-
-// Monthly Trend Line Chart
-async function loadMonthlyTrend() {
-    const year = document.getElementById('trendYearFilter')?.value || new Date().getFullYear();
-    
-    try {
-        const response = await fetch(`/finance/overview/monthly-trend?year=${year}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        const data = await response.json();
-        
-        const ctx = document.getElementById('monthlyTrendChart')?.getContext('2d');
-        if (!ctx) return;
-        
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const incomeData = data.income || new Array(12).fill(0);
-        const expenseData = data.expenses || new Array(12).fill(0);
-        
-        if (monthlyTrendChart) {
-            monthlyTrendChart.destroy();
-        }
-        
-        monthlyTrendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [
-                    {
-                        label: 'Income',
-                        data: incomeData,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: 'Expenses',
-                        data: expenseData,
-                        borderColor: '#f43f5e',
-                        backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
-                            }
-                        }
-                    },
-                    legend: { position: 'top' }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return formatCurrency(value);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Failed to load monthly trend:', error);
-    }
-}
-
-// Refresh all charts
 function refreshAllCharts() {
     loadFinanceOverview();
 }
+
+// ============================================
+// INITIALIZE
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const currentYear = new Date().getFullYear();
+    overviewCurrentYear = currentYear;
+    document.getElementById('overviewSelectedYear').value = currentYear;
+    document.getElementById('overviewYearDisplay').textContent = currentYear;
+    renderOverviewYearGrid();
+    loadFinanceOverview();
+    removeDollarSigns();
+});
 
 // Auto-refresh every 30 seconds
 let autoRefreshInterval = setInterval(() => {
     const overviewTab = document.getElementById('overview-tab');
     if (overviewTab && !overviewTab.classList.contains('hidden')) {
         loadFinanceOverview();
+        removeDollarSigns();
     }
 }, 30000);
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadFinanceOverview();
-    
-    const overviewTab = document.getElementById('overview-tab');
-    if (overviewTab) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    loadFinanceOverview();
-                }
-            });
-        }, { threshold: 0.1 });
-        observer.observe(overviewTab);
-    }
-});
-
-// Cleanup interval on page unload
 window.addEventListener('beforeunload', function() {
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
     }
 });
 
-// Expose refresh function globally
+// Close year picker when clicking outside
+document.addEventListener('click', function(event) {
+    const picker = document.getElementById('overviewYearPickerDropdown');
+    const display = document.querySelector('#overviewYearDisplay');
+    
+    if (picker && !picker.classList.contains('hidden') && display) {
+        const parentDiv = display.closest('.relative');
+        if (parentDiv && !parentDiv.contains(event.target)) {
+            closeOverviewYearPicker();
+        }
+    }
+});
+
+// Expose functions globally
 window.refreshFinanceOverview = loadFinanceOverview;
 window.refreshAllCharts = refreshAllCharts;
+window.removeDollarSigns = removeDollarSigns;
 </script>
+
+<style>
+.year-grid-btn {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 32px;
+}
+
+.year-grid-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.year-grid-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+#overviewYearPickerDropdown {
+    animation: fade-in 0.15s ease-out;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>

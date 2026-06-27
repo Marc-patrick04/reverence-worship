@@ -28,6 +28,11 @@
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="nav-text text-sm font-medium">My Contributions</span>
                 </a>
+                <!-- Parent Dashboard -->
+                <a href="{{ route('parent.index') }}" class="nav-item {{ request()->routeIs('parent.*') ? 'active' : '' }}">
+                    <i class="fas fa-user-friends w-5"></i>
+                    <span class="nav-text text-sm font-medium">Parent Dashboard</span>
+                </a>
                 <a href="{{ route('music.index') }}" class="nav-item {{ request()->routeIs('music.*') ? 'active' : '' }}">
                     <i class="fas fa-music w-5"></i>
                     <span class="nav-text text-sm font-medium">Music and Evangelism DPT</span>
@@ -100,6 +105,14 @@
                 <a href="{{ route('financial.my-contributions') }}" class="nav-item {{ request()->routeIs('financial.*') ? 'active' : '' }}">
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="nav-text text-sm font-medium">My Contributions</span>
+                </a>
+                @endif
+                
+                <!-- Parent Dashboard - Check permission for 'parent' page -->
+                @if(auth()->user()->canAccess('parent', 'view'))
+                <a href="{{ route('parent.index') }}" class="nav-item {{ request()->routeIs('parent.*') ? 'active' : '' }}">
+                    <i class="fas fa-user-friends w-5"></i>
+                    <span class="nav-text text-sm font-medium">Parent Dashboard</span>
                 </a>
                 @endif
                 

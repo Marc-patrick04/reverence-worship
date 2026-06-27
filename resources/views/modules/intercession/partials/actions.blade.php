@@ -1,182 +1,108 @@
-<div class="bg-white rounded-xl shadow-md p-6">
+<div class="bg-white rounded-xl shadow-sm p-4">
     
     <!-- Header Section -->
-    <div class="mb-6">
-        <h2 class="text-xl font-bold text-gray-800">Intercession & Spiritual Growth Action Plans</h2>
-        <p class="text-gray-500 text-sm mt-1">Manage and track departmental action plans and tasks</p>
-    </div>
-
-    <!-- Action Plans Overview -->
-    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 mb-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-semibold text-gray-700">Action Plans Overview</h3>
-            <div class="flex items-center gap-2">
-                <span class="text-sm text-gray-500">Intercession & Spiritual Growth DPT</span>
-                <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
-            </div>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-tasks text-blue-600"></i>
+                Action Plans
+            </h2>
+            <p class="text-xs text-gray-500 mt-0.5">Track and manage your spiritual growth action plans</p>
         </div>
-        
-        <!-- Stats Cards Row -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <!-- Total Action Plans -->
-            <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="flex items-center justify-center mb-2">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-tasks text-blue-600"></i>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-gray-800">{{ $totalActionPlans ?? 0 }}</p>
-                <p class="text-xs text-gray-500">Total Action Plans</p>
-            </div>
-            
-            <!-- Completed Tasks -->
-            <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="flex items-center justify-center mb-2">
-                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-check-circle text-green-600"></i>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-gray-800">{{ $completedPlans ?? 0 }}</p>
-                <p class="text-xs text-gray-500">Completed Tasks</p>
-            </div>
-            
-            <!-- Overall Progress -->
-            <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="flex items-center justify-center mb-2">
-                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-chart-line text-purple-600"></i>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-purple-600">{{ $overallProgress ?? 0 }}%</p>
-                <p class="text-xs text-gray-500">Overall Progress</p>
-            </div>
-            
-            <!-- In Progress -->
-            <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="flex items-center justify-center mb-2">
-                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-spinner text-yellow-600"></i>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-gray-800">{{ $inProgressPlans ?? 0 }}</p>
-                <p class="text-xs text-gray-500">In Progress</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ $totalActionPlans ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Total Plans</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-green-600">{{ $completedPlans ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Completed</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ $overallProgress ?? 0 }}%</p>
-            <p class="text-xs text-gray-500">Average Progress</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ $pendingPlans ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Pending</p>
-        </div>
-    </div>
-
-    <!-- Action Plans List Header -->
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-gray-800">All Action Plans</h3>
-        <button onclick="openCreateActionPlanModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-            <i class="fas fa-plus"></i> New Action Plan
+        <button onclick="openCreateActionPlanModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition hover:shadow-md">
+            <i class="fas fa-plus"></i> New Plan
         </button>
     </div>
 
-    <!-- Progress Bar for Overall -->
-    <div class="mb-6">
-        <div class="flex justify-between text-sm text-gray-600 mb-1">
-            <span>Overall Progress</span>
-            <span>{{ $overallProgress ?? 0 }}%</span>
+    <!-- Stats Cards - Compact -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+        <div class="bg-blue-50 rounded-lg p-2.5 text-center">
+            <p class="text-lg font-bold text-blue-600">{{ $totalActionPlans ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500">Total Plans</p>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-            <div class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: {{ $overallProgress ?? 0 }}%"></div>
+        <div class="bg-green-50 rounded-lg p-2.5 text-center">
+            <p class="text-lg font-bold text-green-600">{{ $completedPlans ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500">Completed</p>
+        </div>
+        <div class="bg-yellow-50 rounded-lg p-2.5 text-center">
+            <p class="text-lg font-bold text-yellow-600">{{ $inProgressPlans ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500">In Progress</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2.5 text-center">
+            <p class="text-lg font-bold text-gray-600">{{ $pendingPlans ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500">Pending</p>
+        </div>
+    </div>
+
+    <!-- Progress Bar - Compact -->
+    <div class="mb-4">
+        <div class="flex justify-between text-xs text-gray-500 mb-0.5">
+            <span>Progress</span>
+            <span class="font-medium">{{ $overallProgress ?? 0 }}%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-1.5">
+            <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style="width: {{ $overallProgress ?? 0 }}%"></div>
         </div>
     </div>
 
     <!-- Action Plans List -->
-    <div class="space-y-3">
+    <div class="space-y-2">
         @forelse($actionPlans ?? [] as $plan)
-        <div class="border rounded-lg p-4 hover:shadow-md transition-all duration-300">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-1">
-                        <h4 class="font-semibold text-gray-800">{{ $plan->title }}</h4>
+        <div class="border rounded-lg p-3 hover:shadow-sm transition-all duration-200 hover:border-blue-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-medium text-gray-800 text-sm truncate">{{ $plan->title }}</h4>
                         @if($plan->status == 'completed')
-                            <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
-                                <i class="fas fa-check-circle mr-1"></i> Completed
+                            <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-green-100 text-green-700 flex-shrink-0">
+                                <i class="fas fa-check-circle mr-0.5"></i> Done
                             </span>
                         @elseif($plan->status == 'in-progress')
-                            <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700">
-                                <i class="fas fa-spinner mr-1"></i> In Progress
+                            <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-yellow-100 text-yellow-700 flex-shrink-0">
+                                <i class="fas fa-spinner mr-0.5"></i> Progress
                             </span>
                         @else
-                            <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
-                                <i class="fas fa-clock mr-1"></i> Pending
+                            <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-600 flex-shrink-0">
+                                <i class="fas fa-clock mr-0.5"></i> Pending
                             </span>
                         @endif
                     </div>
-                    <p class="text-sm text-gray-600">{{ $plan->description ?? 'No description' }}</p>
-                    <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                        @if($plan->due_date)
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-calendar"></i> Due: {{ \Carbon\Carbon::parse($plan->due_date)->format('d/m/Y') }}
+                    @if($plan->description)
+                        <p class="text-xs text-gray-500 mt-0.5 truncate">{{ Str::limit($plan->description, 80) }}</p>
+                    @endif
+                    <div class="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-gray-400">
+                        <span class="flex items-center gap-0.5">
+                            <i class="fas fa-tasks"></i> {{ $plan->tasks_count ?? 0 }} tasks
                         </span>
-                        @endif
-                        @if($plan->assignedUser)
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-user"></i> Assigned to: {{ $plan->assignedUser->name }}
-                        </span>
-                        @endif
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-clock"></i> Created: {{ \Carbon\Carbon::parse($plan->created_at)->format('d/m/Y') }}
+                        <span class="flex items-center gap-0.5">
+                            <i class="fas fa-check-circle text-green-500"></i> {{ $plan->completed_tasks ?? 0 }} done
                         </span>
                     </div>
                 </div>
                 
-                <!-- Status Update Dropdown -->
-                <div class="flex items-center gap-2">
-                    <select onchange="updatePlanStatus({{ $plan->id }}, this.value)" 
-                            class="text-sm border rounded-lg px-3 py-1 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="pending" {{ $plan->status == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="in-progress" {{ $plan->status == 'in-progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="completed" {{ $plan->status == 'completed' ? 'selected' : '' }}>Completed</option>
-                    </select>
-                    
-                    <div class="relative">
-                        <button onclick="togglePlanMenu({{ $plan->id }})" class="text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                        <div id="plan-menu-{{ $plan->id }}" class="hidden absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10 border">
-                            <a href="#" onclick="editPlan({{ $plan->id }})" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-edit mr-2"></i> Edit
-                            </a>
-                            <button onclick="deletePlan({{ $plan->id }})" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                <i class="fas fa-trash mr-2"></i> Delete
-                            </button>
-                        </div>
-                    </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button onclick="viewPlan({{ $plan->id }})" class="text-blue-600 hover:text-blue-800 text-xs p-1 transition" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="editPlan({{ $plan->id }})" class="text-gray-400 hover:text-blue-600 text-xs p-1 transition" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deletePlan({{ $plan->id }})" class="text-gray-400 hover:text-red-600 text-xs p-1 transition" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
         @empty
-        <div class="text-center py-12">
-            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-tasks text-3xl text-gray-400"></i>
+        <div class="text-center py-8">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-tasks text-2xl text-gray-400"></i>
             </div>
-            <p class="text-gray-500">No action plans yet</p>
-            <p class="text-sm text-gray-400 mt-1">Create your first action plan to get started</p>
-            <button onclick="openCreateActionPlanModal()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
-                <i class="fas fa-plus mr-2"></i> Create Action Plan
+            <p class="text-gray-500 text-sm">No action plans yet</p>
+            <p class="text-xs text-gray-400 mt-0.5">Create your first action plan</p>
+            <button onclick="openCreateActionPlanModal()" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition">
+                <i class="fas fa-plus mr-1"></i> Create Plan
             </button>
         </div>
         @endforelse
@@ -184,40 +110,15 @@
 </div>
 
 <script>
-function updatePlanStatus(planId, status) {
-    fetch(`/intercession/action-plans/${planId}/status`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({ status: status })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error updating status');
-        }
-    });
-}
-
-function togglePlanMenu(planId) {
-    const menu = document.getElementById(`plan-menu-${planId}`);
-    if (menu) {
-        menu.classList.toggle('hidden');
-    }
-}
-
-function editPlan(planId) {
-    // Implement edit functionality
-    window.location.href = `/intercession/action-plans/${planId}/edit`;
-}
-
+// ==================== DELETE PLAN ====================
 function deletePlan(planId) {
-    if (confirm('Are you sure you want to delete this action plan?')) {
+    if (confirm('Delete this action plan and all its tasks?')) {
+        const btn = event.target.closest('button');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+        }
+        
         fetch(`/intercession/action-plans/${planId}`, {
             method: 'DELETE',
             headers: {
@@ -228,21 +129,57 @@ function deletePlan(planId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                showNotification('Plan deleted successfully!', 'success');
+                setTimeout(() => location.reload(), 800);
             } else {
-                alert('Error deleting plan');
+                showNotification('Error deleting plan', 'error');
             }
         });
     }
 }
 
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-    if (!event.target.closest('[onclick*="togglePlanMenu"]')) {
-        document.querySelectorAll('[id^="plan-menu-"]').forEach(menu => {
-            menu.classList.add('hidden');
-        });
+// ==================== TOAST NOTIFICATION ====================
+function showNotification(message, type = 'info') {
+    const types = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 px-3 py-2 rounded-lg shadow-lg text-white z-50 ${types[type] || 'bg-gray-700'} flex items-center gap-2 animate-slide-in text-sm`;
+    notification.innerHTML = `
+        <i class="fas ${icons[type] || 'fa-bell'}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white ml-2">×</button>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Add animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
     }
-});
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+`;
+document.head.appendChild(style);
 </script>
+
 @include('modules.intercession.partials.modals')

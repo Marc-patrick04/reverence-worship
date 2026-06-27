@@ -49,6 +49,11 @@
                 Manage Forms
             </button>
             @endif
+            @if($canViewResults || $isSuperAdmin)
+<button onclick="showFormSection('reports')" id="form-section-reports" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
+    <i class="fas fa-chart-bar mr-1"></i> Reports
+</button>
+@endif
         </div>
         
         {{-- Create Form Button --}}
@@ -63,90 +68,263 @@
     @if($canViewForms)
     <div id="available-forms-section" class="form-section">
         <h3 class="text-lg font-bold mb-4">Available Forms</h3>
-        @forelse($availableForms ?? [] as $form)
-        @php
-            $formSettings = is_string($form->settings) ? json_decode($form->settings, true) : ($form->settings ?? []);
-            $isPublished = $formSettings['is_published'] ?? false;
-            $questions = is_string($form->questions) ? json_decode($form->questions, true) : ($form->questions ?? []);
-            $questionsCount = is_array($questions) ? count($questions) : 0;
-            $createdDate = isset($form->created_at) ? \Carbon\Carbon::parse($form->created_at)->format('F j, Y') : 'Date unknown';
-            $hasTaken = isset($mySubmissions) && $mySubmissions->contains('form_id', $form->id);
-        @endphp
-        @if($isPublished)
-        <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition-all duration-300">
-            <div class="flex justify-between items-start">
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                        <h4 class="font-semibold text-gray-800 text-lg">{{ $form->title }}</h4>
-                        @if($hasTaken)
-                        <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            <i class="fas fa-check-circle"></i> Completed
-                        </span>
+        <div id="available-forms-list">
+            @forelse($availableForms ?? [] as $form)
+            @php
+                $formSettings = is_string($form->settings) ? json_decode($form->settings, true) : ($form->settings ?? []);
+                $isPublished = $formSettings['is_published'] ?? false;
+                $limitOneResponse = $formSettings['limit_one_response'] ?? true;
+                
+                // Handle questions properly
+                $questions = $form->questions ?? [];
+                if (is_string($questions)) {
+                    $questions = json_decode($questions, true) ?? [];
+                }
+                if (!is_array($questions)) {
+                    $questions = [];
+                }
+                $questionsCount = count($questions);
+                $createdDate = isset($form->created_at) ? \Carbon\Carbon::parse($form->created_at)->format('F j, Y') : 'Date unknown';
+                $hasTaken = isset($mySubmissions) && $mySubmissions->contains('form_id', $form->id);
+                
+                // Determine button state
+                $buttonDisabled = $hasTaken && $limitOneResponse;
+                $buttonText = $hasTaken ? ($limitOneResponse ? 'Already Submitted' : 'Submit Again') : 'Take Form';
+                $buttonColor = $buttonDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700';
+            @endphp
+            @if($isPublished)
+            <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition-all duration-300">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h4 class="font-semibold text-gray-800 text-lg">{{ $form->title }}</h4>
+                            @if($hasTaken)
+                            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                <i class="fas fa-check-circle"></i> Completed
+                            </span>
+                            @endif
+                            @if($limitOneResponse)
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                <i class="fas fa-lock"></i> Limit 1
+                            </span>
+                            @endif
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">{{ Str::limit($form->description ?? 'No description', 150) }}</p>
+                        <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-question-circle text-blue-500"></i>
+                                {{ $questionsCount }} {{ Str::plural('question', $questionsCount) }}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-calendar-alt text-gray-400"></i>
+                                Created: {{ $createdDate }}
+                            </span>
+                            @if(isset($form->updated_at) && $form->updated_at != $form->created_at)
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-edit text-gray-400"></i>
+                                Updated: {{ \Carbon\Carbon::parse($form->updated_at)->format('F j, Y') }}
+                            </span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        @if($buttonDisabled)
+                            <button disabled class="{{ $buttonColor }} text-white px-5 py-2 rounded-lg text-sm flex items-center gap-2 opacity-70">
+                                <i class="fas fa-check-circle"></i> {{ $buttonText }}
+                            </button>
+                        @else
+                            <a href="{{ route('forms.take', $form->id) }}" class="{{ $buttonColor }} text-white px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                                <i class="fas fa-pen-alt"></i> {{ $buttonText }}
+                            </a>
                         @endif
                     </div>
-                    <p class="text-sm text-gray-600 mb-2">{{ Str::limit($form->description ?? 'No description', 150) }}</p>
-                    <div class="flex flex-wrap gap-4 text-xs text-gray-500">
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-question-circle text-blue-500"></i>
-                            {{ $questionsCount }} {{ Str::plural('question', $questionsCount) }}
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-calendar-alt text-gray-400"></i>
-                            Created: {{ $createdDate }}
-                        </span>
-                        @if(isset($form->updated_at) && $form->updated_at != $form->created_at)
-                        <span class="flex items-center gap-1">
-                            <i class="fas fa-edit text-gray-400"></i>
-                            Updated: {{ \Carbon\Carbon::parse($form->updated_at)->format('F j, Y') }}
-                        </span>
-                        @endif
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <a href="{{ route('forms.take', $form->id) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
-                        <i class="fas fa-pen-alt"></i> Take Form
-                    </a>
                 </div>
             </div>
-        </div>
-        @endif
-        @empty
-        <div class="text-center py-12">
-            <i class="fas fa-file-alt text-5xl text-gray-300 mb-3"></i>
-            <p class="text-gray-500">No forms available</p>
-            @if($canCreateForms || $isSuperAdmin)
-            <a href="{{ route('forms.manage.create') }}" class="inline-block mt-3 text-blue-600 hover:text-blue-800 text-sm">
-                <i class="fas fa-plus"></i> Create your first form
-            </a>
             @endif
+            @empty
+            <div class="text-center py-12">
+                <i class="fas fa-file-alt text-5xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No forms available</p>
+                
+            </div>
+            @endforelse
         </div>
-        @endforelse
     </div>
     @endif
 
-    {{-- My Results Section --}}
-    @if($canViewResults)
-    <div id="results-section" class="form-section hidden">
-        <h3 class="text-lg font-bold mb-4">My Results</h3>
+   {{-- My Results Section --}}
+@if($canViewResults)
+<div id="results-section" class="form-section hidden">
+    <h3 class="text-lg font-bold mb-4">My Results</h3>
+    <div id="results-list">
         @forelse($mySubmissions ?? [] as $submission)
         @php
-            $questions = is_string($submission->form->questions) ? json_decode($submission->form->questions, true) : ($submission->form->questions ?? []);
-            $questionsCount = is_array($questions) ? count($questions) : 0;
+            // Get questions from the form - handle both string and array
+            $questions = [];
+            if (isset($submission->form) && isset($submission->form->questions)) {
+                if (is_string($submission->form->questions)) {
+                    $questions = json_decode($submission->form->questions, true) ?? [];
+                } elseif (is_array($submission->form->questions)) {
+                    $questions = $submission->form->questions;
+                }
+            }
+            if (!is_array($questions)) {
+                $questions = [];
+            }
+            $questionsCount = count($questions);
+            
+            // Get answers from the submission - handle both string and array
+            $answers = [];
+            if (isset($submission->answers)) {
+                if (is_string($submission->answers)) {
+                    $answers = json_decode($submission->answers, true) ?? [];
+                } elseif (is_array($submission->answers)) {
+                    $answers = $submission->answers;
+                }
+            }
+            if (!is_array($answers)) {
+                $answers = [];
+            }
+            
+            // Recalculate score using the same logic as results page
+            $totalPoints = 0;
+            $earnedPoints = 0;
+            $allowPartialPoints = true;
+            
+            if (!empty($questions) && !empty($answers)) {
+                foreach($questions as $index => $question) {
+                    $questionType = $question['type'] ?? 'short_answer';
+                    
+                    // Skip sections
+                    if ($questionType == 'title_section' || $questionType == 'section_break') {
+                        continue;
+                    }
+                    
+                    $points = isset($question['points']) ? (int)$question['points'] : 1;
+                    $totalPoints += $points;
+                    
+                    $answerKey = 'question_' . $index;
+                    $answer = $answers[$answerKey] ?? null;
+                    
+                    // Calculate earned points based on question type
+                    if ($questionType == 'multiple_choice' || $questionType == 'dropdown') {
+                        if (isset($question['correctAnswer']) && $question['correctAnswer'] !== '') {
+                            if ($answer == $question['correctAnswer']) {
+                                $earnedPoints += $points;
+                            }
+                        }
+                    } elseif ($questionType == 'checkboxes') {
+                        if (isset($question['correctAnswers']) && is_array($question['correctAnswers']) && !empty($question['correctAnswers'])) {
+                            $correctAnswers = $question['correctAnswers'];
+                            $userAnswers = is_array($answer) ? $answer : [];
+                            
+                            if (!empty($userAnswers)) {
+                                $totalCorrect = count($correctAnswers);
+                                $correctSelected = 0;
+                                
+                                foreach ($userAnswers as $userAnswer) {
+                                    if (in_array($userAnswer, $correctAnswers)) {
+                                        $correctSelected++;
+                                    }
+                                }
+                                
+                                if ($allowPartialPoints && $correctSelected > 0) {
+                                    $earnedPoints += ($correctSelected / $totalCorrect) * $points;
+                                } elseif (!$allowPartialPoints && $correctSelected == $totalCorrect) {
+                                    $earnedPoints += $points;
+                                }
+                            }
+                        }
+                    } elseif ($questionType == 'short_answer' || $questionType == 'paragraph') {
+                        if (isset($question['correctAnswer']) && $question['correctAnswer'] !== '') {
+                            if (strtolower(trim($answer)) == strtolower(trim($question['correctAnswer']))) {
+                                $earnedPoints += $points;
+                            }
+                        }
+                    } elseif ($questionType == 'date' || $questionType == 'time') {
+                        if (isset($question['correctAnswer']) && $question['correctAnswer'] !== '') {
+                            if ($answer == $question['correctAnswer']) {
+                                $earnedPoints += $points;
+                            }
+                        }
+                    } elseif ($questionType == 'linear_scale' || $questionType == 'rating') {
+                        if ($answer !== null && $answer !== '') {
+                            $earnedPoints += $points;
+                        }
+                    } elseif ($questionType == 'multiple_choice_grid') {
+                        if (isset($question['correctAnswers']) && is_array($question['correctAnswers'])) {
+                            $rows = $question['rows'] ?? [];
+                            $gridAnswers = is_array($answer) ? $answer : [];
+                            
+                            foreach ($rows as $rowIndex => $row) {
+                                $rowKey = 'question_' . $index . '_' . $rowIndex;
+                                $userRowAnswer = $gridAnswers[$rowKey] ?? null;
+                                $correctRowAnswer = $question['correctAnswers'][$rowIndex] ?? null;
+                                
+                                if ($correctRowAnswer !== null && $correctRowAnswer !== '') {
+                                    if ($userRowAnswer == $correctRowAnswer) {
+                                        $earnedPoints += $points / count($rows);
+                                    }
+                                }
+                            }
+                        }
+                    } elseif ($questionType == 'checkbox_grid') {
+                        if (isset($question['correctAnswers']) && is_array($question['correctAnswers'])) {
+                            $rows = $question['rows'] ?? [];
+                            $gridAnswers = is_array($answer) ? $answer : [];
+                            
+                            foreach ($rows as $rowIndex => $row) {
+                                $rowKey = 'question_' . $index . '_' . $rowIndex;
+                                $userRowAnswers = isset($gridAnswers[$rowKey]) ? (array)$gridAnswers[$rowKey] : [];
+                                $correctRowAnswers = $question['correctAnswers'][$rowIndex] ?? [];
+                                
+                                if (!empty($correctRowAnswers) && !empty($userRowAnswers)) {
+                                    $correctCount = 0;
+                                    foreach ($correctRowAnswers as $correctAns) {
+                                        if (in_array($correctAns, $userRowAnswers)) {
+                                            $correctCount++;
+                                        }
+                                    }
+                                    if ($allowPartialPoints && $correctCount > 0) {
+                                        $earnedPoints += ($correctCount / count($correctRowAnswers)) * ($points / count($rows));
+                                    } elseif (!$allowPartialPoints && $correctCount == count($correctRowAnswers)) {
+                                        $earnedPoints += $points / count($rows);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $earnedPoints = round($earnedPoints, 2);
+            $displayScore = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100, 1) : ($submission->score ?? 0);
+            $formattedScore = number_format($displayScore, 1);
+            
+            // Status based on score
+            $status = $displayScore >= 80 ? 'Excellent' : ($displayScore >= 60 ? 'Good' : ($displayScore >= 40 ? 'Average' : 'Needs Improvement'));
+            $statusColor = $displayScore >= 80 ? 'text-green-600' : ($displayScore >= 60 ? 'text-blue-600' : ($displayScore >= 40 ? 'text-yellow-600' : 'text-red-600'));
+            $statusIcon = $displayScore >= 80 ? 'fa-star' : ($displayScore >= 60 ? 'fa-thumbs-up' : ($displayScore >= 40 ? 'fa-minus-circle' : 'fa-exclamation-triangle'));
         @endphp
         <div class="border rounded-lg p-4 mb-3 hover:shadow-md transition">
             <div class="flex justify-between items-center">
                 <div>
-                    <h4 class="font-semibold text-gray-800">{{ $submission->form->title }}</h4>
+                    <h4 class="font-semibold text-gray-800">{{ $submission->form->title ?? 'Form' }}</h4>
                     <div class="flex gap-3 mt-1 text-xs text-gray-500">
                         <span><i class="fas fa-question-circle"></i> {{ $questionsCount }} questions</span>
-                        <span><i class="fas fa-calendar"></i> {{ \Carbon\Carbon::parse($submission->submitted_at)->format('F j, Y') }}</span>
+                        <span><i class="fas fa-calendar"></i> {{ isset($submission->submitted_at) ? \Carbon\Carbon::parse($submission->submitted_at)->format('M d, Y') : 'N/A' }}</span>
+                        <span><i class="fas fa-star {{ $statusColor }}"></i> {{ $status }}</span>
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-2xl font-bold text-blue-600">{{ number_format($submission->score, 1) }}%</p>
-                    <button onclick="viewFormResult({{ $submission->form_id }})" class="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                        View Details <i class="fas fa-arrow-right"></i>
-                    </button>
+                    <p class="text-2xl font-bold {{ $statusColor }}">{{ $formattedScore }}%</p>
+                    <div class="flex items-center justify-end gap-2">
+                        <span class="text-xs text-gray-400">{{ number_format($earnedPoints, 1) }} / {{ $totalPoints }} pts</span>
+                        <button onclick="viewFormResult({{ $submission->form_id ?? 0 }}, {{ $submission->id ?? 0 }})" 
+                                class="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                            View Details <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -158,8 +336,8 @@
         </div>
         @endforelse
     </div>
-    @endif
-
+</div>
+@endif
     {{-- Manage Forms Section --}}
     @if($canManageForms || $isSuperAdmin)
     <div id="manage-section" class="form-section hidden">
@@ -172,19 +350,29 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Questions</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submissions</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Limit</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="manage-forms-body">
                     @foreach($allForms ?? [] as $form)
                     @php
                         $formSettings = is_string($form->settings) ? json_decode($form->settings, true) : ($form->settings ?? []);
                         $isPublished = $formSettings['is_published'] ?? false;
-                        $questions = is_string($form->questions) ? json_decode($form->questions, true) : ($form->questions ?? []);
-                        $questionsCount = is_array($questions) ? count($questions) : 0;
+                        $limitOneResponse = $formSettings['limit_one_response'] ?? true;
+                        
+                        // Handle questions properly
+                        $questions = $form->questions ?? [];
+                        if (is_string($questions)) {
+                            $questions = json_decode($questions, true) ?? [];
+                        }
+                        if (!is_array($questions)) {
+                            $questions = [];
+                        }
+                        $questionsCount = count($questions);
                         $submissionsCount = DB::table('form_submissions')->where('form_id', $form->id)->count();
                     @endphp
-                    <tr class="border-t hover:bg-gray-50">
+                    <tr class="border-t hover:bg-gray-50" id="form-row-{{ $form->id }}">
                         <td class="px-4 py-3">
                             <div>
                                 <p class="font-medium text-gray-800">{{ $form->title }}</p>
@@ -200,12 +388,13 @@
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-500 text-center">{{ $submissionsCount }}</td>
                         <td class="px-4 py-3">
+                            <span class="px-2 py-1 text-xs rounded-full {{ $limitOneResponse ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500' }}">
+                                {{ $limitOneResponse ? '1 Response' : 'Multiple' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
                             <div class="flex gap-2 flex-wrap">
-                                @if($canViewForms)
-                                <button onclick="viewForm({{ $form->id }})" class="text-green-600 hover:text-green-800" title="View">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                @endif
+                                
                                 
                                 @if($canPublishForms || $isSuperAdmin)
                                 <button onclick="togglePublish({{ $form->id }})" 
@@ -242,13 +431,18 @@
         </div>
     </div>
     @endif
+    {{-- Reports Section --}}
+@if($canViewResults || $isSuperAdmin)
+<div id="reports-section" class="form-section hidden">
+    @include('modules.intercession.forms.reports')
+</div>
+@endif
 
 </div>
 
 <script>
-// Function to show form section
+// ==================== SHOW FORM SECTION ====================
 function showFormSection(section) {
-    // Map section names to actual element IDs
     let elementId = '';
     if (section === 'available') {
         elementId = 'available-forms-section';
@@ -256,19 +450,22 @@ function showFormSection(section) {
         elementId = 'results-section';
     } else if (section === 'manage') {
         elementId = 'manage-section';
+    } else if (section === 'reports') {
+        elementId = 'reports-section';
     }
     
-    // Get all sections
+    // Hide all sections
     const availableSection = document.getElementById('available-forms-section');
     const resultsSection = document.getElementById('results-section');
     const manageSection = document.getElementById('manage-section');
+    const reportsSection = document.getElementById('reports-section');
     
-    // Hide all sections
     if (availableSection) availableSection.classList.add('hidden');
     if (resultsSection) resultsSection.classList.add('hidden');
     if (manageSection) manageSection.classList.add('hidden');
+    if (reportsSection) reportsSection.classList.add('hidden');
     
-    // Show selected section
+    // Show active section
     const activeSection = document.getElementById(elementId);
     if (activeSection) {
         activeSection.classList.remove('hidden');
@@ -278,22 +475,17 @@ function showFormSection(section) {
     const availableBtn = document.getElementById('form-section-available');
     const resultsBtn = document.getElementById('form-section-results');
     const manageBtn = document.getElementById('form-section-manage');
+    const reportsBtn = document.getElementById('form-section-reports');
     
     // Reset all buttons
-    if (availableBtn) {
-        availableBtn.classList.remove('bg-blue-600', 'text-white');
-        availableBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
-    if (resultsBtn) {
-        resultsBtn.classList.remove('bg-blue-600', 'text-white');
-        resultsBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
-    if (manageBtn) {
-        manageBtn.classList.remove('bg-blue-600', 'text-white');
-        manageBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
+    [availableBtn, resultsBtn, manageBtn, reportsBtn].forEach(btn => {
+        if (btn) {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-200', 'text-gray-700');
+        }
+    });
     
-    // Highlight the clicked button
+    // Highlight active button
     const activeButton = document.getElementById(`form-section-${section}`);
     if (activeButton) {
         activeButton.classList.remove('bg-gray-200', 'text-gray-700');
@@ -302,11 +494,14 @@ function showFormSection(section) {
     
     // Save to localStorage
     localStorage.setItem('activeFormSection', section);
+    
+    // If switching to reports, refresh the data
+    if (section === 'reports' && typeof applyReportFilters === 'function') {
+        setTimeout(applyReportFilters, 300);
+    }
 }
 
-// Make functions globally available
-window.showFormSection = showFormSection;
-
+// ==================== VIEW FUNCTIONS ====================
 window.viewForm = function(id) {
     window.location.href = `/forms/${id}/take`;
 };
@@ -319,11 +514,21 @@ window.viewSubmissions = function(id) {
     window.location.href = `/forms/manage/${id}/submissions`;
 };
 
-window.viewFormResult = function(formId) {
-    window.location.href = `/forms/${formId}/results`;
+window.viewFormResult = function(formId, submissionId) {
+    if (formId && submissionId) {
+        window.location.href = `/forms/${formId}/results?submission_id=${submissionId}`;
+    } else {
+        showNotification('Error: Unable to view results', 'error');
+    }
 };
 
+// ==================== TOGGLE PUBLISH ====================
 window.togglePublish = function(formId) {
+    const publishBtn = document.getElementById(`publish-btn-${formId}`);
+    const originalText = publishBtn.textContent;
+    publishBtn.disabled = true;
+    publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
     const formData = new FormData();
     formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
     
@@ -331,16 +536,20 @@ window.togglePublish = function(formId) {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         body: formData
     })
     .then(response => response.json())
     .then(data => {
+        publishBtn.disabled = false;
+        publishBtn.textContent = originalText;
+        
         if (data.success) {
-            const publishBtn = document.getElementById(`publish-btn-${formId}`);
+            const isPublished = data.is_published;
             const statusBadge = document.getElementById(`status-badge-${formId}`);
             
-            if (data.is_published) {
+            if (isPublished) {
                 publishBtn.textContent = 'Unpublish';
                 publishBtn.classList.remove('bg-green-100', 'text-green-700');
                 publishBtn.classList.add('bg-yellow-100', 'text-yellow-700');
@@ -357,16 +566,175 @@ window.togglePublish = function(formId) {
                 statusBadge.classList.add('bg-gray-100', 'text-gray-500');
                 showNotification('Form unpublished', 'info');
             }
+            
+            refreshAvailableForms();
+            refreshManageRow(formId, data.form);
         } else {
-            showNotification('Error toggling publish status', 'error');
+            showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        publishBtn.disabled = false;
+        publishBtn.textContent = originalText;
         showNotification('Error toggling publish status', 'error');
     });
 };
 
+function refreshManageRow(formId, formData) {
+    const row = document.getElementById(`form-row-${formId}`);
+    if (!row) return;
+    
+    if (formData) {
+        const isPublished = formData.settings && formData.settings.is_published;
+        const statusBadge = document.getElementById(`status-badge-${formId}`);
+        
+        if (statusBadge) {
+            statusBadge.textContent = isPublished ? 'Published' : 'Draft';
+            statusBadge.className = `px-2 py-1 text-xs rounded-full ${isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`;
+        }
+    }
+}
+
+// ==================== REFRESH AVAILABLE FORMS ====================
+function refreshAvailableForms() {
+    const container = document.getElementById('available-forms-list');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-gray-400"></i> Loading...</div>';
+    
+    fetch('/forms/available-forms', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            if (data.forms && data.forms.length > 0) {
+                let html = '';
+                let hasPublishedForms = false;
+                
+                data.forms.forEach(form => {
+                    let settings = form.settings;
+                    if (typeof settings === 'string') {
+                        try {
+                            settings = JSON.parse(settings);
+                        } catch(e) {
+                            settings = {};
+                        }
+                    }
+                    
+                    const isPublished = settings && settings.is_published;
+                    if (!isPublished) return;
+                    
+                    hasPublishedForms = true;
+                    
+                    let questionsCount = 0;
+                    if (form.questions) {
+                        if (typeof form.questions === 'string') {
+                            try {
+                                questionsCount = JSON.parse(form.questions || '[]').length;
+                            } catch(e) {
+                                questionsCount = 0;
+                            }
+                        } else if (Array.isArray(form.questions)) {
+                            questionsCount = form.questions.length;
+                        }
+                    }
+                    
+                    const createdDate = form.created_at ? new Date(form.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date unknown';
+                    const hasTaken = data.mySubmissions && data.mySubmissions.includes(form.id);
+                    const limitOneResponse = settings && settings.limit_one_response !== false;
+                    const description = form.description || 'No description';
+                    
+                    const buttonDisabled = hasTaken && limitOneResponse;
+                    const buttonText = hasTaken ? (limitOneResponse ? 'Already Submitted' : 'Submit Again') : 'Take Form';
+                    const buttonColor = buttonDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700';
+                    
+                    html += `
+                        <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition-all duration-300">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <h4 class="font-semibold text-gray-800 text-lg">${escapeHtml(form.title)}</h4>
+                                        ${hasTaken ? `<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"><i class="fas fa-check-circle"></i> Completed</span>` : ''}
+                                        ${limitOneResponse ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"><i class="fas fa-lock"></i> Limit 1</span>` : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-2">${escapeHtml(description.substring(0, 150))}</p>
+                                    <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+                                        <span class="flex items-center gap-1"><i class="fas fa-question-circle text-blue-500"></i> ${questionsCount} ${questionsCount === 1 ? 'question' : 'questions'}</span>
+                                        <span class="flex items-center gap-1"><i class="fas fa-calendar-alt text-gray-400"></i> Created: ${createdDate}</span>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    ${buttonDisabled ? 
+                                        `<button disabled class="${buttonColor} text-white px-5 py-2 rounded-lg text-sm flex items-center gap-2 opacity-70">
+                                            <i class="fas fa-check-circle"></i> ${buttonText}
+                                        </button>` :
+                                        `<a href="/forms/${form.id}/take" class="${buttonColor} text-white px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                                            <i class="fas fa-pen-alt"></i> ${buttonText}
+                                        </a>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                if (hasPublishedForms) {
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-file-alt text-5xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No forms available</p>
+                            ${data.canCreate ? `<a href="/forms/manage/create" class="inline-block mt-3 text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-plus"></i> Create your first form</a>` : ''}
+                        </div>
+                    `;
+                }
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-file-alt text-5xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500">No forms available</p>
+                        ${data.canCreate ? `<a href="/forms/manage/create" class="inline-block mt-3 text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-plus"></i> Create your first form</a>` : ''}
+                    </div>
+                `;
+            }
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <i class="fas fa-exclamation-circle text-5xl text-red-300 mb-3"></i>
+                    <p class="text-gray-500">Error loading forms</p>
+                    <button onclick="refreshAvailableForms()" class="mt-3 text-blue-600 hover:text-blue-800 text-sm">
+                        <i class="fas fa-sync"></i> Try again
+                    </button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing forms:', error);
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <i class="fas fa-exclamation-circle text-5xl text-red-300 mb-3"></i>
+                <p class="text-gray-500">Error loading forms</p>
+                <button onclick="refreshAvailableForms()" class="mt-3 text-blue-600 hover:text-blue-800 text-sm">
+                    <i class="fas fa-sync"></i> Try again
+                </button>
+            </div>
+        `;
+    });
+}
+
+// ==================== DELETE FORM ====================
 window.deleteForm = function(id) {
     if(confirm('Delete this form? All responses will be lost forever.')) {
         fetch(`/forms/manage/${id}`, {
@@ -380,7 +748,17 @@ window.deleteForm = function(id) {
         .then(data => {
             if (data.success) {
                 showNotification('Form deleted successfully!', 'success');
-                setTimeout(() => location.reload(), 1000);
+                const row = document.getElementById(`form-row-${id}`);
+                if (row) {
+                    row.style.opacity = '0';
+                    row.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        row.remove();
+                        refreshAvailableForms();
+                    }, 300);
+                } else {
+                    location.reload();
+                }
             } else {
                 showNotification('Error deleting form', 'error');
             }
@@ -388,70 +766,102 @@ window.deleteForm = function(id) {
     }
 };
 
+// ==================== NOTIFICATION ====================
 window.showNotification = function(message, type) {
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white z-50 transition-all duration-300 ${
-        type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-    }`;
-    notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>${message}`;
+    notification.className = `fixed top-4 right-4 px-4 py-2.5 rounded-lg shadow-lg text-white z-50 transition-all duration-300 ${colors[type] || 'bg-gray-700'} flex items-center gap-2`;
+    notification.innerHTML = `
+        <i class="fas ${icons[type] || 'fa-bell'}"></i>
+        <span class="text-sm">${message}</span>
+        <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white ml-2">×</button>
+    `;
     document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 };
 
-// On page load, restore the last active section
+// ==================== ESCAPE HTML ====================
+window.escapeHtml = function(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+// ==================== DOM READY ====================
 document.addEventListener('DOMContentLoaded', function() {
     const savedSection = localStorage.getItem('activeFormSection');
     
-    // Check if the saved section is allowed based on permissions
     let allowedSection = 'available';
     
-    @if($canViewForms)
+    @if(isset($canViewForms) && $canViewForms)
         allowedSection = 'available';
-    @elseif($canViewResults)
+    @elseif(isset($canViewResults) && $canViewResults)
         allowedSection = 'results';
-    @elseif($canManageForms || $isSuperAdmin)
+    @elseif((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))
         allowedSection = 'manage';
     @endif
     
-    const sectionToShow = (savedSection === 'results' && {{ $canViewResults ? 'true' : 'false' }}) ? 'results' 
-        : (savedSection === 'manage' && ({{ $canManageForms ? 'true' : 'false' }} || {{ $isSuperAdmin ? 'true' : 'false' }})) ? 'manage' 
-        : allowedSection;
+    // Determine which section to show
+    let sectionToShow = allowedSection;
+    if (savedSection === 'results' && isset($canViewResults) && $canViewResults) {
+        sectionToShow = 'results';
+    } else if (savedSection === 'manage' && ((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))) {
+        sectionToShow = 'manage';
+    } else if (savedSection === 'reports' && ((isset($canViewResults) && $canViewResults) || (isset($isSuperAdmin) && $isSuperAdmin))) {
+        sectionToShow = 'reports';
+    }
     
-    // Hide all sections
     const availableSection = document.getElementById('available-forms-section');
     const resultsSection = document.getElementById('results-section');
     const manageSection = document.getElementById('manage-section');
+    const reportsSection = document.getElementById('reports-section');
     
     if (availableSection) availableSection.classList.add('hidden');
     if (resultsSection) resultsSection.classList.add('hidden');
     if (manageSection) manageSection.classList.add('hidden');
+    if (reportsSection) reportsSection.classList.add('hidden');
     
-    // Show the appropriate section
     if (sectionToShow === 'results' && resultsSection) {
         resultsSection.classList.remove('hidden');
     } else if (sectionToShow === 'manage' && manageSection) {
         manageSection.classList.remove('hidden');
+    } else if (sectionToShow === 'reports' && reportsSection) {
+        reportsSection.classList.remove('hidden');
+        // If switching to reports, refresh the data
+        if (typeof applyReportFilters === 'function') {
+            setTimeout(applyReportFilters, 300);
+        }
     } else if (availableSection) {
         availableSection.classList.remove('hidden');
     }
     
-    // Update button styles
     const availableBtn = document.getElementById('form-section-available');
     const resultsBtn = document.getElementById('form-section-results');
     const manageBtn = document.getElementById('form-section-manage');
+    const reportsBtn = document.getElementById('form-section-reports');
     
-    if (availableBtn) {
-        availableBtn.classList.remove('bg-blue-600', 'text-white');
-        availableBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
-    if (resultsBtn) {
-        resultsBtn.classList.remove('bg-blue-600', 'text-white');
-        resultsBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
-    if (manageBtn) {
-        manageBtn.classList.remove('bg-blue-600', 'text-white');
-        manageBtn.classList.add('bg-gray-200', 'text-gray-700');
-    }
+    [availableBtn, resultsBtn, manageBtn, reportsBtn].forEach(btn => {
+        if (btn) {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-200', 'text-gray-700');
+        }
+    });
     
     const activeButton = document.getElementById(`form-section-${sectionToShow}`);
     if (activeButton) {
@@ -459,4 +869,8 @@ document.addEventListener('DOMContentLoaded', function() {
         activeButton.classList.add('bg-blue-600', 'text-white');
     }
 });
+
+// ==================== EXPOSE FUNCTIONS GLOBALLY ====================
+window.showFormSection = showFormSection;
+window.refreshAvailableForms = refreshAvailableForms;
 </script>

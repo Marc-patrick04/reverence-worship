@@ -86,61 +86,18 @@
     let isNewQuestion = false;
     let sectionCount = 1;
 
-    const questionTypes = [{
-            value: 'short_answer',
-            label: 'Short answer',
-            icon: 'fa-font'
-        },
-        {
-            value: 'paragraph',
-            label: 'Paragraph',
-            icon: 'fa-paragraph'
-        },
-        {
-            value: 'multiple_choice',
-            label: 'Multiple choice',
-            icon: 'fa-circle'
-        },
-        {
-            value: 'checkboxes',
-            label: 'Checkboxes',
-            icon: 'fa-check-square'
-        },
-        {
-            value: 'dropdown',
-            label: 'Dropdown',
-            icon: 'fa-caret-down'
-        },
-        {
-            value: 'linear_scale',
-            label: 'Linear scale',
-            icon: 'fa-sliders-h'
-        },
-        {
-            value: 'rating',
-            label: 'Rating',
-            icon: 'fa-star'
-        },
-        {
-            value: 'multiple_choice_grid',
-            label: 'Multiple choice grid',
-            icon: 'fa-table'
-        },
-        {
-            value: 'checkbox_grid',
-            label: 'Checkbox grid',
-            icon: 'fa-table'
-        },
-        {
-            value: 'date',
-            label: 'Date',
-            icon: 'fa-calendar'
-        },
-        {
-            value: 'time',
-            label: 'Time',
-            icon: 'fa-clock'
-        }
+    const questionTypes = [
+        { value: 'short_answer', label: 'Short answer', icon: 'fa-font' },
+        { value: 'paragraph', label: 'Paragraph', icon: 'fa-paragraph' },
+        { value: 'multiple_choice', label: 'Multiple choice', icon: 'fa-circle' },
+        { value: 'checkboxes', label: 'Checkboxes', icon: 'fa-check-square' },
+        { value: 'dropdown', label: 'Dropdown', icon: 'fa-caret-down' },
+        { value: 'linear_scale', label: 'Linear scale', icon: 'fa-sliders-h' },
+        { value: 'rating', label: 'Rating', icon: 'fa-star' },
+        { value: 'multiple_choice_grid', label: 'Multiple choice grid', icon: 'fa-table' },
+        { value: 'checkbox_grid', label: 'Checkbox grid', icon: 'fa-table' },
+        { value: 'date', label: 'Date', icon: 'fa-calendar' },
+        { value: 'time', label: 'Time', icon: 'fa-clock' }
     ];
 
     // Navigation
@@ -402,11 +359,12 @@
             case 'multiple_choice':
                 let mcHtml = '';
                 (q.options || ['Option 1']).forEach((opt, i) => {
+                    const escapedOpt = escapeHtml(opt);
                     mcHtml += `<div class="flex items-center gap-2 mb-2">
                     <i class="fas fa-circle text-gray-400 text-xs"></i>
-                    <input type="text" value="${escapeHtml(opt)}" placeholder="Option ${i+1}" onchange="updateAndAutoSave('option', ${q.id}, ${i}, this.value)" class="flex-1 text-sm border-0 border-b border-gray-300 focus:border-indigo-500 focus:ring-0 py-1">
+                    <input type="text" value="${escapedOpt}" placeholder="Option ${i+1}" onchange="updateAndAutoSave('option', ${q.id}, ${i}, this.value)" class="flex-1 text-sm border-0 border-b border-gray-300 focus:border-indigo-500 focus:ring-0 py-1">
                     <label class="flex items-center gap-1 ml-2">
-                        <input type="radio" name="correct_${q.id}" value="${escapeHtml(opt)}" ${q.correctAnswer === opt ? 'checked' : ''} onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="w-3 h-3 text-green-600">
+                        <input type="radio" name="correct_${q.id}" value="${escapedOpt}" ${q.correctAnswer === opt ? 'checked' : ''} onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="w-3 h-3 text-green-600">
                         <span class="text-xs text-gray-500">Correct</span>
                     </label>
                     <button onclick="event.stopPropagation(); removeOption(${q.id}, ${i})" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-xs"></i></button>
@@ -437,11 +395,12 @@
             case 'dropdown':
                 let ddHtml = '';
                 (q.options || ['Option 1']).forEach((opt, i) => {
+                    const escapedOpt = escapeHtml(opt);
                     ddHtml += `<div class="flex items-center gap-2 mb-2">
                     <i class="fas fa-bars text-gray-400 text-xs"></i>
-                    <input type="text" value="${escapeHtml(opt)}" placeholder="Option ${i+1}" onchange="updateAndAutoSave('option', ${q.id}, ${i}, this.value)" class="flex-1 text-sm border-0 border-b border-gray-300 focus:border-indigo-500 focus:ring-0 py-1">
+                    <input type="text" value="${escapedOpt}" placeholder="Option ${i+1}" onchange="updateAndAutoSave('option', ${q.id}, ${i}, this.value)" class="flex-1 text-sm border-0 border-b border-gray-300 focus:border-indigo-500 focus:ring-0 py-1">
                     <label class="flex items-center gap-1 ml-2">
-                        <input type="radio" name="correct_${q.id}" value="${escapeHtml(opt)}" ${q.correctAnswer === opt ? 'checked' : ''} onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="w-3 h-3 text-green-600">
+                        <input type="radio" name="correct_${q.id}" value="${escapedOpt}" ${q.correctAnswer === opt ? 'checked' : ''} onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="w-3 h-3 text-green-600">
                         <span class="text-xs text-gray-500">Correct</span>
                     </label>
                     <button onclick="event.stopPropagation(); removeOption(${q.id}, ${i})" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-xs"></i></button>
@@ -478,36 +437,166 @@
             </div>`;
 
             case 'linear_scale':
-                return `<div class="flex items-center gap-3"><span class="text-xs text-gray-500">Lowest</span><input type="number" value="${q.min || 1}" onchange="updateAndAutoSave('scaleMin', ${q.id}, null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm"><span class="text-gray-400">→</span><input type="number" value="${q.max || 5}" onchange="updateAndAutoSave('scaleMax', ${q.id}, null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm"><span class="text-xs text-gray-500">Highest</span></div>`;
+                return `<div class="flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500">Range:</span>
+                        <input type="number" value="${q.min || 1}" onchange="updateAndAutoSave('scaleMin', ${q.id}, null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center">
+                        <span class="text-gray-400">→</span>
+                        <input type="number" value="${q.max || 5}" onchange="updateAndAutoSave('scaleMax', ${q.id}, null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center">
+                    </div>
+                    <div class="flex items-center gap-3 border-l border-gray-300 pl-4">
+                        <span class="text-xs text-gray-500">Correct Value:</span>
+                        <input type="number" value="${q.correctAnswer || ''}" onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="w-14 px-2 py-1 border rounded-md text-sm text-center" placeholder="None">
+                        <span class="text-xs text-gray-400">(Leave blank for no correct answer)</span>
+                    </div>
+                </div>`;
 
             case 'rating':
-                return `<div class="flex items-center gap-3"><span class="text-xs text-gray-500">Stars:</span><select onchange="updateAndAutoSave('ratingMax', ${q.id}, null, this.value)" class="border rounded px-2 py-1 text-sm">${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${(q.max || 5) === n ? 'selected' : ''}>${n} stars</option>`).join('')}</select></div>`;
+                const maxStars = q.max || 5;
+                return `<div class="flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500">Stars:</span>
+                        <select onchange="updateAndAutoSave('ratingMax', ${q.id}, null, this.value)" class="border rounded px-2 py-1 text-sm">
+                            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${(q.max || 5) === n ? 'selected' : ''}>${n} stars</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-3 border-l border-gray-300 pl-4">
+                        <span class="text-xs text-gray-500">Correct Value:</span>
+                        <select onchange="updateAndAutoSave('correctAnswer', ${q.id}, null, this.value)" class="border rounded px-2 py-1 text-sm">
+                            <option value="">None</option>
+                            ${Array.from({length: maxStars}, (_, i) => i + 1).map(n => `<option value="${n}" ${q.correctAnswer == n ? 'selected' : ''}>${n} star${n > 1 ? 's' : ''}</option>`).join('')}
+                        </select>
+                        <span class="text-xs text-gray-400">(Leave blank for no correct answer)</span>
+                    </div>
+                </div>`;
 
             case 'multiple_choice_grid':
+                let gridHtml = `<div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>
+                            ${(q.rows || ['Row 1']).map((r,i)=>`
+                                <div class="flex items-center gap-1 mb-1">
+                                    <span class="text-gray-500 w-5 text-xs">${i+1}.</span>
+                                    <input type="text" value="${escapeHtml(r)}" onchange="updateAndAutoSave('row', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">
+                                    <button onclick="event.stopPropagation(); removeRow(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button>
+                                </div>
+                            `).join('')}
+                            <button onclick="event.stopPropagation(); addRow(${q.id})" class="text-indigo-600 text-xs">+ Add row</button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Columns</label>
+                            ${(q.columns || ['Column 1']).map((c,i)=>`
+                                <div class="flex items-center gap-1 mb-1">
+                                    <input type="text" value="${escapeHtml(c)}" onchange="updateAndAutoSave('column', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">
+                                    <button onclick="event.stopPropagation(); removeColumn(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button>
+                                </div>
+                            `).join('')}
+                            <button onclick="event.stopPropagation(); addColumn(${q.id})" class="text-indigo-600 text-xs">+ Add column</button>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-2">Correct Answers (per row):</label>
+                        ${(q.rows || ['Row 1']).map((r, rowIndex) => `
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-medium text-gray-600 w-16 truncate">${escapeHtml(r)}:</span>
+                                <select onchange="updateGridCorrectAnswer(${q.id}, ${rowIndex}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">
+                                    <option value="">None</option>
+                                    ${(q.columns || ['Column 1']).map(c => `<option value="${escapeHtml(c)}" ${(q.correctAnswers && q.correctAnswers[rowIndex] === c) ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+                                </select>
+                            </div>
+                        `).join('')}
+                        <span class="text-xs text-gray-400">Select the correct answer for each row</span>
+                    </div>
+                </div>`;
+                return gridHtml;
+
             case 'checkbox_grid':
-                return `<div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>${(q.rows || ['Row 1']).map((r,i)=>`<div class="flex items-center gap-1 mb-1"><span class="text-gray-500 w-5 text-xs">${i+1}.</span><input type="text" value="${escapeHtml(r)}" onchange="updateAndAutoSave('row', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeRow(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>`).join('')}<button onclick="event.stopPropagation(); addRow(${q.id})" class="text-indigo-600 text-xs">+ Add row</button></div>
-                <div><label class="block text-xs font-medium text-gray-700 mb-1">Columns</label>${(q.columns || ['Column 1']).map((c,i)=>`<div class="flex items-center gap-1 mb-1"><input type="text" value="${escapeHtml(c)}" onchange="updateAndAutoSave('column', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeColumn(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>`).join('')}<button onclick="event.stopPropagation(); addColumn(${q.id})" class="text-indigo-600 text-xs">+ Add column</button></div>
-            </div>`;
+                let checkboxGridHtml = `<div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>
+                            ${(q.rows || ['Row 1']).map((r,i)=>`
+                                <div class="flex items-center gap-1 mb-1">
+                                    <span class="text-gray-500 w-5 text-xs">${i+1}.</span>
+                                    <input type="text" value="${escapeHtml(r)}" onchange="updateAndAutoSave('row', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">
+                                    <button onclick="event.stopPropagation(); removeRow(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button>
+                                </div>
+                            `).join('')}
+                            <button onclick="event.stopPropagation(); addRow(${q.id})" class="text-indigo-600 text-xs">+ Add row</button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Columns</label>
+                            ${(q.columns || ['Column 1']).map((c,i)=>`
+                                <div class="flex items-center gap-1 mb-1">
+                                    <input type="text" value="${escapeHtml(c)}" onchange="updateAndAutoSave('column', ${q.id}, ${i}, this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs">
+                                    <button onclick="event.stopPropagation(); removeColumn(${q.id}, ${i})" class="text-red-500"><i class="fas fa-times text-xs"></i></button>
+                                </div>
+                            `).join('')}
+                            <button onclick="event.stopPropagation(); addColumn(${q.id})" class="text-indigo-600 text-xs">+ Add column</button>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-2">Correct Answers (select all that apply per row):</label>
+                        ${(q.rows || ['Row 1']).map((r, rowIndex) => `
+                            <div class="mb-2">
+                                <span class="text-xs font-medium text-gray-600 block mb-1">${escapeHtml(r)}:</span>
+                                <div class="flex flex-wrap gap-2 ml-2">
+                                    ${(q.columns || ['Column 1']).map(c => {
+                                        const isChecked = q.correctAnswers && q.correctAnswers[rowIndex] && q.correctAnswers[rowIndex].includes(c);
+                                        return `
+                                            <label class="flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" value="${escapeHtml(c)}" ${isChecked ? 'checked' : ''} 
+                                                    onchange="updateGridCheckboxCorrect(${q.id}, ${rowIndex}, '${escapeHtml(c)}', this.checked)" 
+                                                    class="w-3 h-3 text-green-600 rounded">
+                                                <span class="text-xs">${escapeHtml(c)}</span>
+                                            </label>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                        <span class="text-xs text-gray-400">Select all correct answers for each row</span>
+                    </div>
+                </div>`;
+                return checkboxGridHtml;
 
             default:
                 return `<input type="text" class="w-full text-sm border-0 border-b border-gray-300" placeholder="Answer" disabled>`;
         }
     }
 
+    // Function to update grid correct answer (for multiple choice grid)
+    function updateGridCorrectAnswer(id, rowIndex, value) {
+        const q = questions.find(q => q.id === id);
+        if (!q) return;
+        
+        if (!q.correctAnswers) q.correctAnswers = {};
+        q.correctAnswers[rowIndex] = value;
+        autoSave();
+    }
+
+    // Function to update grid checkbox correct answers (for checkbox grid)
+    function updateGridCheckboxCorrect(id, rowIndex, value, checked) {
+        const q = questions.find(q => q.id === id);
+        if (!q) return;
+        
+        if (!q.correctAnswers) q.correctAnswers = {};
+        if (!q.correctAnswers[rowIndex]) q.correctAnswers[rowIndex] = [];
+        
+        if (checked) {
+            if (!q.correctAnswers[rowIndex].includes(value)) {
+                q.correctAnswers[rowIndex].push(value);
+            }
+        } else {
+            q.correctAnswers[rowIndex] = q.correctAnswers[rowIndex].filter(v => v !== value);
+        }
+        autoSave();
+    }
+
     function updateAndAutoSave(type, id, index, value, checked) {
         const q = questions.find(q => q.id === id);
         if (!q) return;
-
-        // Debug logging
-        console.log('updateAndAutoSave called:', {
-            type,
-            id,
-            index,
-            value,
-            checked,
-            questionType: q.type
-        });
 
         switch (type) {
             case 'questionText':
@@ -527,18 +616,12 @@
                 break;
             case 'option':
                 if (q.options) q.options[index] = value;
-                console.log('Option updated:', q.options);
                 break;
             case 'correctAnswer':
                 q.correctAnswer = value;
-                console.log('CorrectAnswer updated:', q.correctAnswer);
                 break;
             case 'correctAnswers':
-                // Handle checkbox correct answers
                 if (!q.correctAnswers) q.correctAnswers = [];
-
-                console.log('Before update - correctAnswers:', q.correctAnswers, 'Value:', value, 'Checked:', checked);
-
                 if (checked) {
                     if (!q.correctAnswers.includes(value)) {
                         q.correctAnswers.push(value);
@@ -546,8 +629,6 @@
                 } else {
                     q.correctAnswers = q.correctAnswers.filter(v => v !== value);
                 }
-
-                console.log('After update - correctAnswers:', q.correctAnswers);
                 break;
             case 'row':
                 if (q.rows) q.rows[index] = value;
@@ -563,9 +644,6 @@
                 break;
             case 'ratingMax':
                 q.max = parseInt(value);
-                break;
-            default:
-                console.warn('Unknown type:', type);
                 break;
         }
         autoSave();
@@ -699,16 +777,6 @@
             ...JSON.parse(saved)
         };
 
-        // DEBUG: Log questions before sending
-        console.log('Questions before sending:', JSON.stringify(questions, null, 2));
-
-        // Check if any checkbox has correctAnswers
-        questions.forEach((q, index) => {
-            if (q.type === 'checkboxes') {
-                console.log(`Checkbox ${index} correctAnswers:`, q.correctAnswers);
-            }
-        });
-
         const data = {
             title,
             description,
@@ -727,13 +795,10 @@
                 columns: q.columns,
                 points: q.points || 1,
                 correctAnswer: q.correctAnswer || null,
-                correctAnswers: q.correctAnswers || []
+                correctAnswers: q.correctAnswers || null
             })),
             settings
         };
-
-        // DEBUG: Log final data being sent
-        console.log('Final data being sent:', JSON.stringify(data, null, 2));
 
         let url = '{{ route("forms.manage.store") }}';
         let method = 'POST';
@@ -750,51 +815,50 @@
         }
 
         fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log('Server response:', data);
-                isSaving = false;
-                if (data.success) {
-                    if (data.form_id) {
-                        currentFormId = data.form_id;
-                    }
-                    if (isAutoSave) {
-                        showAutoSaveIndicator();
-                    } else {
-                        const btn = document.querySelector('.bg-green-600');
-                        btn.innerHTML = '<i class="fas fa-check mr-1"></i> Done';
-                        btn.disabled = false;
-                        if (confirm('Form saved successfully! Click OK to go back to Manage Forms.')) {
-                            window.location.href = '{{ route("intercession.index") }}';
-                        }
-                    }
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            isSaving = false;
+            if (data.success) {
+                if (data.form_id) {
+                    currentFormId = data.form_id;
+                }
+                if (isAutoSave) {
+                    showAutoSaveIndicator();
                 } else {
-                    isSaving = false;
-                    if (!isAutoSave) {
-                        const btn = document.querySelector('.bg-green-600');
-                        btn.innerHTML = '<i class="fas fa-check mr-1"></i> Done';
-                        btn.disabled = false;
-                        alert('Error: ' + (data.message || 'Unknown error'));
+                    const btn = document.querySelector('.bg-green-600');
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i> Done';
+                    btn.disabled = false;
+                    if (confirm('Form saved successfully! Click OK to go back to Manage Forms.')) {
+                        window.location.href = '{{ route("intercession.index") }}';
                     }
                 }
-            })
-            .catch(err => {
-                console.error('Fetch error:', err);
+            } else {
                 isSaving = false;
                 if (!isAutoSave) {
                     const btn = document.querySelector('.bg-green-600');
                     btn.innerHTML = '<i class="fas fa-check mr-1"></i> Done';
                     btn.disabled = false;
-                    alert('Error saving form: ' + err.message);
+                    alert('Error: ' + (data.message || 'Unknown error'));
                 }
-            });
+            }
+        })
+        .catch(err => {
+            console.error('Fetch error:', err);
+            isSaving = false;
+            if (!isAutoSave) {
+                const btn = document.querySelector('.bg-green-600');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Done';
+                btn.disabled = false;
+                alert('Error saving form: ' + err.message);
+            }
+        });
     }
 
     function escapeHtml(t) {
@@ -815,7 +879,24 @@
     loadSettings();
     addQuestion();
 
-    // Expose questions for debugging in console
+    // Expose functions globally
+    window.addQuestion = addQuestion;
+    window.addTitleSection = addTitleSection;
+    window.addSection = addSection;
+    window.autoSave = autoSave;
+    window.saveForm = saveForm;
+    window.updateAndAutoSave = updateAndAutoSave;
+    window.deleteQuestion = deleteQuestion;
+    window.duplicateQuestion = duplicateQuestion;
+    window.addOption = addOption;
+    window.removeOption = removeOption;
+    window.addRow = addRow;
+    window.removeRow = removeRow;
+    window.addColumn = addColumn;
+    window.removeColumn = removeColumn;
+    window.changeQuestionType = changeQuestionType;
+    window.updateGridCorrectAnswer = updateGridCorrectAnswer;
+    window.updateGridCheckboxCorrect = updateGridCheckboxCorrect;
     window.questions = questions;
 </script>
 @endsection

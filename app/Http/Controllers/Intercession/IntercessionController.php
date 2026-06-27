@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log; 
 
 class IntercessionController extends Controller
 {
@@ -120,6 +121,23 @@ class IntercessionController extends Controller
         'overallProgress',
         'archiveSections'  // Add this
     ));
+    // For reports - get membership types
+    $membershipTypes = collect();
+    try {
+        $membershipTypes = DB::table('users')
+            ->select('membership_type')
+            ->distinct()
+            ->whereNotNull('membership_type')
+            ->pluck('membership_type')
+            ->toArray();
+    } catch (\Exception $e) {
+        // Table doesn't exist yet
+    }
+    
+    return view('modules.intercession.index', compact(
+        // ... existing variables ...
+        'membershipTypes'  // Add this
+    ));
 }
     
     public function storeActionPlan(Request $request)
@@ -165,6 +183,7 @@ class IntercessionController extends Controller
         }
         return redirect()->back()->with('error', $e->getMessage());
     }
+
 }
     
     public function updateActionPlanStatus(Request $request, $id)
@@ -193,8 +212,12 @@ class IntercessionController extends Controller
         }
     }
     
-    public function editActionPlan($id)
-    {
+    /**
+ * Edit action plan - get plan data for editing
+ */
+public function editActionPlan($id)
+{
+    try {
         $plan = DB::table('action_plans')->where('id', $id)->first();
         $tasks = DB::table('action_plan_tasks')->where('action_plan_id', $id)->get();
         
@@ -203,24 +226,60 @@ class IntercessionController extends Controller
             'plan' => $plan,
             'tasks' => $tasks
         ]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
     
-    public function updateActionPlan(Request $request, $id)
-    {
-        try {
-            DB::table('action_plans')->where('id', $id)->update([
-                'title' => $request->title,
-                'description' => $request->description,
-                'due_date' => $request->due_date,
-                'status' => $request->status,
-                'updated_at' => now()
-            ]);
-            
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    /**
+ * Update action plan
+ */
+public function updateActionPlan(Request $request, $id)
+{
+    try {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+        
+        // Update plan
+        DB::table('action_plans')->where('id', $id)->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'updated_at' => now()
+        ]);
+        
+        // Update tasks
+        $tasks = $request->get('edit_tasks', []);
+        if (!empty($tasks)) {
+            foreach ($tasks as $taskData) {
+                if (isset($taskData['id']) && !empty($taskData['id'])) {
+                    // Update existing task
+                    DB::table('action_plan_tasks')->where('id', $taskData['id'])->update([
+                        'title' => $taskData['title'] ?? '',
+                        'target_date' => $taskData['target_date'] ?? null,
+                        'updated_at' => now()
+                    ]);
+                } else {
+                    // Create new task
+                    DB::table('action_plan_tasks')->insert([
+                        'action_plan_id' => $id,
+                        'title' => $taskData['title'] ?? '',
+                        'target_date' => $taskData['target_date'] ?? null,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
         }
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        Log::error('Update action plan error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
     
     public function completeDevotion(Request $request, $id)
     {
@@ -582,5 +641,31 @@ public function showArchivePage($id)
     
     return view('modules.intercession.partials.archive-page-show', compact('page'));
 }
-
+/**
+ * Update task status (started/in-progress/completed)
+ */
+public function updateTaskStatus(Request $request, $id)
+{
+    try {
+        $status = $request->status;
+        $updateData = ['status' => $status, 'updated_at' => now()];
+        
+        if ($status === 'in-progress' && !DB::table('action_plan_tasks')->where('id', $id)->value('started_at')) {
+            $updateData['started_at'] = now();
+        }
+        if ($status === 'completed' && !DB::table('action_plan_tasks')->where('id', $id)->value('completed_at')) {
+            $updateData['completed_at'] = now();
+        }
+        if ($status === 'pending') {
+            $updateData['started_at'] = null;
+            $updateData['completed_at'] = null;
+        }
+        
+        DB::table('action_plan_tasks')->where('id', $id)->update($updateData);
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
 }

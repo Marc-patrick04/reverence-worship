@@ -43,6 +43,9 @@
                     <button onclick="viewFamilyMembers({{ $family->id }})" class="text-gray-700 hover:text-gray-900 text-sm font-medium">
                         View Members <i class="fas fa-arrow-right ml-1"></i>
                     </button>
+                    <button onclick="openChangeParentModal({{ $family->id }}, '{{ $family->name }}', {{ $family->parent_id ?? 'null' }})" class="text-blue-500 hover:text-blue-700 text-sm" title="Change Parent">
+                        <i class="fas fa-user-edit"></i>
+                    </button>
                     <button onclick="deleteFamily({{ $family->id }})" class="text-red-500 hover:text-red-700 text-sm" title="Delete Family">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -81,33 +84,32 @@
                     </div>
                 </div>
                 
-                
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Select Parent *</label>
-    <div id="parentListContainer" class="border border-gray-300 rounded-lg overflow-y-auto bg-white" style="max-height: 200px;">
-        <div id="parentListItems">
-            @foreach($availableUsers ?? [] as $user)
-                <div class="parent-select-item px-4 py-2 border-b hover:bg-gray-100 cursor-pointer transition"
-                     data-user-id="{{ $user->id }}"
-                     data-user-name="{{ $user->name }}"
-                     data-user-email="{{ $user->email }}">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-gray-500 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-800">{{ $user->name }}</p>
-                            <p class="text-xs text-gray-500">{{ $user->email }}</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Select Parent</label>
+                    <div id="parentListContainer" class="border border-gray-300 rounded-lg overflow-y-auto bg-white" style="max-height: 200px;">
+                        <div id="parentListItems">
+                            @foreach($availableUsers ?? [] as $user)
+                                <div class="parent-select-item px-4 py-2 border-b hover:bg-gray-100 cursor-pointer transition"
+                                     data-user-id="{{ $user->id }}"
+                                     data-user-name="{{ $user->name }}"
+                                     data-user-email="{{ $user->email }}">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user text-gray-500 text-xs"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800">{{ $user->name }}</p>
+                                            <p class="text-xs text-gray-500">{{ $user->email }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
+                    <input type="hidden" name="parent_id" id="selectedParentId">
+                    <input type="hidden" name="parent_name" id="selectedParentName">
+                    <p class="text-xs text-gray-400 mt-1">Click on a user to select them as parent (only users not already in a family are shown)</p>
                 </div>
-            @endforeach
-        </div>
-    </div>
-    <input type="hidden" name="parent_id" id="selectedParentId">
-    <input type="hidden" name="parent_name" id="selectedParentName">
-    <p class="text-xs text-gray-400 mt-1">Click on a user to select them as parent (only users not already in a family are shown)</p>
-</div>
                 
                 <div id="selectedParentDisplay" class="hidden bg-gray-100 rounded-lg p-3">
                     <div class="flex items-center gap-2">
@@ -133,6 +135,76 @@
             <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('familyModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" id="submitFamilyBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm transition">Save Family</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change Parent Modal -->
+<div id="changeParentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-bold text-gray-800">Change Family Parent</h3>
+            <button onclick="closeModal('changeParentModal')" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="changeParentForm" method="POST">
+            @csrf
+            @method('PUT')
+            <input type="hidden" id="changeParentFamilyId" name="family_id">
+            <div class="mt-4 space-y-3">
+                <div>
+                    <p class="text-sm text-gray-600 mb-2">
+                        <strong>Family:</strong> <span id="changeParentFamilyName"></span>
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Parent</label>
+                    <p id="changeParentCurrentParent" class="text-sm text-gray-500 bg-gray-100 p-2 rounded-lg">
+                        <i class="fas fa-user mr-1"></i> <span id="changeParentCurrentParentName">None</span>
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Search Family Members</label>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="changeParentSearchInput" placeholder="Search members by name or email..." 
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-gray-500 focus:border-gray-500">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Select New Parent</label>
+                    <div id="changeParentListContainer" class="border border-gray-300 rounded-lg overflow-y-auto bg-white" style="max-height: 200px;">
+                        <div id="changeParentListItems">
+                            <!-- Dynamically populated -->
+                            <div class="text-center py-4 text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i> Loading family members...
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="parent_id" id="changeSelectedParentId">
+                    <input type="hidden" name="parent_name" id="changeSelectedParentName">
+                    <p class="text-xs text-gray-400 mt-1">Click on a family member to assign them as the new parent</p>
+                </div>
+                
+                <div id="changeSelectedParentDisplay" class="hidden bg-gray-100 rounded-lg p-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span class="text-sm text-gray-700">New parent: <strong id="changeSelectedParentDisplayName"></strong></span>
+                        <button type="button" onclick="clearChangeSelectedParent()" class="ml-auto text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
+                <button type="button" onclick="closeModal('changeParentModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">Update Parent</button>
             </div>
         </form>
     </div>
@@ -216,6 +288,7 @@
 
 <script>
 let currentFamilyId = null;
+let changeParentFamilyId = null;
 
 // Escape HTML function
 function escapeHtml(text) {
@@ -422,6 +495,187 @@ function removeMember(userId, familyId) {
     }
 }
 
+// ============================================
+// CHANGE PARENT FUNCTIONALITY
+// ============================================
+
+// Open Change Parent Modal
+function openChangeParentModal(familyId, familyName, currentParentId) {
+    changeParentFamilyId = familyId;
+    
+    // Set family info
+    document.getElementById('changeParentFamilyName').textContent = familyName;
+    document.getElementById('changeParentFamilyId').value = familyId;
+    
+    // Show current parent
+    const currentParentName = document.querySelector(`.family-card[data-family-id="${familyId}"]`) 
+        ?.querySelector('p.text-gray-500') 
+        ?.textContent 
+        ?.replace('Parent: ', '') || 'None';
+    
+    document.getElementById('changeParentCurrentParentName').textContent = currentParentName || 'None';
+    
+    // Reset form
+    document.getElementById('changeParentForm').reset();
+    document.getElementById('changeParentSearchInput').value = '';
+    document.getElementById('changeSelectedParentId').value = '';
+    document.getElementById('changeSelectedParentName').value = '';
+    document.getElementById('changeSelectedParentDisplay').classList.add('hidden');
+    
+    // Load available parents (family members)
+    loadAvailableParents(familyId, currentParentId);
+    
+    document.getElementById('changeParentModal').classList.remove('hidden');
+}
+
+// Load available parents for change parent modal - ONLY FAMILY MEMBERS
+function loadAvailableParents(familyId, currentParentId) {
+    const container = document.getElementById('changeParentListItems');
+    container.innerHTML = `
+        <div class="text-center py-4 text-gray-500">
+            <i class="fas fa-spinner fa-spin mr-2"></i> Loading family members...
+        </div>
+    `;
+    
+    fetch(`/social-fellowship/family/${familyId}/available-parents`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.users.length > 0) {
+            let html = '';
+            data.users.forEach(user => {
+                const isCurrentParent = user.id == currentParentId;
+                html += `
+                    <div class="parent-select-item px-4 py-2 border-b hover:bg-gray-100 cursor-pointer transition ${isCurrentParent ? 'bg-gray-200 border-gray-500' : ''}"
+                         data-user-id="${user.id}"
+                         data-user-name="${user.name}"
+                         data-user-email="${user.email}"
+                         onclick="selectChangeParent(${user.id}, '${user.name.replace(/'/g, "\\'")}', '${user.email.replace(/'/g, "\\'")}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-500 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">${escapeHtml(user.name)} ${isCurrentParent ? '<span class="text-xs text-blue-500 ml-2">(Current Parent)</span>' : ''}</p>
+                                <p class="text-xs text-gray-500">${escapeHtml(user.email)}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-users text-2xl mb-2"></i>
+                    <p>No members found in this family</p>
+                    <p class="text-xs mt-1">Add members to the family first before assigning a parent</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        container.innerHTML = `
+            <div class="text-center py-4 text-red-500">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                Error loading family members
+            </div>
+        `;
+    });
+}
+
+// Select parent from change parent list
+function selectChangeParent(userId, userName, userEmail) {
+    // Remove selected class from all items
+    document.querySelectorAll('#changeParentListItems .parent-select-item').forEach(item => {
+        item.classList.remove('bg-gray-200', 'border-gray-500');
+    });
+    
+    // Add selected class to clicked item
+    const selectedItem = document.querySelector(`#changeParentListItems .parent-select-item[data-user-id="${userId}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('bg-gray-200', 'border-gray-500');
+    }
+    
+    // Set hidden input values
+    document.getElementById('changeSelectedParentId').value = userId;
+    document.getElementById('changeSelectedParentName').value = userName;
+    
+    // Show selected parent display
+    document.getElementById('changeSelectedParentDisplay').classList.remove('hidden');
+    document.getElementById('changeSelectedParentDisplayName').innerHTML = `${escapeHtml(userName)} (${escapeHtml(userEmail)})`;
+}
+
+// Clear selected parent in change parent modal
+function clearChangeSelectedParent() {
+    document.getElementById('changeSelectedParentId').value = '';
+    document.getElementById('changeSelectedParentName').value = '';
+    document.getElementById('changeSelectedParentDisplay').classList.add('hidden');
+    
+    // Remove selected class from all items
+    document.querySelectorAll('#changeParentListItems .parent-select-item').forEach(item => {
+        item.classList.remove('bg-gray-200', 'border-gray-500');
+    });
+}
+
+// Search parents in change parent modal
+document.getElementById('changeParentSearchInput')?.addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const parentItems = document.querySelectorAll('#changeParentListItems .parent-select-item');
+    
+    parentItems.forEach(item => {
+        const name = item.dataset.userName?.toLowerCase() || '';
+        const email = item.dataset.userEmail?.toLowerCase() || '';
+        
+        if (name.includes(searchTerm) || email.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Change Parent Form Submission
+document.getElementById('changeParentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const familyId = document.getElementById('changeParentFamilyId').value;
+    const formData = new FormData(this);
+    
+    fetch(`/social-fellowship/family/${familyId}/change-parent`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('changeParentModal');
+            showNotification('Family parent updated successfully!', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating family parent');
+    });
+});
+
+// ============================================
+// FAMILY FORM (Create)
+// ============================================
+
 // Family form submission
 document.getElementById('familyForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -448,6 +702,7 @@ document.getElementById('familyForm')?.addEventListener('submit', function(e) {
         }
     });
 });
+
 // Search parents functionality
 document.getElementById('searchParentInput')?.addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
@@ -524,6 +779,7 @@ function openFamilyModal() {
         item.classList.remove('bg-gray-200', 'border-gray-500');
     });
 }
+
 // Add Member form submission
 document.getElementById('addMemberForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -555,10 +811,6 @@ document.getElementById('addMemberForm')?.addEventListener('submit', function(e)
 
 function closeModal(modalId) {
     document.getElementById(modalId).classList.add('hidden');
-}
-
-function openFamilyModal() {
-    document.getElementById('familyModal').classList.remove('hidden');
 }
 
 function showNotification(message, type) {
