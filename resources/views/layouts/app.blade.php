@@ -731,6 +731,11 @@
                     color: '#10b981',
                     bgColor: '#ecfdf5'
                 },
+                'form': {
+                    icon: 'fas fa-clipboard-list',
+                    color: '#2563eb',
+                    bgColor: '#eff6ff'
+                },
                 'permission': {
                     icon: 'fas fa-shield-alt',
                     color: '#f59e0b',

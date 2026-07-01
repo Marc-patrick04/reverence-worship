@@ -8,6 +8,8 @@
         $canDeleteForms = auth()->check() && auth()->user()->canAccess('intercession', 'delete-forms');
         $canPublishForms = auth()->check() && auth()->user()->canAccess('intercession', 'publish-forms');
         $canViewResults = auth()->check() && auth()->user()->canAccess('intercession', 'view-results');
+        $canViewReports = auth()->check() && auth()->user()->canAccess('intercession', 'view-reports');
+        $canExportReports = auth()->check() && auth()->user()->canAccess('intercession', 'export-reports');
         $isSuperAdmin = auth()->check() && auth()->user()->isSuperAdmin();
     @endphp
 
@@ -49,7 +51,7 @@
                 Manage Forms
             </button>
             @endif
-            @if($canViewResults || $isSuperAdmin)
+            @if($canViewReports || $isSuperAdmin)
 <button onclick="showFormSection('reports')" id="form-section-reports" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
     <i class="fas fa-chart-bar mr-1"></i> Reports
 </button>
@@ -432,7 +434,7 @@
     </div>
     @endif
     {{-- Reports Section --}}
-@if($canViewResults || $isSuperAdmin)
+@if($canViewReports || $isSuperAdmin)
 <div id="reports-section" class="form-section hidden">
     @include('modules.intercession.forms.reports')
 </div>
@@ -818,6 +820,8 @@ document.addEventListener('DOMContentLoaded', function() {
         allowedSection = 'results';
     @elseif((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))
         allowedSection = 'manage';
+    @elseif((isset($canViewReports) && $canViewReports) || (isset($isSuperAdmin) && $isSuperAdmin))
+        allowedSection = 'reports';
     @endif
     
     // Determine which section to show
@@ -826,7 +830,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sectionToShow = 'results';
     } else if (savedSection === 'manage' && ((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))) {
         sectionToShow = 'manage';
-    } else if (savedSection === 'reports' && ((isset($canViewResults) && $canViewResults) || (isset($isSuperAdmin) && $isSuperAdmin))) {
+    } else if (savedSection === 'reports' && ((isset($canViewReports) && $canViewReports) || (isset($isSuperAdmin) && $isSuperAdmin))) {
         sectionToShow = 'reports';
     }
     
@@ -877,5 +881,4 @@ document.addEventListener('DOMContentLoaded', function() {
 window.showFormSection = showFormSection;
 window.refreshAvailableForms = refreshAvailableForms;
 </script>
-
 

@@ -21,7 +21,7 @@
             <span class="text-xs mt-1">Settings</span>
         </a>
     @else
-        <a href="{{ route('admin.dashboard') }}" class="mobile-footer-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+        <a href="{{ route('user.dashboard') }}" class="mobile-footer-item {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
             <i class="fas fa-tachometer-alt"></i>
             <span class="text-xs mt-1">Home</span>
         </a>

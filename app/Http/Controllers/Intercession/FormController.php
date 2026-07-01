@@ -516,15 +516,16 @@ class FormController extends Controller
     // ==================== TAKE ====================
     public function take($id)
     {
-        if (!auth()->user()->canAccess('intercession', 'view-forms')) {
-            abort(403, 'You do not have permission to view forms.');
-        }
-
         $form = DB::table('forms')->where('id', $id)->first();
         if (!$form) abort(404);
 
         $questions = json_decode($form->questions, true);
         $settings = json_decode($form->settings, true);
+        $isAvailableToUsers = $form->is_active && ($settings['is_published'] ?? false);
+
+        if (!$isAvailableToUsers && !auth()->user()->canAccess('intercession', 'view-forms')) {
+            abort(403, 'This form is not currently available.');
+        }
 
         if (isset($settings['limit_one_response']) && $settings['limit_one_response']) {
             $hasSubmitted = DB::table('form_submissions')
@@ -544,13 +545,6 @@ class FormController extends Controller
     // ==================== SUBMIT ====================
     public function submit(Request $request, $id)
     {
-        if (!auth()->user()->canAccess('intercession', 'view-forms')) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
-            }
-            abort(403, 'You do not have permission to submit forms.');
-        }
-
         try {
             $form = DB::table('forms')->where('id', $id)->first();
             if (!$form) {
@@ -558,6 +552,12 @@ class FormController extends Controller
             }
 
             $settings = json_decode($form->settings, true);
+            $isAvailableToUsers = $form->is_active && ($settings['is_published'] ?? false);
+
+            if (!$isAvailableToUsers && !auth()->user()->canAccess('intercession', 'view-forms')) {
+                return response()->json(['success' => false, 'message' => 'This form is not currently available.'], 403);
+            }
+
             $questions = json_decode($form->questions, true);
             $allowPartialPoints = $settings['allow_partial_points'] ?? true;
             $isQuiz = isset($settings['is_quiz']) && $settings['is_quiz'];

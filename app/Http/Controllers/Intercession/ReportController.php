@@ -16,6 +16,12 @@ class ReportController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless(
+            auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'view-reports'),
+            403,
+            'You do not have permission to view Intercession reports.'
+        );
+
         try {
             // Get all users - dynamically select columns that exist
             $users = $this->getUsersWithStatus();
@@ -193,6 +199,12 @@ class ReportController extends Controller
      */
     public function filter(Request $request)
     {
+        abort_unless(
+            auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'view-reports'),
+            403,
+            'You do not have permission to view Intercession reports.'
+        );
+
         try {
             $status = $request->get('status', 'all');
             $search = $request->get('search', '');
@@ -362,6 +374,12 @@ class ReportController extends Controller
      */
     public function export(Request $request)
     {
+        abort_unless(
+            auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'export-reports'),
+            403,
+            'You do not have permission to export Intercession reports.'
+        );
+
         try {
             $formIds = $request->get('form_ids', []);
             
@@ -512,6 +530,12 @@ class ReportController extends Controller
  */
 public function userProgress(Request $request)
 {
+    abort_unless(
+        auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'view-reports'),
+        403,
+        'You do not have permission to view Intercession reports.'
+    );
+
     try {
         $userId = $request->get('user_id');
         $formIds = $request->get('form_ids', []);

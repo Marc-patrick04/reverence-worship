@@ -10,6 +10,10 @@ class DashboardController extends Controller
 {
     public function superAdminDashboard()
     {
+        if (!auth()->user()->isSuperAdmin()) {
+            return redirect()->route('user.dashboard');
+        }
+
         // User Statistics
         $totalUsers = DB::table('users')->count();
         $activeUsers = DB::table('users')->where('is_active', true)->count();
@@ -159,7 +163,8 @@ class DashboardController extends Controller
     
     public function adminDashboard()
     {
-        // Redirect to super admin dashboard or show limited view
-        return redirect()->route('super-admin.dashboard');
+        return redirect()->route(
+            auth()->user()->isSuperAdmin() ? 'super-admin.dashboard' : 'user.dashboard'
+        );
     }
 }

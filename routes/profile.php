@@ -2,7 +2,7 @@
 
 Route::get('/profile', function () {
     return view('profile.index');
-})->name('profile.index');
+})->middleware('auth')->name('profile.index');
 
 Route::prefix('announcements')->group(function () {
     Route::get('/', function () {

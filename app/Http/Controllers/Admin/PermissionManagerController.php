@@ -11,6 +11,7 @@ use App\Models\User\RolePageFeature;
 use App\Models\System\ActivityLog;
 use App\Models\User\User;  // Fixed: Correct User model path
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PermissionManagerController extends Controller
 {
@@ -246,15 +247,18 @@ class PermissionManagerController extends Controller
     {
         try {
             $request->validate([
-                'name' => 'required|string|max:255|unique:roles',
-                'display_name' => 'required|string|max:255',
-                'description' => 'nullable|string',
+                'name' => 'required|string|max:255',
             ]);
-            
+
+            $roleName = Str::slug($request->name);
+            if (Role::where('name', $roleName)->exists()) {
+                return response()->json(['success' => false, 'message' => 'A role with this name already exists.']);
+            }
+
             $role = Role::create([
-                'name' => strtolower(str_replace(' ', '-', $request->name)),
-                'display_name' => $request->display_name,
-                'description' => $request->description
+                'name' => $roleName,
+                'display_name' => trim($request->name),
+                'description' => null
             ]);
             
             ActivityLog::create([
@@ -270,6 +274,94 @@ class PermissionManagerController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+    public function exportRoles()
+    {
+        $roles = Role::where('name', '!=', 'super-admin')->orderBy('display_name')->get()->map(function ($role) {
+            $permissions = DB::table('role_page_features')
+                ->join('pages', 'role_page_features.page_id', '=', 'pages.id')
+                ->join('features', 'role_page_features.feature_id', '=', 'features.id')
+                ->where('role_page_features.role_id', $role->id)
+                ->get(['pages.name as module', 'features.name as permission']);
+
+            return [
+                'name' => $role->name,
+                'display_name' => $role->display_name,
+                'permissions' => $permissions,
+            ];
+        });
+
+        $data = [
+            'format' => 'reverence-role-permissions',
+            'version' => 1,
+            'exported_at' => now()->toIso8601String(),
+            'roles' => $roles,
+        ];
+
+        return response()->streamDownload(
+            fn () => print(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)),
+            'roles-and-permissions-' . now()->format('Y-m-d-His') . '.json',
+            ['Content-Type' => 'application/json']
+        );
+    }
+
+    public function importRoles(Request $request)
+    {
+        $request->validate(['file' => 'required|file|max:2048']);
+
+        try {
+            $data = json_decode(
+                file_get_contents($request->file('file')->getRealPath()),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+
+            if (($data['format'] ?? null) !== 'reverence-role-permissions' || !is_array($data['roles'] ?? null)) {
+                return response()->json(['success' => false, 'message' => 'Invalid role-permission export file.'], 422);
+            }
+
+            $permissionMap = DB::table('features')
+                ->join('pages', 'features.page_id', '=', 'pages.id')
+                ->get(['pages.id as page_id', 'pages.name as module', 'features.id as feature_id', 'features.name as permission'])
+                ->keyBy(fn ($item) => $item->module . ':' . $item->permission);
+
+            $count = DB::transaction(function () use ($data, $permissionMap) {
+                $imported = 0;
+                foreach ($data['roles'] as $item) {
+                    $displayName = trim((string) ($item['display_name'] ?? ''));
+                    $name = Str::slug((string) ($item['name'] ?? $displayName));
+                    if ($displayName === '' || $name === '' || $name === 'super-admin') continue;
+
+                    $role = Role::updateOrCreate(['name' => $name], ['display_name' => $displayName]);
+                    RolePageFeature::where('role_id', $role->id)->delete();
+
+                    foreach (collect($item['permissions'] ?? [])->unique(fn ($permission) =>
+                        ($permission['module'] ?? '') . ':' . ($permission['permission'] ?? '')
+                    ) as $permission) {
+                        $match = $permissionMap->get(($permission['module'] ?? '') . ':' . ($permission['permission'] ?? ''));
+                        if (!$match) continue;
+                        RolePageFeature::create([
+                            'role_id' => $role->id,
+                            'page_id' => $match->page_id,
+                            'feature_id' => $match->feature_id,
+                        ]);
+                    }
+                    $imported++;
+                }
+                return $imported;
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} " . ($count === 1 ? 'role was' : 'roles were') . ' imported successfully.',
+            ]);
+        } catch (\JsonException $e) {
+            return response()->json(['success' => false, 'message' => 'The selected file contains invalid JSON.'], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Import failed: ' . $e->getMessage()], 500);
+        }
+    }
     
     public function editRole($id)
     {
@@ -283,17 +375,19 @@ class PermissionManagerController extends Controller
             $role = Role::findOrFail($id);
             
             $request->validate([
-                'name' => 'required|string|max:255|unique:roles,name,' . $id,
-                'display_name' => 'required|string|max:255',
-                'description' => 'nullable|string',
+                'name' => 'required|string|max:255',
             ]);
-            
+
+            $roleName = Str::slug($request->name);
+            if (Role::where('name', $roleName)->where('id', '!=', $id)->exists()) {
+                return response()->json(['success' => false, 'message' => 'A role with this name already exists.']);
+            }
+
             // Prevent modifying super-admin name
             if ($role->name !== 'super-admin') {
-                $role->name = strtolower(str_replace(' ', '-', $request->name));
+                $role->name = $roleName;
             }
-            $role->display_name = $request->display_name;
-            $role->description = $request->description;
+            $role->display_name = trim($request->name);
             $role->save();
             
             ActivityLog::create([

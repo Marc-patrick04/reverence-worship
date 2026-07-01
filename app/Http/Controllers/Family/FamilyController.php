@@ -29,21 +29,48 @@ class FamilyController extends Controller
                 ->join('users', 'family_members.user_id', '=', 'users.id')
                 ->where('family_members.family_id', $userFamily->id)
                 ->select('family_members.*', 'users.name', 'users.email', 'users.phone')
+                ->orderByRaw("CASE WHEN LOWER(family_members.role) = 'parent' THEN 0 ELSE 1 END")
+                ->orderBy('users.name')
                 ->limit(50)
                 ->get();
             
-            // Get tasks for ONLY this family - limit to 20 recent tasks
+            // Use the same family task source and ordering as the Parent Dashboard.
             $familyTasks = DB::table('family_tasks')
                 ->where('family_id', $userFamily->id)
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 1 WHEN status = 'in-progress' THEN 2 ELSE 3 END")
-                ->orderBy('due_date', 'asc')
-                ->limit(20)
+                ->orderBy('created_at', 'desc')
                 ->get();
-            
+
+            $subtasksByTask = collect();
+            if ($familyTasks->isNotEmpty() && DB::getSchemaBuilder()->hasTable('task_subtasks')) {
+                $subtasksByTask = DB::table('task_subtasks')
+                    ->whereIn('task_id', $familyTasks->pluck('id'))
+                    ->orderBy('created_at', 'asc')
+                    ->get()
+                    ->groupBy('task_id');
+            }
+
+            foreach ($familyTasks as $task) {
+                $task->subtasks = $subtasksByTask->get($task->id, collect())->values();
+                $task->subtasks_total = $task->subtasks->count();
+                $task->subtasks_completed = $task->subtasks
+                    ->where('is_completed', true)
+                    ->count();
+                $task->progress = $task->subtasks_total > 0
+                    ? (int) round(($task->subtasks_completed / $task->subtasks_total) * 100)
+                    : (int) ($task->progress ?? ($task->status === 'completed' ? 100 : 0));
+
+                // Parent Dashboard derives the visible status from subtask progress.
+                if ($task->subtasks_total > 0) {
+                    $task->status = $task->progress === 100
+                        ? 'completed'
+                        : ($task->progress > 0 ? 'in-progress' : 'pending');
+                }
+            }
+
             $taskStats = [
-                'completed' => DB::table('family_tasks')->where('family_id', $userFamily->id)->where('status', 'completed')->count(),
-                'pending' => DB::table('family_tasks')->where('family_id', $userFamily->id)->where('status', 'pending')->count(),
-                'in_progress' => DB::table('family_tasks')->where('family_id', $userFamily->id)->where('status', 'in-progress')->count(),
+                'completed' => $familyTasks->where('status', 'completed')->count(),
+                'pending' => $familyTasks->where('status', 'pending')->count(),
+                'in_progress' => $familyTasks->where('status', 'in-progress')->count(),
             ];
             
             $recentActivities = DB::table('family_tasks')

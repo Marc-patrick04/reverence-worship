@@ -22,6 +22,8 @@ Route::prefix('permission-manager')->name('permission-manager.')->middleware('au
     
     // ==================== ROLE CRUD ROUTES ====================
     Route::post('/role/store', [PermissionManagerController::class, 'storeRole'])->name('role.store');
+    Route::get('/roles/export', [PermissionManagerController::class, 'exportRoles'])->name('roles.export');
+    Route::post('/roles/import', [PermissionManagerController::class, 'importRoles'])->name('roles.import');
     Route::get('/role/{id}/edit', [PermissionManagerController::class, 'editRole'])->name('role.edit');
     Route::put('/role/{id}', [PermissionManagerController::class, 'updateRole'])->name('role.update');
     Route::delete('/role/{id}', [PermissionManagerController::class, 'deleteRole'])->name('role.delete');

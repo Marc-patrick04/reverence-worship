@@ -52,8 +52,34 @@ class NotificationController extends Controller
                 ", [$userId]);
                 $notifications = array_merge($notifications, $announcements);
             }
+
+            // 2. Published forms the user has not submitted yet.
+            if ($this->tableExists('forms') && $this->tableExists('form_submissions')) {
+                $forms = DB::select("
+                    SELECT
+                        'form' as type,
+                        f.id as source_id,
+                        'Form to Complete' as title,
+                        f.title as message,
+                        f.created_at,
+                        NULL as read_at,
+                        CONCAT('/forms/', f.id, '/take') as link
+                    FROM forms f
+                    WHERE f.is_active = true
+                    AND f.settings LIKE '%\"is_published\":true%'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM form_submissions fs
+                        WHERE fs.form_id = f.id
+                        AND fs.user_id = ?
+                    )
+                    ORDER BY f.created_at DESC
+                    LIMIT 10
+                ", [$userId]);
+                $notifications = array_merge($notifications, $forms);
+            }
             
-            // 2. Pending Users - Only Super Admin can see
+            // 3. Pending Users - Only Super Admin can see
             if ($isSuperAdmin && $this->tableExists('users')) {
                 $pendingUsers = DB::select("
                     SELECT 
@@ -74,7 +100,7 @@ class NotificationController extends Controller
                 $notifications = array_merge($notifications, $pendingUsers);
             }
             
-            // 3. Tasks (unread/overdue) - Only if tasks table exists
+            // 4. Tasks (unread/overdue) - Only if tasks table exists
             if ($this->tableExists('tasks')) {
                 try {
                     $tasks = DB::select("
@@ -99,7 +125,7 @@ class NotificationController extends Controller
                 }
             }
             
-            // 4. Permission Requests - Show to users who can approve (if table exists)
+            // 5. Permission Requests - Show to users who can approve (if table exists)
             if (($user->canAccess('discipline', 'approve-permission') || $isSuperAdmin) && $this->tableExists('permission_requests')) {
                 $permissions = DB::select("
                     SELECT 
@@ -119,7 +145,7 @@ class NotificationController extends Controller
                 $notifications = array_merge($notifications, $permissions);
             }
 
-            // 5. Expenses awaiting this user's approval
+            // 6. Expenses awaiting this user's approval
             if ($this->tableExists('expenses')) {
                 $expenses = DB::select("
                     SELECT
@@ -195,6 +221,22 @@ class NotificationController extends Controller
                     AND (ar.read_at IS NULL)
                 ", [$userId]);
                 $total += $announcements[0]->count ?? 0;
+            }
+
+            if ($this->tableExists('forms') && $this->tableExists('form_submissions')) {
+                $forms = DB::select("
+                    SELECT COUNT(*) as count
+                    FROM forms f
+                    WHERE f.is_active = true
+                    AND f.settings LIKE '%\"is_published\":true%'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM form_submissions fs
+                        WHERE fs.form_id = f.id
+                        AND fs.user_id = ?
+                    )
+                ", [$userId]);
+                $total += $forms[0]->count ?? 0;
             }
             
             // Pending Users - Only Super Admin

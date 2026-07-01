@@ -17,7 +17,7 @@ class RedirectIfAuthenticated
                 if (Auth::user()->isSuperAdmin()) {
                     return redirect()->route('super-admin.dashboard');
                 }
-                return redirect()->route('admin.dashboard');
+                return redirect()->route('user.dashboard');
             }
         }
 

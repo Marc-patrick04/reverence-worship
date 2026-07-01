@@ -1,6 +1,7 @@
 ﻿@extends('layouts.app')
 
 @section('title', 'Permission Manager')
+@section('page-title', 'Permission Manager')
 
 @section('content')
 <div class="permission-manager max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
@@ -12,23 +13,20 @@
             </div>
            
         </div>
-        <button onclick="openRoleModal()" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
-            <i class="fas fa-plus"></i>
-            New Role
-        </button>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase">Roles</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $roles->count() }}</p>
-                </div>
-                <span class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <i class="fas fa-user-tag"></i>
-                </span>
-            </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('permission-manager.roles.export') }}" class="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
+                <i class="fas fa-download"></i>
+                Export
+            </a>
+            <button type="button" onclick="document.getElementById('roleImportFile').click()" class="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
+                <i class="fas fa-upload"></i>
+                Import
+            </button>
+            <input type="file" id="roleImportFile" accept=".json,application/json" class="hidden">
+            <button onclick="openRoleModal()" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
+                <i class="fas fa-plus"></i>
+                New Role
+            </button>
         </div>
     </div>
 
@@ -49,50 +47,48 @@
             </div>
 
             <div class="p-3">
-                <div id="rolesList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[65vh] overflow-y-auto pr-1">
+                <div id="rolesList" class="border border-gray-200 rounded-lg divide-y divide-gray-200 overflow-hidden max-h-[65vh] overflow-y-auto">
                     @forelse($roles as $role)
                         @php
-                            $assignedCount = collect($allAssignments[$role->id] ?? [])->count();
+                            $assignedCount = collect($allAssignments[$role->id] ?? [])
+                                ->pluck('page_id')
+                                ->unique()
+                                ->count();
                         @endphp
-                        <article class="role-card border border-gray-200 rounded-lg p-3 hover:border-blue-200 hover:bg-blue-50/30 transition" data-role-name="{{ strtolower($role->display_name . ' ' . $role->name . ' ' . $role->description) }}">
-                            <div class="flex items-start gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
+                        <article class="role-card px-4 py-3 hover:bg-gray-50 transition" data-role-name="{{ strtolower($role->display_name . ' ' . $role->name . ' ' . $role->description) }}">
+                            <div class="flex flex-col md:flex-row md:items-center gap-3">
+                                <div class="flex items-center gap-3 min-w-0 md:flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
                                     <i class="fas fa-user-shield"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="min-w-0">
-                                            <h3 class="font-semibold text-gray-900 truncate">{{ $role->display_name }}</h3>
-                                            <p class="text-xs text-gray-500 truncate">{{ $role->name }}</p>
-                                        </div>
-                                        <div class="flex items-center gap-1 shrink-0">
-                                            <button onclick="editRole({{ $role->id }})" class="w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-100 transition" title="Edit role">
-                                                <i class="fas fa-edit text-sm"></i>
-                                            </button>
-                                            @if($role->name !== 'super-admin')
-                                                <button onclick="deleteRole({{ $role->id }}, @js($role->display_name))" class="w-8 h-8 rounded-lg text-red-600 hover:bg-red-100 transition" title="Delete role">
-                                                    <i class="fas fa-trash text-sm"></i>
-                                                </button>
-                                            @endif
-                                        </div>
                                     </div>
-                                    @if($role->description)
-                                        <p class="text-xs text-gray-500 mt-2 line-clamp-2">{{ $role->description }}</p>
-                                    @endif
-                                    <div class="flex flex-wrap items-center gap-2 mt-3">
-                                        <span class="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
+                                    <div class="min-w-0">
+                                        <h3 class="font-semibold text-gray-900 truncate">{{ $role->display_name }}</h3>
+                                        <p class="text-xs text-gray-500 truncate">{{ $role->name }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2 md:w-52">
+                                    <span class="inline-flex items-center gap-1 text-xs text-gray-600">
                                             <i class="fas fa-users text-gray-400"></i>
                                             {{ $role->users_count }} users
-                                        </span>
-                                        <span class="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
-                                            <i class="fas fa-key text-gray-400"></i>
-                                            {{ $assignedCount }} permissions
-                                        </span>
-                                    </div>
-                                    <button onclick="assignPermissionsToRole({{ $role->id }}, @js($role->display_name))" class="mt-3 w-full inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+                                    </span>
+                                    <span class="inline-flex items-center gap-1 text-xs text-gray-600">
+                                            <i class="fas fa-layer-group text-gray-400"></i>
+                                            {{ $assignedCount }} {{ $assignedCount === 1 ? 'module' : 'modules' }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1 md:justify-end">
+                                    <button onclick="assignPermissionsToRole({{ $role->id }}, @js($role->display_name))" class="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
                                         <i class="fas fa-sliders-h"></i>
                                         Manage Permissions
                                     </button>
+                                    <button onclick="editRole({{ $role->id }})" class="w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-100 transition" title="Edit role">
+                                        <i class="fas fa-edit text-sm"></i>
+                                    </button>
+                                    @if($role->name !== 'super-admin')
+                                        <button onclick="deleteRole({{ $role->id }}, @js($role->display_name))" class="w-8 h-8 rounded-lg text-red-600 hover:bg-red-100 transition" title="Delete role">
+                                            <i class="fas fa-trash text-sm"></i>
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </article>
@@ -123,20 +119,9 @@
         <form id="roleForm" class="p-5">
             @csrf
             <input type="hidden" name="_method" id="roleMethod" value="POST">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Role Name *</label>
-                    <input type="text" name="name" id="roleName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <p class="text-xs text-gray-400 mt-1">Use lowercase words, for example: finance-manager.</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Display Name *</label>
-                    <input type="text" name="display_name" id="roleDisplayName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                    <textarea name="description" id="roleDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" name="name" id="roleName" required placeholder="Finance Manager" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
                 <button type="button" onclick="closeModal('roleModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
@@ -208,8 +193,6 @@ function openRoleModal() {
     document.getElementById('roleForm').action = '/permission-manager/role/store';
     document.getElementById('roleMethod').value = 'POST';
     document.getElementById('roleName').value = '';
-    document.getElementById('roleDisplayName').value = '';
-    document.getElementById('roleDescription').value = '';
     openModal('roleModal');
 }
 
@@ -220,9 +203,7 @@ function editRole(id) {
             document.getElementById('roleModalTitle').innerText = 'Edit Role';
             document.getElementById('roleForm').action = `/permission-manager/role/${id}`;
             document.getElementById('roleMethod').value = 'PUT';
-            document.getElementById('roleName').value = data.name;
-            document.getElementById('roleDisplayName').value = data.display_name;
-            document.getElementById('roleDescription').value = data.description || '';
+            document.getElementById('roleName').value = data.display_name;
             openModal('roleModal');
         })
         .catch(error => console.error('Error:', error));
@@ -251,7 +232,7 @@ function assignPermissionsToRole(roleId, roleName) {
     const assignedFeatureIds = assignedFeatures.map(a => parseInt(a.feature_id));
     const featureOrder = { view: 1, create: 2, edit: 3, delete: 4 };
 
-    let html = '<div id="permissionCards" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">';
+    let html = '<div id="permissionCards" class="border border-gray-200 rounded-lg divide-y divide-gray-200 overflow-hidden">';
 
     pagesData.forEach(page => {
         const pageFeatures = featuresData
@@ -264,21 +245,23 @@ function assignPermissionsToRole(roleId, roleName) {
         const searchText = `${page.display_name} ${page.name} ${pageFeatures.map(f => `${f.display_name} ${f.name}`).join(' ')}`.toLowerCase();
 
         html += `
-            <section class="permission-page-card border border-gray-200 rounded-lg overflow-hidden" data-search="${escapeAttribute(searchText)}">
-                <div class="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border-b border-gray-200">
-                    <span class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-blue-600 flex items-center justify-center shrink-0">
-                        <i class="fas ${page.icon || 'fa-layer-group'}"></i>
-                    </span>
-                    <div class="min-w-0 flex-1">
-                        <h4 class="font-semibold text-sm text-gray-900 truncate">${escapeHtml(page.display_name)}</h4>
-                        <p class="text-xs text-gray-500">${pageFeatures.length} actions</p>
-                    </div>
-                    <label class="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer shrink-0">
-                        <input type="checkbox" class="select-all-page rounded border-gray-300" data-page-id="${page.id}" ${allAssigned ? 'checked' : ''}>
-                        All
-                    </label>
-                </div>
-                <div class="grid grid-cols-1 gap-1.5 p-2.5">
+            <section class="permission-page-card bg-white" data-search="${escapeAttribute(searchText)}">
+                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition" onclick="togglePermissionModule(${page.id}, this)" aria-expanded="false">
+                        <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                            <i class="fas ${page.icon || 'fa-layer-group'}"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h4 class="font-semibold text-sm text-gray-900 truncate">${escapeHtml(page.display_name)}</h4>
+                            <p class="text-xs text-gray-500">${pageFeatures.length} permissions</p>
+                        </div>
+                        <i class="module-chevron fas fa-chevron-down text-xs text-gray-400 transition-transform"></i>
+                </button>
+                <div id="permission-module-${page.id}" class="hidden px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <label class="inline-flex items-center gap-2 text-xs font-semibold text-blue-700 cursor-pointer mb-2">
+                            <input type="checkbox" class="select-all-page rounded border-gray-300" data-page-id="${page.id}" ${allAssigned ? 'checked' : ''}>
+                            Select all
+                        </label>
+                        <div class="flex flex-wrap gap-x-5 gap-y-2">
         `;
 
         pageFeatures.forEach(feature => {
@@ -286,17 +269,18 @@ function assignPermissionsToRole(roleId, roleName) {
             const [icon, color, bg] = featureIconMap[feature.name] || ['fa-tag', 'text-gray-600', 'bg-gray-50'];
 
             html += `
-                <label class="flex items-center gap-2 text-sm cursor-pointer px-2 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+                <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
                     <input type="checkbox" class="feature-checkbox rounded border-gray-300" data-feature-id="${feature.id}" data-page-id="${page.id}" ${isChecked ? 'checked' : ''}>
-                    <span class="w-6 h-6 rounded-md ${bg} ${color} flex items-center justify-center shrink-0">
+                    <span class="w-6 h-6 rounded-md ${bg} ${color} flex items-center justify-center">
                         <i class="fas ${icon} text-xs"></i>
                     </span>
-                    <span class="min-w-0 truncate">${escapeHtml(feature.display_name)}</span>
+                    <span>${escapeHtml(feature.display_name)}</span>
                 </label>
             `;
         });
 
         html += `
+                        </div>
                 </div>
             </section>
         `;
@@ -308,6 +292,15 @@ function assignPermissionsToRole(roleId, roleName) {
     bindPermissionControls();
     updateSelectedPermissionCount();
     openModal('assignPermissionsModal');
+}
+
+function togglePermissionModule(pageId, button) {
+    const content = document.getElementById(`permission-module-${pageId}`);
+    const isOpening = content.classList.contains('hidden');
+
+    content.classList.toggle('hidden', !isOpening);
+    button.querySelector('.module-chevron').classList.toggle('rotate-180', isOpening);
+    button.setAttribute('aria-expanded', isOpening ? 'true' : 'false');
 }
 
 function bindPermissionControls() {
@@ -397,6 +390,38 @@ document.getElementById('roleForm').addEventListener('submit', function(e) {
     .catch(error => appAlert('Error: ' + error.message));
 });
 
+document.getElementById('roleImportFile').addEventListener('change', async function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    if (!await appConfirm('Import roles and permissions? Existing matching roles will have their permissions replaced.')) {
+        this.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('{{ route('permission-manager.roles.import') }}', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Import failed.');
+        await appAlert(data.message);
+        location.reload();
+    } catch (error) {
+        appAlert(error.message);
+    } finally {
+        this.value = '';
+    }
+});
+
 document.getElementById('roleSearch')?.addEventListener('input', function() {
     const term = this.value.trim().toLowerCase();
     let visible = 0;
@@ -450,4 +475,3 @@ document.addEventListener('keydown', function(event) {
 });
 </script>
 @endsection
-

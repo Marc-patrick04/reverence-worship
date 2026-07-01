@@ -183,9 +183,11 @@
             Showing <span id="reportRowCount">{{ isset($reportData) && is_array($reportData) ? count($reportData) : 0 }}</span> users
         </div>
         <div class="flex gap-2">
+            @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'export-reports'))
             <button onclick="exportReport()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
                 <i class="fas fa-file-csv"></i> Export CSV
             </button>
+            @endif
             <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
                 <i class="fas fa-print"></i> Print
             </button>
@@ -777,4 +779,3 @@ function hideExcessForms() {
     }
 }
 </style>
-

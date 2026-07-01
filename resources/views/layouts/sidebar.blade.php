@@ -20,19 +20,23 @@
                     <i class="fas fa-users w-5"></i>
                     <span class="nav-text text-sm font-medium">User Management</span>
                 </a>
+                @if(auth()->user()->hasFamily())
                 <a href="{{ route('family.index') }}" class="nav-item {{ request()->routeIs('family.*') ? 'active' : '' }}">
                     <i class="fas fa-home w-5"></i>
                     <span class="nav-text text-sm font-medium">My Family</span>
                 </a>
+                @endif
                 <a href="{{ route('financial.my-contributions') }}" class="nav-item {{ request()->routeIs('financial.*') ? 'active' : '' }}">
                     <i class="fas fa-hand-holding-usd w-5"></i>
                     <span class="nav-text text-sm font-medium">My Contributions</span>
                 </a>
                 <!-- Parent Dashboard -->
+                @if(auth()->user()->isParent())
                 <a href="{{ route('parent.index') }}" class="nav-item {{ request()->routeIs('parent.*') ? 'active' : '' }}">
                     <i class="fas fa-user-friends w-5"></i>
                     <span class="nav-text text-sm font-medium">Parent Dashboard</span>
                 </a>
+                @endif
                 <a href="{{ route('music.index') }}" class="nav-item {{ request()->routeIs('music.*') ? 'active' : '' }}">
                     <i class="fas fa-music w-5"></i>
                     <span class="nav-text text-sm font-medium">Music and Evangelism DPT</span>
@@ -60,6 +64,11 @@
                 <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                     <i class="fas fa-file-alt w-5"></i>
                     <span class="nav-text text-sm font-medium">Reports</span>
+                </a>
+
+                <a href="{{ route('profile.index') }}" class="nav-item {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                    <i class="fas fa-user w-5"></i>
+                    <span class="nav-text text-sm font-medium">My Profile</span>
                 </a>
                 
                 <a href="{{ route('permission-manager.index') }}" class="nav-item {{ request()->routeIs('permission-manager.*') ? 'active' : '' }}">
@@ -93,7 +102,7 @@
                 @endif
                 
                 <!-- My Family - Check permission for 'family' page -->
-                @if(auth()->user()->canAccess('family', 'view'))
+                @if(auth()->user()->hasFamily())
                 <a href="{{ route('family.index') }}" class="nav-item {{ request()->routeIs('family.*') ? 'active' : '' }}">
                     <i class="fas fa-home w-5"></i>
                     <span class="nav-text text-sm font-medium">My Family</span>
@@ -109,7 +118,7 @@
                 @endif
                 
                 <!-- Parent Dashboard - Check permission for 'parent' page -->
-                @if(auth()->user()->canAccess('parent', 'view'))
+                @if(auth()->user()->isParent())
                 <a href="{{ route('parent.index') }}" class="nav-item {{ request()->routeIs('parent.*') ? 'active' : '' }}">
                     <i class="fas fa-user-friends w-5"></i>
                     <span class="nav-text text-sm font-medium">Parent Dashboard</span>

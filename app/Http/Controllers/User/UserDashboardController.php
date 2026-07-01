@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User\User;
 use App\Models\User\Role;
 use App\Models\System\Page;
@@ -28,22 +29,75 @@ class UserDashboardController extends Controller
     
     // Recent activities
     $recentActivities = $this->getUserRecentActivities($user);
-    
-    // Quick links
-    $quickLinks = $this->getUserQuickLinks($user, $accessiblePages);
-    
-    // Personal info
-    $personalStats = $this->getPersonalStats($user);
+
+    // Personal work requiring the user's attention.
+    $pendingForms = $this->getPendingForms($user);
+    $familyTasks = $this->getFamilyTasks($user);
     
     return view('user.dashboard', compact(
         'stats', 
         'recentActivities', 
-        'quickLinks', 
-        'personalStats',
-        'userModules',
-        'accessiblePages'  // Make sure this is passed
+        'pendingForms',
+        'familyTasks'
     ));
 }
+
+    private function getPendingForms($user)
+    {
+        if (!Schema::hasTable('forms') || !Schema::hasTable('form_submissions')) {
+            return collect();
+        }
+
+        $submittedFormIds = DB::table('form_submissions')
+            ->where('user_id', $user->id)
+            ->pluck('form_id');
+
+        return DB::table('forms')
+            ->where('is_active', true)
+            ->whereNotIn('id', $submittedFormIds)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->filter(function ($form) {
+                $settings = json_decode($form->settings ?? '{}', true) ?: [];
+                return (bool) ($settings['is_published'] ?? false);
+            })
+            ->map(function ($form) {
+                $questions = json_decode($form->questions ?? '[]', true) ?: [];
+                $settings = json_decode($form->settings ?? '{}', true) ?: [];
+                $form->question_count = collect($questions)->reject(
+                    fn ($question) => in_array($question['type'] ?? '', ['title_section', 'section_break'], true)
+                )->count();
+                $form->is_quiz = (bool) ($settings['is_quiz'] ?? false);
+                $form->time_limit = $settings['show_timer'] ?? false
+                    ? ($settings['time_limit'] ?? null)
+                    : null;
+                return $form;
+            })
+            ->values();
+    }
+
+    private function getFamilyTasks($user)
+    {
+        if (!Schema::hasTable('family_members') || !Schema::hasTable('family_tasks')) {
+            return collect();
+        }
+
+        $familyId = DB::table('family_members')
+            ->where('user_id', $user->id)
+            ->value('family_id');
+
+        if (!$familyId) {
+            return collect();
+        }
+
+        return DB::table('family_tasks')
+            ->where('family_id', $familyId)
+            ->where('status', '!=', 'completed')
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->limit(5)
+            ->get();
+    }
     
     private function getUserModules($userId)
     {
@@ -99,7 +153,7 @@ class UserDashboardController extends Controller
         $stats = [];
         
         // Check if user has finance access
-        if (in_array('finance-view', $userModules) || $user->isSuperAdmin()) {
+        if ($user->canAccess('financial', 'view') || $user->isSuperAdmin()) {
             try {
                 // Check if contributions table exists
                 $contributionsTable = DB::select("SELECT to_regclass('contributions')");
@@ -193,29 +247,7 @@ class UserDashboardController extends Controller
             }
         }
         
-        // Get announcements
-        try {
-            $announcementsTable = DB::select("SELECT to_regclass('announcements')");
-            if ($announcementsTable[0]->to_regclass) {
-                $stats['recent_announcements'] = DB::table('announcements')
-                    ->where('is_active', true)
-                    ->where('published_at', '<=', now())
-                    ->orderBy('published_at', 'desc')
-                    ->limit(5)
-                    ->get();
-                
-                $stats['unread_announcements'] = DB::table('announcement_reads')
-                    ->where('user_id', $user->id)
-                    ->where('is_read', false)
-                    ->count() ?? 0;
-            } else {
-                $stats['recent_announcements'] = collect();
-                $stats['unread_announcements'] = 0;
-            }
-        } catch (\Exception $e) {
-            $stats['recent_announcements'] = collect();
-            $stats['unread_announcements'] = 0;
-        }
+        $stats['recent_announcements'] = $this->getUserAnnouncements($user);
         
         // Global stats
         $stats['total_users'] = DB::table('users')->count();
@@ -223,6 +255,49 @@ class UserDashboardController extends Controller
         $stats['online_users'] = $this->getOnlineUsersCount();
         
         return $stats;
+    }
+
+    private function getUserAnnouncements($user)
+    {
+        if (!Schema::hasTable('announcements')) {
+            return collect();
+        }
+
+        $roleIds = $user->roles()->pluck('roles.id')->map(fn ($id) => (int) $id);
+
+        return DB::table('announcements')
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('published_at')->orWhere('published_at', '<=', now());
+            })
+            ->where(function ($query) {
+                $query->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString());
+            })
+            ->orderByRaw("CASE WHEN priority = 'high' THEN 0 ELSE 1 END")
+            ->orderByDesc('published_at')
+            ->get()
+            ->filter(function ($announcement) use ($user, $roleIds) {
+                if (!$announcement->target_type || $announcement->target_type === 'all') {
+                    return true;
+                }
+
+                if ($announcement->target_type === 'users') {
+                    return collect(json_decode($announcement->target_users ?? '[]', true))
+                        ->map(fn ($id) => (int) $id)
+                        ->contains((int) $user->id);
+                }
+
+                if ($announcement->target_type === 'roles') {
+                    return collect(json_decode($announcement->target_roles ?? '[]', true))
+                        ->map(fn ($id) => (int) $id)
+                        ->intersect($roleIds)
+                        ->isNotEmpty();
+                }
+
+                return false;
+            })
+            ->take(5)
+            ->values();
     }
     
     private function getOnlineUsersCount()

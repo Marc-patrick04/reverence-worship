@@ -107,7 +107,6 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
@@ -135,7 +134,6 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{{ $log->description }}</td>
-                        <td class="px-4 py-3 text-sm font-mono text-gray-500">{{ $log->ip_address ?? 'N/A' }}</td>
                         <td class="px-4 py-3 text-sm text-gray-500">
                             {{ $log->created_at ? date('M d, Y H:i:s', strtotime($log->created_at)) : 'N/A' }}
                         </td>
@@ -147,7 +145,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-history fa-3x mb-3 text-gray-300"></i>
                             <p>No activity logs found</p>
                         </td>

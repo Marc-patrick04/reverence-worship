@@ -117,7 +117,7 @@ function updateTasksTable(tasks) {
                                 <input type="checkbox" ${sub.is_completed ? 'checked' : ''} 
                                        onchange="toggleSubtask(${sub.id}, ${task.id})"
                                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                <span class="${sub.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(sub.title)}</span>
+                                <span class="${sub.is_completed ? 'text-green-700' : 'text-gray-700'}">${escapeHtml(sub.title)}</span>
                             </div>
                         `).join('')}
                     </div>
@@ -188,7 +188,7 @@ function viewTaskDetails(taskId) {
                                         '<i class="fas fa-check-circle text-green-500 text-xs"></i>' : 
                                         '<i class="far fa-circle text-gray-300 text-xs"></i>'
                                     }
-                                    <span class="${sub.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(sub.title)}</span>
+                                    <span class="${sub.is_completed ? 'text-green-700' : 'text-gray-700'}">${escapeHtml(sub.title)}</span>
                                     ${sub.is_completed && sub.completed_at ? 
                                         `<span class="text-[10px] text-gray-400">(Completed: ${new Date(sub.completed_at).toLocaleString()})</span>` : 
                                         ''
@@ -518,5 +518,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
 

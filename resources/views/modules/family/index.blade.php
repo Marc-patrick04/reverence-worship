@@ -25,12 +25,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Export Button -->
-            @if(auth()->check() && auth()->user()->canAccess('family', 'export'))
-            <button onclick="exportMembersToCSV()" class="bg-gray-50 hover:bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5 border border-gray-200 self-start sm:self-center">
-                <i class="fas fa-download text-xs"></i> Export
-            </button>
-            @endif
         </div>
     </div>
 
@@ -47,7 +41,7 @@
     </div>
 
     <!-- Two Column Layout - Desktop -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.75fr)] gap-4 sm:gap-6">
         
         <!-- LEFT: Members List -->
         <div id="membersPanel" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -117,7 +111,7 @@
         </div>
 
         <!-- RIGHT: Tasks List -->
-        <div id="tasksPanel" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="tasksPanel" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-w-0">
             <div class="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
@@ -126,10 +120,10 @@
                         </h2>
                         <div class="flex gap-1.5">
                             <span class="px-2 py-0.5 text-xs bg-green-100 text-green-600 rounded-full">
-                                âœ“ {{ $taskStats['completed'] ?? 0 }}
+                                <i class="fas fa-check mr-1"></i>{{ $taskStats['completed'] ?? 0 }}
                             </span>
                             <span class="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 rounded-full">
-                                â³ {{ ($taskStats['in_progress'] ?? 0) + ($taskStats['pending'] ?? 0) }}
+                                <i class="fas fa-hourglass-half mr-1"></i>{{ ($taskStats['in_progress'] ?? 0) + ($taskStats['pending'] ?? 0) }}
                             </span>
                         </div>
                     </div>
@@ -156,66 +150,63 @@
             </div>
 
             <!-- Tasks List -->
-            <div class="divide-y divide-gray-100 max-h-[500px] overflow-y-auto" id="tasksList">
-                @forelse($familyTasks as $task)
-                @php($isTaskCompleted = $task->status === 'completed')
-                <div class="task-item p-3 transition {{ $isTaskCompleted ? 'bg-green-50/60' : 'hover:bg-gray-50' }}" data-status="{{ $task->status }}" id="task-{{ $task->id }}">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-1.5 flex-wrap mb-1">
-                                <span class="font-medium text-sm {{ $isTaskCompleted ? 'text-gray-500 line-through' : 'text-gray-800' }}">{{ $task->title }}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded-full font-medium
-                                    {{ $task->status == 'completed' ? 'bg-green-100 text-green-600' : 
-                                       ($task->status == 'in-progress' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-500') }}">
-                                    @if($task->status == 'in-progress')
-                                        <i class="fas fa-spinner fa-pulse text-xs mr-0.5"></i> 
-                                    @elseif($task->status == 'completed')
-                                        <i class="fas fa-check-circle text-xs mr-0.5"></i> 
-                                    @else
-                                        <i class="fas fa-clock text-xs mr-0.5"></i> 
-                                    @endif
-                                    {{ $task->status == 'completed' ? 'Done' : ($task->status == 'in-progress' ? 'In Progress' : 'Pending') }}
+            <div class="max-h-[500px] overflow-auto" id="tasksList">
+                <table class="min-w-[760px] w-full text-left">
+                    <thead class="sticky top-0 bg-gray-50 border-b border-gray-200 z-10">
+                        <tr class="text-[11px] uppercase tracking-wide text-gray-500">
+                            <th class="px-3 py-2 font-semibold">Task</th>
+                            <th class="px-3 py-2 font-semibold">Subtasks</th>
+                            <th class="px-3 py-2 font-semibold">Status</th>
+                            <th class="px-3 py-2 font-semibold">Due date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                    @forelse($familyTasks as $task)
+                        @php
+                            $isTaskCompleted = $task->status === 'completed';
+                            $isOverdue = $task->due_date
+                                && \Carbon\Carbon::parse($task->due_date)->isPast()
+                                && !$isTaskCompleted;
+                        @endphp
+                        <tr class="task-item hover:bg-gray-50 transition {{ $isTaskCompleted ? 'bg-green-50/40' : '' }}" data-status="{{ $task->status }}" id="task-{{ $task->id }}">
+                            <td class="px-3 py-3">
+                                <span class="font-medium text-sm {{ $isTaskCompleted ? 'text-gray-500' : 'text-gray-800' }}" title="{{ $task->description }}">
+                                    {{ $task->title }}
                                 </span>
-                            </div>
-                            
-                            @if(isset($task->description) && $task->description)
-                            <p class="text-xs text-gray-500 mt-1">{{ Str::limit($task->description, 100) }}</p>
-                            @endif
-                            
-                            @if(isset($task->due_date) && $task->due_date)
-                            <div class="flex items-center gap-1 mt-1 text-xs {{ \Carbon\Carbon::parse($task->due_date)->isPast() && $task->status != 'completed' ? 'text-red-500' : 'text-gray-400' }}">
-                                <i class="fas fa-calendar-alt text-xs"></i>
-                                <span>{{ \Carbon\Carbon::parse($task->due_date)->format('d M Y') }}</span>
-                            </div>
-                            @endif
-                        </div>
-                        
-                        <!-- Task action buttons -->
-                        @if(auth()->check() && auth()->user()->canAccess('family', 'edit'))
-                        <div class="flex items-center gap-1.5">
-                            @if($task->status != 'completed')
-                            <button onclick="updateTaskStatus({{ $task->id }}, 'completed', this)" 
-                                    class="px-2 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-600 rounded transition" title="Mark Complete">
-                                <i class="fas fa-check"></i>
-                            </button>
-                            @endif
-                            @if($task->status == 'pending')
-                            <button onclick="updateTaskStatus({{ $task->id }}, 'in-progress', this)" 
-                                    class="px-2 py-1 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded transition" title="Start Progress">
-                                <i class="fas fa-play"></i>
-                            </button>
-                            @endif
-                           
-                        </div>
-                        @endif
-                    </div>
-                </div>
-                @empty
-                <div class="p-8 text-center text-gray-400 text-sm">
-                    <i class="fas fa-check-circle text-3xl mb-2 block"></i>
-                    No tasks assigned
-                </div>
-                @endforelse
+                            </td>
+                            <td class="px-3 py-3 text-xs text-gray-600">
+                                @if(($task->subtasks_total ?? 0) > 0)
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($task->subtasks as $subtask)
+                                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md border
+                                                {{ $subtask->is_completed ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-700' }}">
+                                                <i class="{{ $subtask->is_completed ? 'fas fa-check-circle text-green-500' : 'far fa-circle text-gray-400' }}"></i>
+                                                {{ $subtask->title }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-gray-400">None</span>
+                                @endif
+                            </td>
+                            <td class="px-3 py-3">
+                                <span class="text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap
+                                    {{ $isTaskCompleted ? 'bg-green-100 text-green-700' : ($task->status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700') }}">
+                                    {{ $isTaskCompleted ? 'Completed' : ($task->status === 'in-progress' ? 'In Progress' : 'Pending') }}
+                                </span>
+                            </td>
+                            <td class="px-3 py-3 text-xs whitespace-nowrap {{ $isOverdue ? 'text-red-600 font-medium' : 'text-gray-500' }}">
+                                {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d M Y') : 'No due date' }}
+                                @if($isOverdue)<span class="ml-1">(Overdue)</span>@endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="p-8 text-center text-gray-400 text-sm">No tasks assigned</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -474,4 +465,3 @@
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
 </style>
 @endsection
-

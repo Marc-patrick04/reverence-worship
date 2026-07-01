@@ -10,7 +10,8 @@
 
     {{-- TABS --}}
     @php
-        $hasForms = auth()->check() && auth()->user()->canAccess('intercession', 'view-forms');
+        $hasReports = auth()->check() && auth()->user()->canAccess('intercession', 'view-reports');
+        $hasForms = auth()->check() && (auth()->user()->canAccess('intercession', 'view-forms') || $hasReports);
         $hasDevotions = auth()->check() && auth()->user()->canAccess('intercession', 'view-devotions');
         $hasActions = auth()->check() && auth()->user()->canAccess('intercession', 'view-actions');
         $hasArchives = auth()->check() && auth()->user()->canAccess('intercession', 'view-archives');

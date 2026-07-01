@@ -84,6 +84,24 @@ class User extends Authenticatable
         return $this->hasRole('super-admin');
     }
 
+    public function isParent()
+    {
+        return DB::table('family_members')
+            ->where('user_id', $this->id)
+            ->where('role', 'parent')
+            ->exists()
+            || DB::table('families')
+                ->where('parent_id', $this->id)
+                ->exists();
+    }
+
+    public function hasFamily()
+    {
+        return DB::table('family_members')
+            ->where('user_id', $this->id)
+            ->exists();
+    }
+
    public function getAccessiblePages()
 {
     // Super admin can see all active pages

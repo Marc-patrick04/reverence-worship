@@ -1,264 +1,174 @@
 @extends('layouts.app')
 
 @section('title', 'Dashboard')
+@section('page-title', 'Dashboard')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-3 sm:px-5 lg:px-6 py-5">
+    <section class="relative overflow-hidden bg-gradient-to-r from-blue-700 to-indigo-700 rounded-2xl p-5 sm:p-7 text-white shadow-sm mb-5">
+        <div class="relative z-10">
+            <p class="text-sm text-blue-100">{{ now()->format('l, F j, Y') }}</p>
+            <h1 class="text-2xl sm:text-3xl font-bold mt-1">Welcome, {{ Auth::user()->name }}</h1>
+            <p class="text-sm text-blue-100 mt-2">
+                @if($pendingForms->isNotEmpty())
+                    You have {{ $pendingForms->count() }} {{ Str::plural('form', $pendingForms->count()) }} waiting for you.
+                @else
+                    You are all caught up. There are no forms waiting for you.
+                @endif
+            </p>
+        </div>
+        <i class="fas fa-sparkles absolute -right-4 -bottom-6 text-8xl text-white/10"></i>
+    </section>
 
-<!-- Welcome Card -->
-<div class="bg-gradient-to-r from-blue-600 to-indigo-800 rounded-2xl shadow-lg p-6 mb-6 text-white">
-    <h2 class="text-2xl font-bold">Welcome back, {{ Auth::user()->name }}!</h2>
-    <p class="text-blue-100 mt-1">{{ date('l, F j, Y') }}</p>
-    <p class="text-blue-100 text-sm mt-2">You have access to {{ count($accessiblePages) }} modules</p>
-</div>
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.85fr)] gap-5">
+        <div class="space-y-5 min-w-0">
+            <section class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-200">
+                    <div>
+                        <h2 class="font-bold text-gray-900">Forms to complete</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Open a form and submit your response.</p>
+                    </div>
+                    @if($pendingForms->isNotEmpty())
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 rounded-full px-2.5 py-1">{{ $pendingForms->count() }} pending</span>
+                    @endif
+                </div>
 
-<!-- Stats Grid -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
-    <div class="bg-white rounded-xl shadow p-5 border-l-4 border-blue-500">
-        <p class="text-gray-500 text-sm">Member Since</p>
-        <p class="text-2xl font-bold">{{ $personalStats['member_since'] ?? 'N/A' }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-        <p class="text-gray-500 text-sm">Total Logins</p>
-        <p class="text-2xl font-bold">{{ $personalStats['total_logins'] ?? 0 }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-5 border-l-4 border-purple-500">
-        <p class="text-gray-500 text-sm">Your Role</p>
-        <p class="text-2xl font-bold">{{ $personalStats['roles'] ?? 'Member' }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-5 border-l-4 border-orange-500">
-        <p class="text-gray-500 text-sm">Modules Access</p>
-        <p class="text-2xl font-bold">{{ count($accessiblePages) }}</p>
-    </div>
-</div>
+                @if($pendingForms->isNotEmpty())
+                    <div class="divide-y divide-gray-100">
+                        @foreach($pendingForms as $form)
+                            <a href="{{ route('forms.take', $form->id) }}" class="flex items-center gap-3 px-4 sm:px-5 py-4 hover:bg-blue-50/50 transition group">
+                                <span class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                    <i class="fas {{ $form->is_quiz ? 'fa-clipboard-question' : 'fa-file-lines' }}"></i>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="font-semibold text-sm text-gray-900 block truncate">{{ $form->title }}</span>
+                                    <span class="text-xs text-gray-500 block mt-0.5">
+                                        {{ $form->question_count }} {{ Str::plural('question', $form->question_count) }}
+                                        @if($form->time_limit)
+                                            · {{ $form->time_limit }} minutes
+                                        @endif
+                                    </span>
+                                </span>
+                                <span class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
+                                    Start <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                </span>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="px-5 py-10 text-center">
+                        <span class="w-12 h-12 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i class="fas fa-check"></i>
+                        </span>
+                        <p class="font-semibold text-gray-800 mt-3">No pending forms</p>
+                        <p class="text-xs text-gray-500 mt-1">New published forms will appear here automatically.</p>
+                    </div>
+                @endif
+            </section>
 
-<!-- My Modules Section - Show all pages user has access to -->
-<div class="bg-white rounded-xl shadow mb-6">
-    <div class="border-b px-5 py-3">
-        <h3 class="font-semibold text-gray-800">My Modules</h3>
-        <p class="text-xs text-gray-500">Modules you have permission to access</p>
-    </div>
-    <div class="p-5">
-        @if(count($accessiblePages) > 0)
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            @foreach($accessiblePages as $page)
-            @php
-                $route = $page->route ?? '#';
-                $icon = $page->icon ?? 'fa-folder';
-                $color = $page->name == 'user-management' ? 'blue' : 
-                         ($page->name == 'finance' ? 'green' : 
-                         ($page->name == 'music-ministry' ? 'purple' : 
-                         ($page->name == 'family' ? 'pink' : 
-                         ($page->name == 'announcements' ? 'orange' : 
-                         ($page->name == 'reports' ? 'indigo' : 'gray')))));
-            @endphp
-            
-            @if($page->name == 'user-management')
-            <a href="{{ route('users.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-blue-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
+            @if($familyTasks->isNotEmpty())
+                <section class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-200">
+                        <div>
+                            <h2 class="font-bold text-gray-900">Family tasks</h2>
+                            <p class="text-xs text-gray-500 mt-0.5">Upcoming work for your family.</p>
+                        </div>
+                        <a href="{{ route('family.index') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">View family</a>
                     </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
+                    <div class="divide-y divide-gray-100">
+                        @foreach($familyTasks as $task)
+                            @php
+                                $overdue = $task->due_date && \Carbon\Carbon::parse($task->due_date)->isPast();
+                            @endphp
+                            <div class="flex items-center gap-3 px-4 sm:px-5 py-3">
+                                <span class="w-8 h-8 rounded-lg {{ $overdue ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600' }} flex items-center justify-center shrink-0">
+                                    <i class="fas fa-list-check text-sm"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ $task->title }}</p>
+                                    <p class="text-xs {{ $overdue ? 'text-red-600' : 'text-gray-500' }}">
+                                        {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d M Y') : 'No due date' }}
+                                        @if($overdue) · Overdue @endif
+                                    </p>
+                                </div>
+                                <span class="text-[11px] font-semibold rounded-full px-2 py-1 {{ $task->status === 'in-progress' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700' }}">
+                                    {{ $task->status === 'in-progress' ? 'In progress' : 'Pending' }}
+                                </span>
+                            </div>
+                        @endforeach
                     </div>
-                </div>
-            </a>
-            @elseif($page->name == 'music-ministry')
-            <a href="{{ route('music.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-purple-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'intercession')
-            <a href="{{ route('intercession.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-blue-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'social-fellowship')
-            <a href="{{ route('social-fellowship.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-green-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'discipline')
-            <a href="{{ route('discipline.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-red-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'finance')
-            <a href="{{ route('finance.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-green-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'family')
-            <a href="{{ route('family.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-pink-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'announcements')
-            <a href="{{ route('announcements.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-orange-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @elseif($page->name == 'reports')
-            <a href="{{ route('reports.index') }}" class="block p-4 border rounded-lg hover:shadow-md transition hover:border-indigo-300">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-{{ $color }}-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
-            @else
-            <a href="{{ $route }}" class="block p-4 border rounded-lg hover:shadow-md transition">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <i class="fas {{ $icon }} text-gray-600 text-lg"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-gray-800 text-sm">{{ $page->display_name }}</h4>
-                        <p class="text-xs text-gray-400">Click to access</p>
-                    </div>
-                </div>
-            </a>
+                </section>
             @endif
-            @endforeach
-        </div>
-        @else
-        <div class="text-center py-8">
-            <i class="fas fa-lock text-4xl text-gray-300 mb-3"></i>
-            <p class="text-gray-500">You don't have access to any modules yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Contact your administrator to grant permissions.</p>
-        </div>
-        @endif
-    </div>
-</div>
 
-<!-- Quick Access Modules (Same as My Modules, but limited to 4) -->
-@if(count($quickLinks) > 0)
-<div class="bg-white rounded-xl shadow mb-6">
-    <div class="border-b px-5 py-3">
-        <h3 class="font-semibold text-gray-800">Quick Access</h3>
-        <p class="text-xs text-gray-500">Frequently used modules</p>
-    </div>
-    <div class="p-5">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            @foreach(array_slice($quickLinks, 0, 8) as $link)
-            <a href="{{ $link['route'] }}" class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-50 transition">
-                <div class="w-12 h-12 bg-{{ $link['color'] }}-100 rounded-xl flex items-center justify-center">
-                    <i class="fas {{ $link['icon'] }} text-{{ $link['color'] }}-600 text-xl"></i>
+            @if(isset($stats['my_contributions']) && $stats['my_contributions'] > 0)
+                <section class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 sm:p-5">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h2 class="font-bold text-gray-900">Contribution progress</h2>
+                            <p class="text-xs text-gray-500 mt-0.5">Your contribution for the current period.</p>
+                        </div>
+                        <a href="{{ route('financial.my-contributions') }}" class="text-xs font-semibold text-blue-600">View details</a>
+                    </div>
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-500">Paid {{ number_format($stats['my_payments'] ?? 0) }} RWF</span>
+                        <span class="font-semibold text-gray-800">{{ $stats['payment_progress'] ?? 0 }}%</span>
+                    </div>
+                    <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 rounded-full" style="width: {{ min(100, $stats['payment_progress'] ?? 0) }}%"></div>
+                    </div>
+                </section>
+            @endif
+        </div>
+
+        <aside class="space-y-5 min-w-0">
+            <section class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-4 border-b border-gray-200">
+                    <h2 class="font-bold text-gray-900">Announcements</h2>
+                    <i class="fas fa-bullhorn text-orange-500"></i>
                 </div>
-                <span class="text-xs font-medium text-gray-700 mt-2 text-center">{{ $link['name'] }}</span>
-            </a>
-            @endforeach
-        </div>
-    </div>
-</div>
-@endif
+                <div class="divide-y divide-gray-100">
+                    @forelse(($stats['recent_announcements'] ?? collect()) as $announcement)
+                        <a href="{{ route('announcements.index') }}" class="block p-4 hover:bg-gray-50 transition">
+                            <div class="flex items-start gap-2">
+                                @if(($announcement->priority ?? '') === 'high')
+                                    <span class="mt-1 w-2 h-2 bg-red-500 rounded-full shrink-0"></span>
+                                @endif
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-800">{{ $announcement->title }}</p>
+                                    <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ strip_tags($announcement->content ?? '') }}</p>
+                                    <p class="text-[11px] text-gray-400 mt-2">
+                                        {{ \Carbon\Carbon::parse($announcement->published_at ?? $announcement->created_at)->diffForHumans() }}
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="p-8 text-center text-sm text-gray-400">No announcements available.</div>
+                    @endforelse
+                </div>
+            </section>
 
-<!-- My Contribution Card (if user has finance access) -->
-@if(isset($stats['my_contributions']) && $stats['my_contributions'] > 0)
-<div class="bg-white rounded-xl shadow mb-6">
-    <div class="border-b px-5 py-3">
-        <h3 class="font-semibold text-gray-800">My Contributions</h3>
+            <section class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-4 py-4 border-b border-gray-200">
+                    <h2 class="font-bold text-gray-900">Your recent activity</h2>
+                </div>
+                <div class="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                    @forelse($recentActivities as $activity)
+                        <div class="p-4 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full {{ $activity->icon_bg ?? 'bg-gray-100' }} flex items-center justify-center shrink-0">
+                                <i class="{{ $activity->icon ?? 'fas fa-bell' }} {{ $activity->icon_color ?? 'text-gray-500' }} text-xs"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-xs text-gray-800">{{ $activity->description }}</p>
+                                <p class="text-[11px] text-gray-400 mt-0.5">{{ \Carbon\Carbon::parse($activity->created_at)->diffForHumans() }}</p>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-8 text-center text-sm text-gray-400">No recent activity yet.</div>
+                    @endforelse
+                </div>
+            </section>
+        </aside>
     </div>
-    <div class="p-5">
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <p class="text-gray-500 text-sm">Expected</p>
-                <p class="text-2xl font-bold text-blue-600">{{ number_format($stats['my_contributions']) }} RWF</p>
-            </div>
-            <div>
-                <p class="text-gray-500 text-sm">Paid</p>
-                <p class="text-2xl font-bold text-green-600">{{ number_format($stats['my_payments']) }} RWF</p>
-            </div>
-        </div>
-        <div class="mt-3">
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $stats['payment_progress'] }}%"></div>
-            </div>
-            <p class="text-right text-sm text-gray-600 mt-1">{{ $stats['payment_progress'] }}% completed</p>
-        </div>
-    </div>
-</div>
-@endif
-
-<!-- Recent Activities -->
-<div class="bg-white rounded-xl shadow">
-    <div class="border-b px-5 py-3">
-        <h3 class="font-semibold text-gray-800">Recent Activities</h3>
-    </div>
-    <div class="divide-y max-h-80 overflow-y-auto">
-        @forelse($recentActivities as $activity)
-        <div class="p-4 flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full {{ $activity->icon_bg ?? 'bg-gray-100' }} flex items-center justify-center">
-                <i class="{{ $activity->icon ?? 'fas fa-bell' }} {{ $activity->icon_color ?? 'text-gray-500' }} text-sm"></i>
-            </div>
-            <div class="flex-1">
-                <p class="text-sm text-gray-800">{{ $activity->description }}</p>
-                <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($activity->created_at)->diffForHumans() }}</p>
-            </div>
-        </div>
-        @empty
-        <div class="p-8 text-center text-gray-400">
-            <i class="fas fa-inbox text-3xl mb-2"></i>
-            <p>No recent activities</p>
-        </div>
-        @endforelse
-    </div>
-</div>
-
 </div>
 @endsection

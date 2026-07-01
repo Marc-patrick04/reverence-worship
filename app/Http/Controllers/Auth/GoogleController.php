@@ -27,7 +27,9 @@ class GoogleController extends Controller
             if ($user) {
                 // User exists, log them in
                 Auth::login($user);
-                return redirect()->route('admin.dashboard')->with('success', 'Welcome back!');
+                return redirect()->route(
+                    $user->isSuperAdmin() ? 'super-admin.dashboard' : 'user.dashboard'
+                )->with('success', 'Welcome back!');
             } else {
                 // Create new user
                 $newUser = User::create([
@@ -39,13 +41,13 @@ class GoogleController extends Controller
                 ]);
                 
                 // Assign default role (you can change this)
-                $defaultRole = \App\Models\User\Role::where('name', 'admin')->first();
+                $defaultRole = \App\Models\User\Role::where('name', 'member')->first();
                 if ($defaultRole) {
                     $newUser->roles()->attach($defaultRole->id);
                 }
                 
                 Auth::login($newUser);
-                return redirect()->route('admin.dashboard')->with('success', 'Account created successfully!');
+                return redirect()->route('user.dashboard')->with('success', 'Account created successfully!');
             }
             
         } catch (\Exception $e) {
