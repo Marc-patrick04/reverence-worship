@@ -1,29 +1,29 @@
 ﻿<div>
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
             <i class="fas fa-tasks text-purple-600"></i>
             Family Tasks
         </h2>
-        <button onclick="openAddTaskModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+        <button onclick="openAddTaskModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto">
             <i class="fas fa-plus"></i> Add Task
         </button>
     </div>
 
     <!-- Task Filters -->
-    <div class="flex flex-wrap gap-3 mb-4">
-        <select id="taskFilterStatus" onchange="filterTasks()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+        <select id="taskFilterStatus" onchange="filterTasks()" class="px-3 py-2 border border-gray-300 rounded-xl text-sm bg-white w-full sm:w-auto">
             <option value="all">All Tasks</option>
             <option value="pending">Pending</option>
             <option value="in-progress">In Progress</option>
             <option value="completed">Completed</option>
         </select>
         <input type="text" id="searchTasks" placeholder="Search tasks..." 
-               class="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 min-w-[200px]"
+               class="px-3 py-2 border border-gray-300 rounded-xl text-sm flex-1 min-w-0"
                onkeyup="filterTasks()">
     </div>
 
     <!-- Tasks List -->
-    <div class="overflow-x-auto">
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200" id="tasksTable">
             <thead class="bg-gray-50">
                 <tr>
@@ -41,6 +41,10 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div id="tasksMobileList" class="md:hidden space-y-3">
+        <div class="text-center py-8 text-gray-500 bg-white border border-gray-100 rounded-2xl">Loading tasks...</div>
     </div>
 </div>
 
@@ -62,29 +66,39 @@ function loadTasks() {
         } else {
             console.error('Error loading tasks:', data.message);
             const tbody = document.getElementById('tasksTableBody');
+            const mobileList = document.getElementById('tasksMobileList');
             if (tbody) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading tasks: ${data.message}</td></tr>`;
+            }
+            if (mobileList) {
+                mobileList.innerHTML = `<div class="text-center py-8 text-red-500 bg-white border border-red-100 rounded-2xl">Error loading tasks: ${data.message}</div>`;
             }
         }
     })
     .catch(error => {
         console.error('Error:', error);
         const tbody = document.getElementById('tasksTableBody');
+        const mobileList = document.getElementById('tasksMobileList');
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading tasks</td></tr>`;
+        }
+        if (mobileList) {
+            mobileList.innerHTML = `<div class="text-center py-8 text-red-500 bg-white border border-red-100 rounded-2xl">Error loading tasks</div>`;
         }
     });
 }
 
 function updateTasksTable(tasks) {
     const tbody = document.getElementById('tasksTableBody');
+    const mobileList = document.getElementById('tasksMobileList');
     
     if (!tasks || tasks.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No tasks found</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No tasks found</td></tr>`;
+        if (mobileList) mobileList.innerHTML = `<div class="text-center py-8 text-gray-500 bg-white border border-gray-100 rounded-2xl">No tasks found</div>`;
         return;
     }
     
-    tbody.innerHTML = tasks.map(task => {
+    const taskRows = tasks.map(task => {
         const subtasks = task.subtasks || [];
         const totalSubtasks = subtasks.length;
         const completedSubtasks = subtasks.filter(s => s.is_completed).length;
@@ -155,6 +169,76 @@ function updateTasksTable(tasks) {
             </tr>
         `;
     }).join('');
+
+    const taskCards = tasks.map(task => {
+        const subtasks = task.subtasks || [];
+        const totalSubtasks = subtasks.length;
+        const completedSubtasks = subtasks.filter(s => s.is_completed).length;
+        const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+        const statusText = progress === 100 ? 'Completed' : (progress > 0 ? 'In Progress' : 'Pending');
+        const statusClass = progress === 100 ? 'bg-green-100 text-green-700' : (progress > 0 ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700');
+        let isOverdue = false;
+        if (task.due_date && statusText !== 'Completed') {
+            const dueDate = new Date(task.due_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            isOverdue = dueDate < today;
+        }
+
+        const subtasksHtml = subtasks.length > 0 ? subtasks.map(sub => `
+            <label class="flex items-start gap-2 text-sm py-1">
+                <input type="checkbox" ${sub.is_completed ? 'checked' : ''}
+                       onchange="toggleSubtask(${sub.id}, ${task.id})"
+                       class="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <span class="${sub.is_completed ? 'text-green-700' : 'text-gray-700'}">${escapeHtml(sub.title)}</span>
+            </label>
+        `).join('') : '<p class="text-sm text-gray-500">No subtasks</p>';
+
+        return `
+            <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="font-semibold text-gray-900 break-words">${escapeHtml(task.title)}</p>
+                        ${task.description ? `<p class="text-sm text-gray-500 mt-1">${escapeHtml(task.description.substring(0, 120))}${task.description.length > 120 ? '...' : ''}</p>` : ''}
+                    </div>
+                    <span class="shrink-0 px-2.5 py-1 text-xs rounded-full ${statusClass}">${statusText}</span>
+                </div>
+
+                <div class="mt-3">
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span>${completedSubtasks}/${totalSubtasks} subtasks</span>
+                        <span>${progress}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-purple-600 h-2 rounded-full" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+
+                <div class="mt-3 bg-gray-50 rounded-xl p-3 space-y-1">
+                    ${subtasksHtml}
+                </div>
+
+                <div class="mt-3 flex flex-col sm:flex-row gap-2 text-sm">
+                    <div class="flex-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}">
+                        <i class="fas fa-calendar-day mr-1"></i>
+                        ${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'}
+                        ${isOverdue ? ' (Overdue)' : ''}
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="viewTaskDetails(${task.id})" class="flex-1 px-3 py-2 rounded-xl bg-gray-100 text-gray-700 font-medium">
+                            <i class="fas fa-file-lines mr-1"></i> View
+                        </button>
+                        <button onclick="editTask(${task.id})" class="flex-1 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-medium">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (tbody) tbody.innerHTML = taskRows;
+    if (mobileList) mobileList.innerHTML = taskCards;
 }
 
 // ============================================
@@ -518,4 +602,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-

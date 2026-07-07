@@ -4,7 +4,7 @@
 @section('page-title', 'Social Fellowship')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
     
     @php
         $canViewFamilies = auth()->check() && auth()->user()->canAccess('social-fellowship', 'view-families');
@@ -18,34 +18,67 @@
    
     <!-- Navigation Tabs - Only show tabs user has permission for -->
     @if($canViewFamilies || $canViewUsers || $canViewTasks || $canViewActionPlans || $canViewArchives)
-    <div class="border-b border-gray-200">
-        <nav class="flex space-x-8 overflow-x-auto">
+    <div class="relative z-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-visible mb-4">
+        <div class="md:hidden p-2">
+            <div class="relative w-full max-w-[280px]" id="socialMobileTabPicker">
+                <button type="button" id="socialMobileTabButton"
+                    onclick="toggleSocialMobileTabs()"
+                    class="h-10 w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    aria-haspopup="true" aria-expanded="false">
+                    <span class="flex items-center gap-2">
+                        <i id="socialMobileTabIcon" class="fas fa-users text-blue-600" aria-hidden="true"></i>
+                        <span id="socialMobileTabLabel">Families</span>
+                    </span>
+                    <i class="fas fa-chevron-down text-gray-400 text-[10px]" aria-hidden="true"></i>
+                </button>
+                <div id="socialMobileTabMenu" class="hidden absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                    <div class="grid grid-cols-2 gap-1">
+                        @if($canViewFamilies)
+                        <button type="button" onclick="selectSocialMobileTab('families')" class="social-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="families" data-icon="users">Families</button>
+                        @endif
+                        @if($canViewUsers)
+                        <button type="button" onclick="selectSocialMobileTab('users')" class="social-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="users" data-icon="user-friends">Users</button>
+                        @endif
+                        @if($canViewTasks)
+                        <button type="button" onclick="selectSocialMobileTab('tasks')" class="social-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="tasks" data-icon="tasks">Tasks</button>
+                        @endif
+                        @if($canViewActionPlans)
+                        <button type="button" onclick="selectSocialMobileTab('actionPlans')" class="social-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="actionPlans" data-icon="clipboard-list">Action Plans</button>
+                        @endif
+                        @if($canViewArchives)
+                        <button type="button" onclick="selectSocialMobileTab('archives')" class="social-mobile-tab-option col-span-2 h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="archives" data-icon="archive">Archives</button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+        <nav class="hidden md:flex flex-wrap border-b border-gray-200">
             @if($canViewFamilies)
-            <button onclick="showTab('families')" id="tab-families" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition border-gray-900 text-gray-900">
+            <button onclick="showTab('families')" id="tab-families" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-gray-900 text-gray-900">
                 <i class="fas fa-users mr-2"></i>Families
             </button>
             @endif
             
             @if($canViewUsers)
-            <button onclick="showTab('users')" id="tab-users" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition border-transparent text-gray-500">
+            <button onclick="showTab('users')" id="tab-users" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-transparent text-gray-500">
                 <i class="fas fa-user-friends mr-2"></i>Users
             </button>
             @endif
             
             @if($canViewTasks)
-            <button onclick="showTab('tasks')" id="tab-tasks" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition border-transparent text-gray-500">
+            <button onclick="showTab('tasks')" id="tab-tasks" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-transparent text-gray-500">
                 <i class="fas fa-tasks mr-2"></i>Tasks
             </button>
             @endif
             
             @if($canViewActionPlans)
-            <button onclick="showTab('actionPlans')" id="tab-actionPlans" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition border-transparent text-gray-500">
+            <button onclick="showTab('actionPlans')" id="tab-actionPlans" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-transparent text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Action Plans
             </button>
             @endif
             
             @if($canViewArchives)
-            <button onclick="showTab('archives')" id="tab-archives" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition border-transparent text-gray-500">
+            <button onclick="showTab('archives')" id="tab-archives" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-transparent text-gray-500">
                 <i class="fas fa-archive mr-2"></i>Archives
             </button>
             @endif
@@ -143,9 +176,45 @@ window.showTab = function(tabName) {
         activeBtn.classList.remove('border-transparent', 'text-gray-500');
         activeBtn.classList.add('border-gray-900', 'text-gray-900');
     }
+
+    updateSocialMobileTabDisplay(tabName);
     
     // Save current tab to localStorage
     localStorage.setItem('activeSocialFellowshipTab', tabName);
+}
+
+function toggleSocialMobileTabs() {
+    const menu = document.getElementById('socialMobileTabMenu');
+    const button = document.getElementById('socialMobileTabButton');
+    if (!menu || !button) return;
+
+    const isOpening = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    button.setAttribute('aria-expanded', isOpening ? 'true' : 'false');
+}
+
+function selectSocialMobileTab(tabName) {
+    window.showTab(tabName);
+    document.getElementById('socialMobileTabMenu')?.classList.add('hidden');
+    document.getElementById('socialMobileTabButton')?.setAttribute('aria-expanded', 'false');
+}
+
+function updateSocialMobileTabDisplay(tabName) {
+    const activeOption = document.querySelector(`.social-mobile-tab-option[data-tab="${tabName}"]`);
+    const label = document.getElementById('socialMobileTabLabel');
+    const icon = document.getElementById('socialMobileTabIcon');
+
+    if (activeOption && label && icon) {
+        label.textContent = activeOption.textContent.trim();
+        icon.className = `fas fa-${activeOption.dataset.icon} text-blue-600`;
+    }
+
+    document.querySelectorAll('.social-mobile-tab-option').forEach(option => {
+        const isActive = option.dataset.tab === tabName;
+        option.classList.toggle('bg-blue-50', isActive);
+        option.classList.toggle('text-blue-700', isActive);
+        option.classList.toggle('font-semibold', isActive);
+    });
 }
 
 function openCreateFamilyModal() {
@@ -184,6 +253,17 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (validTabs.length > 0) {
         window.showTab(validTabs[0]);
     }
+
+    document.addEventListener('click', function(event) {
+        const picker = document.getElementById('socialMobileTabPicker');
+        const menu = document.getElementById('socialMobileTabMenu');
+        const button = document.getElementById('socialMobileTabButton');
+
+        if (picker && menu && button && !picker.contains(event.target)) {
+            menu.classList.add('hidden');
+            button.setAttribute('aria-expanded', 'false');
+        }
+    });
 });
 function assignToFamily(userId, userName, currentFamilyId = null) {
     // Check if user has permission

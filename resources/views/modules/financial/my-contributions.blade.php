@@ -1,18 +1,18 @@
 ﻿@extends('layouts.app')
 
 @section('title', 'My Contributions')
-@section('page-title', 'Contribution Management')
+@section('page-title', 'My Contributions')
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
 
     <!-- Year Selector - Same style as Finance module -->
     @if(auth()->check() && auth()->user()->canAccess('financial', 'view'))
-    <div class="bg-white rounded-xl shadow-md p-4">
-        <div class="flex items-center gap-4">
-            <label class="text-sm font-medium text-gray-700">Select Year:</label>
-            <div class="relative">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+            <div class="relative w-full sm:w-auto">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Year</label>
                 <div onclick="toggleYearPicker()" 
-                    class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-blue-400 transition-all min-w-[120px]">
+                    class="flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 cursor-pointer hover:border-blue-400 transition-all w-full sm:min-w-[130px]">
                     <span id="yearDisplay" class="text-sm font-semibold text-gray-800">{{ $currentYear }}</span>
                     <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="yearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -20,7 +20,7 @@
                 </div>
                 <input type="hidden" id="selectedYear" value="{{ $currentYear }}">
                 
-                <div id="yearPickerDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
+                <div id="yearPickerDropdown" class="hidden absolute top-full left-0 sm:left-auto sm:right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3 w-full sm:w-[220px]">
                     <div class="flex items-center justify-between mb-2">
                         <button type="button" onclick="changeYearPage(-1)" 
                             class="p-1 hover:bg-gray-100 rounded transition text-gray-500 hover:text-gray-700">
@@ -44,36 +44,36 @@
     @endif
 
     <!-- TOP GRID -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 
         <!-- LEFT CARD - Annual Contribution -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-800">
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                <h2 class="text-base sm:text-lg font-bold text-gray-800">
                     Your {{ $currentYear }} Annual Contribution
                 </h2>
                 <!-- Edit Amount Button - Requires update permission -->
                 @if(auth()->check() && auth()->user()->canAccess('financial', 'update'))
                 <button onclick="openEditAmountModal()"
-                    class="text-sm text-blue-600 hover:text-blue-800 border border-blue-300 px-3 py-1 rounded-lg transition">
+                    class="inline-flex items-center justify-center text-sm text-blue-700 hover:text-blue-800 bg-blue-50 border border-blue-100 px-3 py-2 rounded-xl transition w-full sm:w-auto">
                     <i class="fas fa-edit mr-1"></i> Edit Amount
                 </button>
                 @endif
             </div>
 
-            <div class="bg-gray-50 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-3">
+            <div class="bg-gray-50 rounded-2xl p-4">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 mb-3">
                     <span class="text-sm text-gray-600">Annual Amount:</span>
-                    <span class="text-2xl font-bold text-blue-600">RWF {{ number_format($totalRequired, 0, ',', ',') }}</span>
+                    <span class="text-xl sm:text-2xl font-bold text-blue-600">RWF {{ number_format($totalRequired, 0, ',', ',') }}</span>
                 </div>
 
                 <!-- Term Breakdown -->
                 <div class="mt-4 space-y-2">
                     <p class="text-xs font-medium text-gray-500">Term Breakdown:</p>
                     @foreach($termTargets as $termNum => $target)
-                        <div class="flex justify-between text-sm">
+                        <div class="flex items-start justify-between gap-3 text-sm">
                             <span class="text-gray-600">Term {{ $termNum }} ({{ $termPercentages[$termNum] ?? round(100/$numberOfTerms, 1) }}%):</span>
-                            <span class="font-medium">RWF {{ number_format($target, 0, ',', ',') }}</span>
+                            <span class="font-medium text-right whitespace-nowrap">RWF {{ number_format($target, 0, ',', ',') }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -89,12 +89,12 @@
         </div>
 
         <!-- RIGHT CARD - Progress -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-            <h2 class="text-lg font-bold text-gray-800 mb-4">My Progress</h2>
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
+            <h2 class="text-base sm:text-lg font-bold text-gray-800 mb-4">My Progress</h2>
 
-            <div class="flex justify-between mb-2">
+            <div class="flex flex-col sm:flex-row sm:justify-between gap-1 mb-2">
                 <span class="text-sm text-gray-600">Overall Progress</span>
-                <span class="text-sm font-medium">
+                <span class="text-sm font-medium text-gray-900">
                     RWF {{ number_format($totalPaid, 0, ',', ',') }} / RWF {{ number_format($totalRequired, 0, ',', ',') }}
                 </span>
             </div>
@@ -106,7 +106,7 @@
             <p class="text-xs text-gray-500 mb-5">{{ number_format($progressPercent, 1) }}% complete</p>
 
             <!-- TERM CARDS -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 @for($termNum = 1; $termNum <= $numberOfTerms; $termNum++)
                 @php
                     $target = $termTargets[$termNum] ?? 0;
@@ -118,7 +118,7 @@
                         $borderColor = 'border-green-200';
                         $bgColor = 'bg-green-50';
                         $statusColor = 'green';
-                        $statusIcon = 'âœ“';
+                        $statusIcon = '✓';
                         $statusText = 'completed';
                     } elseif ($status == 'partial') {
                         $borderColor = 'border-yellow-200';
@@ -137,11 +137,24 @@
                     $progressPercentTerm = $target > 0 ? ($paid / $target) * 100 : 0;
                     $remainingForTerm = $target - $paid;
                 @endphp
-                <div class="border-2 {{ $borderColor }} {{ $bgColor }} rounded-xl p-3 text-center transition hover:shadow-md">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-1">Term {{ $termNum }}</h3>
-                    <p class="text-xs text-gray-500 mb-1">{{ $percentage }}% of annual</p>
-                    <p class="text-xl font-bold text-gray-800">RWF {{ number_format($paid, 0, ',', ',') }}</p>
-                    <p class="text-xs text-gray-500">of RWF {{ number_format($target, 0, ',', ',') }}</p>
+                <div class="border {{ $borderColor }} {{ $bgColor }} rounded-2xl p-4 transition hover:shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-800">Term {{ $termNum }}</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">{{ $percentage }}% of annual</p>
+                        </div>
+                        <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap
+                            {{ $status == 'completed' ? 'bg-green-100 text-green-700' : '' }}
+                            {{ $status == 'partial' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                            {{ $status == 'pending' ? 'bg-gray-100 text-gray-600' : '' }}">
+                            {{ $statusIcon }} {{ ucfirst($statusText) }}
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <p class="text-lg sm:text-xl font-bold text-gray-900">RWF {{ number_format($paid, 0, ',', ',') }}</p>
+                        <p class="text-xs text-gray-500">of RWF {{ number_format($target, 0, ',', ',') }}</p>
+                    </div>
 
                     <div class="w-full h-1.5 bg-gray-200 rounded-full mt-3">
                         <div class="h-1.5 rounded-full 
@@ -149,26 +162,22 @@
                             style="width: {{ min($progressPercentTerm, 100) }}%"></div>
                     </div>
 
-                    <div class="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium
-                        {{ $status == 'completed' ? 'bg-green-100 text-green-700' : '' }}
-                        {{ $status == 'partial' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                        {{ $status == 'pending' ? 'bg-gray-100 text-gray-600' : '' }}">
-                        {{ $statusIcon }} {{ ucfirst($statusText) }}
-                    </div>
-
                     @if($status == 'completed')
-                        <p class="text-green-600 text-xs mt-2">âœ“ Fully Paid!</p>
+                        <p class="text-green-600 text-xs mt-3">✓ Fully paid</p>
                     @else
                         <!-- Pay Button - Requires create/pay permission -->
                         @if(auth()->check() && auth()->user()->canAccess('financial', 'pay'))
                         <button onclick='openPaymentModal({{ $termNum }}, {{ $target }}, {{ $remainingForTerm }})' 
-                                class="block w-full mt-3 text-blue-600 text-xs font-medium hover:underline">
+                                class="inline-flex items-center justify-center w-full mt-3 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
                             @if($paid > 0)
-                                Pay Remaining (RWF {{ number_format($remainingForTerm, 0, ',', ',') }})
+                                Pay Remaining
                             @else
-                                Tap to submit
+                                Submit Payment
                             @endif
                         </button>
+                        @if($paid > 0)
+                            <p class="text-xs text-gray-500 mt-1 text-center">RWF {{ number_format($remainingForTerm, 0, ',', ',') }} remaining</p>
+                        @endif
                         @endif
                     @endif
                 </div>
@@ -176,11 +185,88 @@
             </div>
         </div>
     </div>
+
+    <!-- Payment History -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <h2 class="text-base sm:text-lg font-bold text-gray-900">Payment History</h2>
+                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Your payments for {{ $currentYear }}.</p>
+            </div>
+            <span class="inline-flex items-center justify-center w-fit px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                {{ $payments->count() }} {{ \Illuminate\Support\Str::plural('payment', $payments->count()) }}
+            </span>
+        </div>
+
+        @if($payments->count() > 0)
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-100">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Term</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reference</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @foreach($payments as $payment)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900">Term {{ $payment->term }}</td>
+                                <td class="px-6 py-4 text-sm font-bold text-green-700">RWF {{ number_format($payment->amount, 0, ',', ',') }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">{{ ucwords(str_replace('_', ' ', $payment->payment_method ?? 'Cash')) }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">{{ data_get($payment, 'transaction_id') ?: '—' }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="md:hidden divide-y divide-gray-100">
+                @foreach($payments as $payment)
+                    <div class="p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">Term {{ $payment->term }}</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</p>
+                            </div>
+                            <p class="text-sm font-bold text-green-700 whitespace-nowrap">RWF {{ number_format($payment->amount, 0, ',', ',') }}</p>
+                        </div>
+                        <div class="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-600">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-500">Method</span>
+                                <span class="font-medium text-gray-800 text-right">{{ ucwords(str_replace('_', ' ', $payment->payment_method ?? 'Cash')) }}</span>
+                            </div>
+                            @if(data_get($payment, 'transaction_id'))
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-gray-500">Reference</span>
+                                    <span class="font-medium text-gray-800 text-right break-all">{{ data_get($payment, 'transaction_id') }}</span>
+                                </div>
+                            @endif
+                            @if($payment->notes)
+                                <p class="text-gray-500 bg-gray-50 rounded-xl p-3">{{ $payment->notes }}</p>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="p-8 text-center">
+                <div class="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <p class="mt-3 text-sm font-semibold text-gray-700">No payments recorded for {{ $currentYear }}</p>
+                <p class="text-xs text-gray-500 mt-1">Your payment history will appear here after you submit a payment.</p>
+            </div>
+        @endif
+    </div>
 </div>
 
 <!-- Payment Modal - Requires pay permission -->
 <div id="paymentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+    <div class="relative sm:top-20 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-5 border w-auto sm:w-full max-w-md shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="paymentModalTitle" class="text-lg font-bold text-gray-800">Submit Payment</h3>
             <button onclick="closeModal('paymentModal')" class="text-gray-400 hover:text-gray-600">
@@ -218,7 +304,7 @@
                     <textarea name="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('paymentModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Submit Payment</button>
             </div>
@@ -228,7 +314,7 @@
 
 <!-- Edit Annual Amount Modal - Requires update permission -->
 <div id="editAmountModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+    <div class="relative sm:top-20 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-5 border w-auto sm:w-full max-w-md shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800">Edit Annual Contribution Amount</h3>
             <button onclick="closeModal('editAmountModal')" class="text-gray-400 hover:text-gray-600">
@@ -255,7 +341,7 @@
                     </p>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('editAmountModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Update</button>
             </div>
@@ -265,7 +351,7 @@
 
 <!-- Payment History Modal - Requires view permission -->
 <div id="paymentHistoryModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-5 border w-auto sm:w-full max-w-2xl shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800">Payment History</h3>
             <button onclick="closeModal('paymentHistoryModal')" class="text-gray-400 hover:text-gray-600">

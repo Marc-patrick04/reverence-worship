@@ -1,6 +1,6 @@
-﻿<div class="bg-white rounded-xl shadow-md p-6">
+﻿<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
     
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Users</h2>
            
@@ -8,13 +8,13 @@
                 <p class="text-xs text-gray-400 mt-0.5">Showing users for year: <span class="font-medium">{{ request()->get('year') }}</span></p>
             @endif
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
             <!-- Year Selector -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
                 <label class="text-sm text-gray-600">Year:</label>
-                <div class="relative">
+                <div class="relative flex-1 sm:flex-none">
                     <div onclick="toggleUserYearPicker()" 
-                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-400 transition-all min-w-[120px]">
+                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-400 transition-all min-w-[120px] w-full">
                         <span id="userYearDisplay" class="text-sm font-semibold text-blue800">{{ request()->get('year', date('Y')) }}</span>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="userYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -45,7 +45,7 @@
                     <i class="fas fa-history mr-1"></i> <span id="userYearStatus">Current</span>
                 </span>
             </div>
-            <button onclick="openAddUserModal()" class="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+            <button onclick="openAddUserModal()" class="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto">
                 <i class="fas fa-user-plus"></i> Add User to Family
             </button>
         </div>
@@ -61,7 +61,7 @@
     </div>
     
     <!-- Users Table -->
-    <div class="overflow-x-auto">
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -116,6 +116,7 @@
                         <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
                             <i class="fas fa-circle text-xs mr-1"></i> Active
                         </span>
+                    </td>
                     <td class="px-4 py-3 whitespace-nowrap">
     <div class="flex gap-2">
         <button onclick="viewUserDetails({{ $user->id }})" class="text-gray-600 hover:text-gray-900" title="View Details">
@@ -131,6 +132,7 @@
             </button>
         @endif
     </div>
+
 </td>
                 </tr>
                 @empty
@@ -144,6 +146,54 @@
             </tbody>
         </table>
     </div>
+
+    <div class="md:hidden space-y-3" id="usersMobileList">
+        @forelse($allUsers ?? [] as $user)
+        <div class="user-mobile-card rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+             data-name="{{ strtolower($user->name) }}"
+             data-email="{{ strtolower($user->email) }}"
+             data-family="{{ strtolower($user->family_name ?? 'unassigned') }}">
+            <div class="flex items-start gap-3">
+                <div class="w-11 h-11 shrink-0 bg-blue-700 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">{{ substr($user->name, 0, 2) }}</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-gray-900 truncate">{{ $user->name }}</p>
+                    <p class="text-sm text-gray-500 truncate">{{ $user->email }}</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Active</span>
+                        @if($user->is_assigned_in_year && $user->family_name)
+                            <span class="px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-700">{{ $user->family_name }}</span>
+                            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">{{ ucfirst($user->role ?? 'member') }}</span>
+                        @else
+                            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500">Unassigned in {{ $selectedYear }}</span>
+                        @endif
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2"><i class="fas fa-location-dot mr-1 text-gray-400"></i>{{ $user->residence ?? 'Not specified' }}</p>
+                </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-2">
+                <button onclick="viewUserDetails({{ $user->id }})" class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700">
+                    <i class="fas fa-file-lines mr-1"></i> Details
+                </button>
+                @if($user->is_assigned_in_year && $user->family_name)
+                    <button onclick="removeFromFamily({{ $user->id }}, {{ $user->family_id }}, '{{ $user->name }}')" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                        <i class="fas fa-user-minus mr-1"></i> Remove
+                    </button>
+                @else
+                    <button onclick="openAssignModal({{ $user->id }}, '{{ $user->name }}', '{{ $user->email }}')" class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white">
+                        <i class="fas fa-plus-circle mr-1"></i> Assign
+                    </button>
+                @endif
+            </div>
+        </div>
+        @empty
+        <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-users fa-3x mb-3 text-gray-300"></i>
+            <p>No users found</p>
+        </div>
+        @endforelse
+    </div>
     
     <!-- Pagination -->
     @if(method_exists($allUsers, 'hasPages') && $allUsers->hasPages())
@@ -154,8 +204,8 @@
 </div>
 
 <!-- ==================== ADD USER TO FAMILY MODAL ==================== -->
-<div id="addUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-lg shadow-2xl rounded-2xl bg-white">
+<div id="addUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-6 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Add User to Family</h3>
             <button onclick="closeModal('addUserModal')" class="text-gray-400 hover:text-gray-600 transition">
@@ -240,7 +290,7 @@
                     </select>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('addUserModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
                     Cancel
                 </button>
@@ -253,8 +303,8 @@
 </div>
 
 <!-- ==================== ASSIGN TO FAMILY MODAL ==================== -->
-<div id="assignModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-lg shadow-2xl rounded-2xl bg-white">
+<div id="assignModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-6 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Assign to Family</h3>
             <button onclick="closeModal('assignModal')" class="text-gray-400 hover:text-gray-600 transition">
@@ -308,7 +358,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
                     <button type="button" onclick="closeModal('assignModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
                         Cancel
                     </button>
@@ -322,8 +372,8 @@
 </div>
 
 <!-- ==================== REMOVE FROM FAMILY MODAL ==================== -->
-<div id="removeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-2xl rounded-2xl bg-white">
+<div id="removeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-6 border w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Remove from Family</h3>
             <button onclick="closeModal('removeModal')" class="text-gray-400 hover:text-gray-600 transition">
@@ -343,7 +393,7 @@
                 </div>
             </div>
             <p class="text-sm text-gray-600 mb-4">Are you sure you want to remove this member from the family for year <strong id="removeYearDisplay">{{ request()->get('year', date('Y')) }}</strong>?</p>
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button onclick="closeModal('removeModal')" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition">
                     Cancel
                 </button>
@@ -575,6 +625,7 @@ function confirmRemove(userId, familyId) {
 document.getElementById('searchUsers')?.addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('.user-row');
+    const cards = document.querySelectorAll('.user-mobile-card');
     
     rows.forEach(row => {
         const name = row.dataset.name || '';
@@ -586,6 +637,13 @@ document.getElementById('searchUsers')?.addEventListener('keyup', function() {
         } else {
             row.style.display = 'none';
         }
+    });
+
+    cards.forEach(card => {
+        const name = card.dataset.name || '';
+        const email = card.dataset.email || '';
+        const family = card.dataset.family || '';
+        card.style.display = (name.includes(searchTerm) || email.includes(searchTerm) || family.includes(searchTerm)) ? '' : 'none';
     });
 });
 
@@ -859,6 +917,10 @@ document.addEventListener('DOMContentLoaded', function() {
 .rotate-180 {
     transform: rotate(180deg);
 }
+
+#addUserModal:not(.hidden),
+#assignModal:not(.hidden),
+#removeModal:not(.hidden) {
+    display: flex !important;
+}
 </style>
-
-

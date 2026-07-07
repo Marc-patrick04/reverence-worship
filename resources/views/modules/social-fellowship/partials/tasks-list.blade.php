@@ -1,20 +1,20 @@
-﻿<div class="bg-white rounded-xl shadow-md p-6">
+﻿<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
     
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Family Tasks</h2>
             <p class="text-gray-500 text-sm mt-1">Manage tasks with subtasks and track progress</p>
         </div>
-        <button onclick="openTaskModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition">
+        <button onclick="openTaskModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 transition w-full sm:w-auto">
             <i class="fas fa-plus text-xs"></i> New Task
         </button>
     </div>
     
     <!-- Filter Bar -->
-    <div class="mb-6 flex flex-wrap gap-3 items-end">
+    <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
         <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">Due Date</label>
-            <select id="filterDueDate" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500">
+            <select id="filterDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Tasks</option>
                 <option value="today">Today</option>
                 <option value="tomorrow">Tomorrow</option>
@@ -24,7 +24,7 @@
         </div>
         <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-            <select id="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500">
+            <select id="filterStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
                 <option value="in-progress">In Progress</option>
@@ -33,17 +33,17 @@
         </div>
         <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">Family</label>
-            <select id="filterFamily" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500">
+            <select id="filterFamily" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
                 <option value="all">All Families</option>
                 @foreach($families ?? [] as $family)
                     <option value="{{ $family->id }}">{{ $family->name }}</option>
                 @endforeach
             </select>
         </div>
-        <button onclick="applyFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition">
+        <button onclick="applyFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition w-full">
             <i class="fas fa-filter mr-1"></i> Filter
         </button>
-        <button onclick="resetFilters()" class="text-gray-500 hover:text-gray-700 text-sm px-2">
+        <button onclick="resetFilters()" class="text-gray-500 hover:text-gray-700 text-sm px-2 hidden">
         
         </button>
     </div>
@@ -60,12 +60,12 @@
             $statusClass = $progress === 100 ? 'bg-green-100 text-green-700' : ($progress > 0 ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700');
             $isCompleted = $statusText === 'Completed';
         @endphp
-        <div class="task-item border rounded-lg p-4 hover:shadow-md transition" 
+        <div class="task-item border rounded-xl p-4 hover:shadow-md transition"
              data-task-id="{{ $task->id }}"
              data-family-id="{{ $task->family_id }}"
              data-status="{{ $task->status }}"
              data-due-date="{{ $task->due_date }}">
-            <div class="flex justify-between items-start">
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                         <h4 class="font-semibold text-gray-800">{{ $task->title }}</h4>
@@ -136,14 +136,14 @@
                         <span><i class="fas fa-users"></i> {{ $task->family_name ?? 'No Family' }}</span>
                     </div>
                 </div>
-                <div class="flex gap-2 ml-4">
-                    <button onclick="viewTask({{ $task->id }})" class="text-gray-600 hover:text-gray-900" title="View">
+                <div class="flex gap-2 sm:ml-4 sm:flex-col md:flex-row">
+                    <button onclick="viewTask({{ $task->id }})" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-gray-600 hover:text-gray-900" title="View">
                         <i class="fas fa-file-lines"></i>
                     </button>
-                    <button onclick="editTask({{ $task->id }})" class="text-gray-400 hover:text-purple-600" title="Edit">
+                    <button onclick="editTask({{ $task->id }})" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-gray-500 hover:text-blue-600" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTask({{ $task->id }})" class="text-gray-400 hover:text-red-600" title="Delete">
+                    <button onclick="deleteTask({{ $task->id }})" class="flex-1 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-500 hover:text-red-600" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -162,8 +162,8 @@
 </div>
 
 <!-- Task Modal (Create) -->
-<div id="taskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-xl bg-white">
+<div id="taskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-lg rounded-xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="taskModalTitle" class="text-base font-bold text-gray-800">
                 <i class="fas fa-plus-circle text-blue-600"></i> New Task
@@ -242,7 +242,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4 pt-3 border-t">
                 <button type="button" onclick="closeModal('taskModal')" 
                         class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
                     Cancel
@@ -257,8 +257,8 @@
 </div>
 
 <!-- Edit Task Modal -->
-<div id="editTaskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-xl bg-white">
+<div id="editTaskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-lg rounded-xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-base font-bold text-gray-800">
                 <i class="fas fa-edit text-purple-600"></i> Edit Task
@@ -328,7 +328,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4 pt-3 border-t">
                 <button type="button" onclick="closeModal('editTaskModal')" 
                         class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
                     Cancel
@@ -343,8 +343,8 @@
 </div>
 
 <!-- View Task Modal -->
-<div id="viewTaskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-xl bg-white">
+<div id="viewTaskModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-lg rounded-xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="viewTaskTitle" class="text-base font-bold text-gray-800">Task Details</h3>
             <button onclick="closeModal('viewTaskModal')" class="text-gray-400 hover:text-gray-600">
@@ -821,7 +821,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 .modal { display: none; }
-.modal:not(.hidden) { display: block !important; }
+.modal:not(.hidden) { display: flex !important; }
 
 .subtask-item input[type="checkbox"] {
     width: 16px;
@@ -833,5 +833,3 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: all 0.2s ease;
 }
 </style>
-
-

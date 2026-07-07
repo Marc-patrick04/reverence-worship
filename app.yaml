@@ -1,0 +1,33 @@
+kind: wasmer.io/App.v0
+owner: your-wasmer-username
+name: reverence-worship
+package: .
+
+debug: false
+
+env:
+  APP_NAME: "Reverence Worship"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_LOCALE: "en"
+  APP_FALLBACK_LOCALE: "en"
+  APP_FAKER_LOCALE: "en_US"
+  LOG_CHANNEL: "stderr"
+  LOG_LEVEL: "warning"
+  DB_CONNECTION: "pgsql"
+  DB_PORT: "5432"
+  DB_SSLMODE: "require"
+  SESSION_DRIVER: "database"
+  CACHE_STORE: "database"
+  QUEUE_CONNECTION: "database"
+  FILESYSTEM_DISK: "public"
+  MAIL_MAILER: "log"
+  BCRYPT_ROUNDS: "12"
+
+redirect:
+  force_https: true
+
+capabilities:
+  instaboot:
+    requests:
+      - path: /

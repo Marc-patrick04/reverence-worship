@@ -1,11 +1,11 @@
 <div>
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
+        <h2 class="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
             <i class="fas fa-child text-blue-600"></i>
             My Children ({{ count($children) }})
         </h2>
         @if(isset($familyName) && $familyName)
-        <span class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
+        <span class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full w-fit">
             <i class="fas fa-users mr-1"></i> {{ $familyName }}
         </span>
         @endif
@@ -22,7 +22,7 @@
     </div>
 
     <!-- Children List -->
-    <div class="overflow-x-auto">
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200" id="childrenTable">
             <thead class="bg-gray-50">
                 <tr>
@@ -53,6 +53,35 @@
             </tbody>
         </table>
     </div>
+
+    <div class="md:hidden space-y-3" id="childrenMobileList">
+        @foreach($children as $child)
+        <div class="child-mobile-card bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    {{ strtoupper(substr($child->name, 0, 2)) }}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-gray-900 break-words">{{ $child->name }}</p>
+                    <div class="mt-3 space-y-2 text-sm text-gray-600">
+                        <p class="flex items-start gap-2">
+                            <i class="fas fa-envelope text-gray-400 mt-1 w-4"></i>
+                            <span class="break-all">{{ $child->email ?? 'N/A' }}</span>
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <i class="fas fa-phone text-gray-400 mt-1 w-4"></i>
+                            <span>{{ $child->phone ?? 'N/A' }}</span>
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <i class="fas fa-location-dot text-gray-400 mt-1 w-4"></i>
+                            <span>{{ $child->location ?? 'N/A' }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
     @else
     <div class="text-center py-12">
         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -69,10 +98,16 @@
 document.getElementById('searchChildren')?.addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('#childrenTableBody .child-row');
+    const cards = document.querySelectorAll('#childrenMobileList .child-mobile-card');
     
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(searchTerm) ? '' : 'none';
     });
 });
 </script>

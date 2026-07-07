@@ -68,7 +68,7 @@ class UserController extends Controller
     public function show($id)
     {
         $user = User::with('roles')->findOrFail($id);
-        return view('users.show', compact('user'));
+        return view('user.show', compact('user'));
     }
     
     // Show create user form

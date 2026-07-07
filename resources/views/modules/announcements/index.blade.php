@@ -4,12 +4,12 @@
 @section('page-title', 'Announcement Management')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
     
  
     <!-- Announcements -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="p-6">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="p-3 sm:p-6">
             <div id="announcements-tab">
                 @include('modules.announcements.partials.announcements-tab')
             </div>
@@ -18,6 +18,24 @@
 </div>
 
 @include('modules.announcements.partials.create-modal')
+@include('modules.announcements.partials.edit-modal')
+
+<style>
+    #createAnnouncementModal:not(.hidden),
+    #editAnnouncementModal:not(.hidden) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+        #createAnnouncementModal:not(.hidden),
+        #editAnnouncementModal:not(.hidden) {
+            padding: 1.5rem;
+        }
+    }
+</style>
 
 <script>
 // Global functions that need to be available everywhere

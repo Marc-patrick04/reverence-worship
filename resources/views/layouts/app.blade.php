@@ -359,6 +359,44 @@
 
         /* Mobile Styles */
         @media (max-width: 768px) {
+            html {
+                font-size: 15px;
+                zoom: 0.93;
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
+
+            body {
+                font-size: 1rem;
+                line-height: 1.55;
+            }
+
+            .main-content {
+                font-size: 1rem;
+            }
+
+            .main-content .text-xs {
+                font-size: 0.76rem !important;
+                line-height: 1.2rem !important;
+            }
+
+            .main-content .text-sm {
+                font-size: 0.86rem !important;
+                line-height: 1.3rem !important;
+            }
+
+            .main-content .text-base {
+                font-size: 0.94rem !important;
+                line-height: 1.4rem !important;
+            }
+
+            .main-content input,
+            .main-content select,
+            .main-content textarea,
+            .main-content button {
+                font-size: 0.92rem;
+            }
+
             .sidebar {
                 transform: translateX(-100%);
                 width: 280px;

@@ -1,18 +1,18 @@
 ﻿<div>
     <!-- Email Inbox Header -->
-    <div class="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+    <div class="bg-white border-b px-3 sm:px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-3 min-w-0">
             <i class="fas fa-paper-plane text-blue-600 text-xl"></i>
-            <h3 class="text-xl font-semibold text-gray-800">Sent Messages</h3>
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-800">Sent Messages</h3>
             <span class="text-sm text-gray-500" id="messageCount">(0 messages)</span>
         </div>
-        <button onclick="window.openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm transition">
+        <button onclick="window.openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 shadow-sm transition w-full sm:w-auto">
             <i class="fas fa-plus"></i> Compose
         </button>
     </div>
     
     <!-- Email Toolbar -->
-    <div class="bg-white border-b px-4 py-2 flex items-center justify-between">
+    <div class="bg-white border-b px-3 sm:px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-center gap-3">
             <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="rounded border-gray-300">
             <button onclick="refreshMessages()" class="text-gray-500 hover:text-gray-700 transition" title="Refresh">
@@ -23,13 +23,13 @@
             </button>
             <span class="text-xs text-gray-400" id="selectedCount">0 selected</span>
         </div>
-        <div class="flex items-center gap-3">
-            <div class="relative">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            <div class="relative w-full sm:flex-1 lg:w-auto">
                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input type="text" id="searchInput" placeholder="Search messages..." 
-                       class="pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64">
+                       class="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64">
             </div>
-            <button onclick="window.applyFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm transition">
+            <button onclick="window.applyFilters()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition w-full sm:w-auto">
                 <i class="fas fa-search"></i>
             </button>
         </div>
@@ -52,6 +52,12 @@
 .email-actions {
     opacity: 0;
     transition: opacity 0.15s ease;
+}
+
+@media (max-width: 640px) {
+    .email-actions {
+        opacity: 1;
+    }
 }
 
 .group:hover .group-hover\:opacity-100 {
@@ -300,61 +306,59 @@ window.renderAnnouncementsList = function(announcements, recipients) {
         
         return `
             <div class="email-row hover:bg-gray-50 transition cursor-pointer group" onclick="window.viewMessage(${announcement.id})">
-                <div class="flex items-center gap-4 py-3 px-4">
-                    <div class="w-8 text-center">
+                <div class="flex items-start gap-3 py-3 px-3 sm:px-4 sm:items-center">
+                    <div class="pt-1 sm:pt-0 sm:w-8 text-center flex-shrink-0">
                         <input type="checkbox" class="message-checkbox rounded border-gray-300" 
-                               data-id="${announcement.id}" onchange="updateSelectedCount()">
+                               data-id="${announcement.id}" onclick="event.stopPropagation()" onchange="updateSelectedCount()">
                     </div>
-                    
-                    <div class="w-8 text-center">
+
+                    <div class="pt-1 sm:pt-0 w-6 sm:w-8 text-center flex-shrink-0">
                         <i class="fas ${icon} ${iconColor}"></i>
                     </div>
-                    
-                    <div class="w-48 truncate text-sm font-medium text-gray-800" title="${window.escapeHtml(recipientDisplay)}">
-                        ${isDraft ? '<span class="text-gray-400">[Draft]</span> ' : ''}
-                        ${announcement.target_type === 'all' ? 'To: All Users' : 
-                          announcement.target_type === 'roles' ? `To: ${window.escapeHtml(recipientDisplay)}` : 
-                          `To: ${window.escapeHtml(recipientDisplay)}`}
-                    </div>
-                    
-                    <div class="flex-1 min-w-0">
-                        <span class="font-medium text-gray-900 ${isDraft ? 'text-gray-400' : ''}">
-                            ${window.escapeHtml(announcement.title)}
-                        </span>
-                        <span class="text-gray-500 ml-2">
-                            - ${window.escapeHtml(previewText)}
-                        </span>
-                    </div>
-                    
-                    <div class="flex-shrink-0">
-                        ${isScheduled ? `
-                            <span class="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
-                                Scheduled
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-4">
+                            <div class="truncate text-xs sm:text-sm font-medium text-gray-700 lg:w-48 lg:flex-shrink-0" title="${window.escapeHtml(recipientDisplay)}">
+                                ${isDraft ? '<span class="text-gray-400">[Draft]</span> ' : ''}
+                                ${announcement.target_type === 'all' ? 'To: All Users' :
+                                  announcement.target_type === 'roles' ? `To: ${window.escapeHtml(recipientDisplay)}` :
+                                  `To: ${window.escapeHtml(recipientDisplay)}`}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate font-medium text-gray-900 ${isDraft ? 'text-gray-400' : ''}">
+                                    ${window.escapeHtml(announcement.title)}
+                                </div>
+                                <div class="line-clamp-2 text-sm text-gray-500 sm:line-clamp-1">
+                                    ${window.escapeHtml(previewText)}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            ${isScheduled ? `
+                                <span class="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+                                    Scheduled
+                                </span>
+                            ` : isDraft ? `
+                                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    Draft
+                                </span>
+                            ` : !emailSent && announcement.status === 'active' ? `
+                                <span class="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+                                    Sending...
+                                </span>
+                            ` : ''}
+                            <span class="text-xs text-gray-500">${timeStr}</span>
+                            <span class="ml-auto flex items-center gap-1 sm:ml-0">
+                                <button onclick="event.stopPropagation(); window.resendAnnouncement(${announcement.id})"
+                                        class="rounded-lg border border-gray-100 bg-white px-2 py-1 text-gray-500 hover:text-green-600 transition" title="Resend">
+                                    <i class="fas fa-paper-plane text-sm"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); window.deleteAnnouncement(${announcement.id})"
+                                        class="rounded-lg border border-red-100 bg-red-50 px-2 py-1 text-red-500 hover:text-red-600 transition" title="Delete">
+                                    <i class="fas fa-trash-alt text-sm"></i>
+                                </button>
                             </span>
-                        ` : isDraft ? `
-                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                Draft
-                            </span>
-                        ` : !emailSent && announcement.status === 'active' ? `
-                            <span class="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
-                                Sending...
-                            </span>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="w-28 text-right text-xs text-gray-500 flex-shrink-0">
-                        ${timeStr}
-                    </div>
-                    
-                    <div class="email-actions flex items-center gap-1 flex-shrink-0 ml-2">
-                        <button onclick="event.stopPropagation(); window.resendAnnouncement(${announcement.id})" 
-                                class="p-1 text-gray-400 hover:text-green-600 rounded transition" title="Resend">
-                            <i class="fas fa-paper-plane text-sm"></i>
-                        </button>
-                        <button onclick="event.stopPropagation(); window.deleteAnnouncement(${announcement.id})" 
-                                class="p-1 text-gray-400 hover:text-red-600 rounded transition" title="Delete">
-                            <i class="fas fa-trash-alt text-sm"></i>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -539,9 +543,9 @@ window.openViewMessageModal = function(id) {
                             recipientListHtml = `
                                 <div class="space-y-1 max-h-40 overflow-y-auto">
                                     ${recipients.map(r => `
-                                        <div class="flex items-center justify-between py-1 border-b last:border-0">
+                                        <div class="flex flex-col gap-0.5 py-2 border-b last:border-0 sm:flex-row sm:items-center sm:justify-between">
                                             <span class="text-sm font-medium">${window.escapeHtml(r.name)}</span>
-                                            <span class="text-xs text-gray-500">${window.escapeHtml(r.email)}</span>
+                                            <span class="break-all text-xs text-gray-500 sm:break-normal">${window.escapeHtml(r.email)}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -553,17 +557,17 @@ window.openViewMessageModal = function(id) {
                     }
                     
                     const modalHtml = `
-                        <div id="viewMessageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                            <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-xl rounded-lg bg-white">
-                                <div class="flex justify-between items-center pb-3 border-b">
-                                    <h3 class="text-lg font-semibold text-gray-900">${window.escapeHtml(a.title)}</h3>
+                        <div id="viewMessageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-6">
+                            <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-xl rounded-xl bg-white">
+                                <div class="flex justify-between items-start gap-3 pb-3 border-b">
+                                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 leading-snug">${window.escapeHtml(a.title)}</h3>
                                     <button onclick="closeViewMessageModal()" class="text-gray-400 hover:text-gray-600">
                                         <i class="fas fa-times text-xl"></i>
                                     </button>
                                 </div>
-                                <div class="mt-4 space-y-4 max-h-96 overflow-y-auto">
+                                <div class="mt-4 space-y-4">
                                     <div class="bg-gray-50 rounded-lg p-3">
-                                        <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                             <div><span class="font-medium">From:</span> ${window.escapeHtml(a.created_by_name || 'System')}</div>
                                             <div><span class="font-medium">Status:</span> ${a.status}</div>
                                             <div><span class="font-medium">Sent:</span> ${window.formatDateTime(a.published_at || a.created_at)}</div>
@@ -589,9 +593,9 @@ window.openViewMessageModal = function(id) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="flex justify-end gap-3 mt-4 pt-3 border-t">
-                                    <button onclick="closeViewMessageModal()" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Close</button>
-                                    <button onclick="window.resendAnnouncement(${a.id}); closeViewMessageModal();" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pt-3 border-t">
+                                    <button onclick="closeViewMessageModal()" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 w-full sm:w-auto">Close</button>
+                                    <button onclick="window.resendAnnouncement(${a.id}); closeViewMessageModal();" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto">
                                         <i class="fas fa-paper-plane mr-1"></i> Resend
                                     </button>
                                 </div>
@@ -624,7 +628,7 @@ window.showEmptyState = function() {
             </div>
             <h4 class="text-lg font-medium text-gray-700 mb-2">No messages yet</h4>
             <p class="text-gray-500 text-sm mb-4">Create your first announcement to reach your audience</p>
-            <button onclick="window.openCreateModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
+            <button onclick="window.openCreateModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition w-full sm:w-auto">
                 <i class="fas fa-plus"></i> Compose Message
             </button>
         </div>
@@ -715,4 +719,3 @@ window.refreshAnnouncementsList = function() {
     window.loadAnnouncements();
 };
 </script>
-

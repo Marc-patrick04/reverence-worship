@@ -1,7 +1,7 @@
 ﻿<div id="createAnnouncementModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-0 border w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+    <div class="relative mx-auto p-0 border w-full max-w-3xl max-h-[92vh] overflow-hidden shadow-2xl rounded-xl bg-white">
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-4 border-b bg-gray-50 rounded-t-xl">
+        <div class="flex justify-between items-center px-4 sm:px-6 py-4 border-b bg-gray-50 rounded-t-xl">
             <div class="flex items-center gap-3">
                 <i class="fas fa-pen text-blue-600 text-lg"></i>
                 <h3 class="text-lg font-semibold text-gray-800">New Message</h3>
@@ -11,29 +11,29 @@
             </button>
         </div>
         
-        <form id="createAnnouncementForm" onsubmit="submitCreateAnnouncement(event)" class="p-6">
+        <form id="createAnnouncementForm" onsubmit="submitCreateAnnouncement(event)" class="p-4 sm:p-6 max-h-[calc(92vh-72px)] overflow-y-auto">
             @csrf
             
             <!-- To Field -->
             <div class="mb-2">
-                <div class="flex items-start border-b border-gray-200 pb-2">
-                    <span class="text-sm font-medium text-gray-600 w-12 pt-1.5">To</span>
-                    <div class="flex-1">
+                <div class="flex flex-col gap-1 border-b border-gray-200 pb-2 sm:flex-row sm:items-start sm:gap-0">
+                    <span class="text-sm font-medium text-gray-600 w-full sm:w-12 sm:pt-1.5">To</span>
+                    <div class="flex-1 min-w-0">
                         <div class="flex flex-wrap items-center gap-1" id="recipientChips">
-                            <select id="recipientSelect" class="border-0 bg-transparent text-sm focus:ring-0 py-1.5 px-1 text-gray-800 font-medium">
+                            <select id="recipientSelect" class="w-full border-0 bg-transparent text-sm focus:ring-0 py-1.5 px-1 text-gray-800 font-medium">
                                 <option value="all">All Users</option>
                                 <option value="roles">Select Roles...</option>
                                 <option value="users">Select Users...</option>
                             </select>
                         </div>
                     </div>
-                    <span class="text-xs text-gray-400" id="recipientCount"></span>
+                    <span class="text-xs text-gray-400 sm:pt-1.5" id="recipientCount"></span>
                 </div>
             </div>
             
             <!-- Role Selection Chips -->
             <div id="roleSelector" class="hidden mb-3">
-                <div class="ml-12">
+                <div class="ml-0 sm:ml-12">
                     <div class="flex flex-wrap gap-1.5 mb-2" id="selectedRolesBadges"></div>
                     <select id="roleDropdown" class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500">
                         <option value="">+ Add roles...</option>
@@ -43,7 +43,7 @@
             
             <!-- User Selection -->
             <div id="userSelector" class="hidden mb-3">
-                <div class="ml-12">
+                <div class="ml-0 sm:ml-12">
                     <div class="flex flex-wrap gap-1.5 mb-2" id="selectedUsersBadges"></div>
                     <div class="relative">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
@@ -58,8 +58,8 @@
             
             <!-- Subject -->
             <div class="mb-2">
-                <div class="flex items-start border-b border-gray-200 pb-2">
-                    <span class="text-sm font-medium text-gray-600 w-12 pt-1.5">Subject</span>
+                <div class="flex flex-col gap-1 border-b border-gray-200 pb-2 sm:flex-row sm:items-start sm:gap-0">
+                    <span class="text-sm font-medium text-gray-600 w-full sm:w-12 sm:pt-1.5">Subject</span>
                     <input type="text" id="announcementTitle" name="title" required 
                            placeholder="Enter subject..." 
                            class="flex-1 border-0 focus:ring-0 text-sm py-1.5 px-1 text-gray-800 placeholder-gray-400">
@@ -69,7 +69,7 @@
             <!-- Message Body -->
             <div class="mb-3 mt-1">
                 <div class="flex">
-                    <span class="text-sm font-medium text-gray-600 w-12 pt-1"></span>
+                    <span class="hidden sm:block text-sm font-medium text-gray-600 w-12 pt-1"></span>
                     <div class="flex-1">
                         <textarea id="announcementContent" name="content" rows="8" required 
                                   placeholder="Write your message here..." 
@@ -79,16 +79,16 @@
             </div>
             
             <!-- Editor Toolbar (Simple) -->
-            <div class="border-t border-gray-200 pt-3 flex items-center justify-between">
+            <div class="border-t border-gray-200 pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p class="text-xs text-gray-500">
                     <i class="fas fa-lock mr-1"></i> One-way announcement â€” replies are not monitored.
                 </p>
                 
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="closeCreateModal()" class="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-2">
+                    <button type="button" onclick="closeCreateModal()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition w-full sm:w-auto">
                         Discard
                     </button>
-                    <button type="submit" class="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg flex items-center gap-2 transition shadow-sm">
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg flex items-center justify-center gap-2 transition shadow-sm w-full sm:w-auto">
                         <i class="fas fa-paper-plane text-xs"></i> Send
                     </button>
                 </div>
@@ -547,4 +547,3 @@ window.removeUser = removeUser;
 window.toggleUserSelection = toggleUserSelection;
 window.saveAsDraft = saveAsDraft;
 </script>
-

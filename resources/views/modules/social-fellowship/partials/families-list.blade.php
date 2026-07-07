@@ -1,6 +1,6 @@
-﻿<div class="bg-white rounded-xl shadow-md p-6">
+﻿<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
     
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Families</h2>
            
@@ -8,13 +8,13 @@
                 <p class="text-xs text-gray-400 mt-0.5">Showing families for year: <span class="font-medium">{{ request()->get('year') }}</span></p>
             @endif
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
             <!-- Year Selector -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
                 <label class="text-sm text-gray-600">Year:</label>
-                <div class="relative">
+                <div class="relative flex-1 sm:flex-none">
                     <div onclick="toggleFamilyYearPicker()" 
-                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-400 transition-all min-w-[120px]">
+                        class="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-400 transition-all min-w-[120px] w-full">
                         <span id="familyYearDisplay" class="text-sm font-semibold text-gray-800">{{ request()->get('year', date('Y')) }}</span>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 ml-2" id="familyYearArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -45,7 +45,7 @@
                     <i class="fas fa-history mr-1"></i> <span id="familyYearStatus">Current</span>
                 </span>
             </div>
-            <button onclick="openFamilyModal()" class="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+            <button onclick="openFamilyModal()" class="bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto">
                 <i class="fas fa-plus"></i> Add Family
             </button>
         </div>
@@ -64,7 +64,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="familiesGrid">
         @forelse($families as $family)
         <div class="border rounded-xl p-4 hover:shadow-lg transition-all duration-300 family-card" data-name="{{ strtolower($family->name) }}" data-family-id="{{ $family->id }}">
-            <div class="flex justify-between items-start mb-2">
+            <div class="flex justify-between items-start gap-3 mb-2">
                 <h3 class="font-bold text-gray-800 text-lg">{{ $family->name }}</h3>
                 <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ $family->members_count ?? 0 }} members</span>
             </div>
@@ -76,18 +76,18 @@
             @if($family->description)
             <p class="text-sm text-gray-600 mt-2 line-clamp-2">{{ $family->description }}</p>
             @endif
-            <div class="flex justify-between items-center mt-3 pt-3 border-t">
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mt-3 pt-3 border-t">
                 <span class="text-xs text-gray-400">
                     <i class="fas fa-calendar mr-1"></i> {{ \Carbon\Carbon::parse($family->created_at)->format('d M Y') }}
                 </span>
-                <div class="flex gap-2">
-                    <button onclick="viewFamilyMembers({{ $family->id }})" class="text-gray-700 hover:text-gray-900 text-sm font-medium">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="viewFamilyMembers({{ $family->id }})" class="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 hover:bg-blue-100 text-sm font-medium">
                         View Members <i class="fas fa-arrow-right ml-1"></i>
                     </button>
-                    <button onclick="openChangeParentModal({{ $family->id }}, '{{ $family->name }}', {{ $family->parent_id ?? 'null' }})" class="text-blue-500 hover:text-blue-700 text-sm" title="Change Parent">
+                    <button onclick="openChangeParentModal({{ $family->id }}, '{{ $family->name }}', {{ $family->parent_id ?? 'null' }})" class="rounded-lg border border-gray-200 px-3 py-2 text-blue-600 hover:text-blue-700 text-sm" title="Change Parent">
                         <i class="fas fa-user-edit"></i>
                     </button>
-                    <button onclick="deleteFamily({{ $family->id }})" class="text-red-500 hover:text-red-700 text-sm" title="Delete Family">
+                    <button onclick="deleteFamily({{ $family->id }})" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-600 hover:text-red-700 text-sm" title="Delete Family">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -106,8 +106,8 @@
 </div>
 
 <!-- Add Family Modal -->
-<div id="familyModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-lg bg-white">
+<div id="familyModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800">Add New Family</h3>
             <button onclick="closeModal('familyModal')" class="text-gray-400 hover:text-gray-600">
@@ -190,7 +190,7 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gray-500 focus:border-gray-500">
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('familyModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" id="submitFamilyBtn" class="px-4 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-lg text-sm transition">Save Family</button>
             </div>
@@ -199,8 +199,8 @@
 </div>
 
 <!-- Change Parent Modal -->
-<div id="changeParentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-lg bg-white">
+<div id="changeParentModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800">Change Family Parent</h3>
             <button onclick="closeModal('changeParentModal')" class="text-gray-400 hover:text-gray-600">
@@ -269,7 +269,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('changeParentModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">Update Parent</button>
             </div>
@@ -278,8 +278,8 @@
 </div>
 
 <!-- View Members Modal -->
-<div id="viewMembersModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-lg rounded-xl bg-white">
+<div id="viewMembersModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-6 border w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-lg rounded-xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <div>
                 <h3 id="modalFamilyName" class="text-xl font-bold text-gray-800">Family Name</h3>
@@ -292,7 +292,7 @@
         
         <!-- Add Member Button -->
         <div class="flex justify-end mt-4">
-            <button onclick="openAddMemberModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
+            <button onclick="openAddMemberModal()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto">
                 <i class="fas fa-user-plus"></i> Add Member
             </button>
         </div>
@@ -314,8 +314,8 @@
 </div>
 
 <!-- Add Member Modal -->
-<div id="addMemberModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+<div id="addMemberModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-md max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800">Add Member to Family</h3>
             <button onclick="closeModal('addMemberModal')" class="text-gray-400 hover:text-gray-600">
@@ -345,7 +345,7 @@
                     </select>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('addMemberModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm transition">Add Member</button>
             </div>
@@ -554,6 +554,42 @@ function viewFamilyMembers(familyId) {
             
             if (data.members.length > 0) {
                 let membersHtml = `
+                    <div class="md:hidden space-y-3">
+                `;
+
+                for (let i = 0; i < data.members.length; i++) {
+                    const member = data.members[i];
+                    const memberFamilyId = member.family_id || currentFamilyId;
+                    const memberName = member.name || 'Unknown';
+                    const memberEmail = member.email || '';
+                    const memberPhone = member.phone || 'N/A';
+                    const memberLocation = member.location || 'Not specified';
+                    const memberRole = member.role || 'member';
+                    const memberRoleLabel = memberRole === 'parent' ? 'Parent' : (memberRole === 'leader' ? 'Leader' : memberRole.charAt(0).toUpperCase() + memberRole.slice(1));
+
+                    membersHtml += `
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate">${escapeHtml(memberName)}</p>
+                                    ${memberEmail ? `<p class="text-sm text-gray-500 truncate">${escapeHtml(memberEmail)}</p>` : ''}
+                                </div>
+                                <span class="shrink-0 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">${memberRoleLabel}</span>
+                            </div>
+                            <div class="mt-3 grid gap-2 text-sm text-gray-600">
+                                <p><i class="fas fa-phone mr-2 text-gray-400"></i>${escapeHtml(memberPhone)}</p>
+                                <p><i class="fas fa-location-dot mr-2 text-gray-400"></i>${escapeHtml(memberLocation)}</p>
+                            </div>
+                            <button onclick="removeMember(${member.user_id}, ${memberFamilyId})" class="mt-4 w-full rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                                <i class="fas fa-trash mr-1"></i> Remove
+                            </button>
+                        </div>
+                    `;
+                }
+
+                membersHtml += `
+                    </div>
+                    <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -609,6 +645,7 @@ function viewFamilyMembers(familyId) {
                 membersHtml += `
                         </tbody>
                     </table>
+                    </div>
                 `;
                 document.getElementById('membersList').innerHTML = membersHtml;
             } else {
@@ -1018,5 +1055,8 @@ document.addEventListener('DOMContentLoaded', function() {
 .rotate-180 {
     transform: rotate(180deg);
 }
-</style>
 
+.modal:not(.hidden) {
+    display: flex !important;
+}
+</style>

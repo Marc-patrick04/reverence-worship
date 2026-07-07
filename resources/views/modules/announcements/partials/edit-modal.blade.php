@@ -1,5 +1,5 @@
 ﻿<div id="editAnnouncementModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white">
+    <div class="relative mx-auto p-4 sm:p-6 border w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Edit Announcement</h3>
             <button onclick="window.closeModal('editAnnouncementModal')" class="text-gray-400 hover:text-gray-600">
@@ -9,7 +9,7 @@
         <form id="editAnnouncementForm" onsubmit="window.submitEditAnnouncement(event)">
             @csrf
             <input type="hidden" id="editAnnouncementId" name="id">
-            <div class="mt-4 space-y-4 max-h-96 overflow-y-auto">
+            <div class="mt-4 space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
                     <input type="text" id="editAnnouncementTitle" name="title" required 
@@ -20,7 +20,7 @@
                     <textarea id="editAnnouncementContent" name="content" rows="5" required 
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
                         <select id="editAnnouncementType" name="type" 
@@ -43,7 +43,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
                         <input type="date" id="editAnnouncementScheduledDate" name="scheduled_date" 
@@ -79,9 +79,9 @@
                     </select>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="window.closeModal('editAnnouncementModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Update Announcement</button>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" onclick="window.closeModal('editAnnouncementModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 w-full sm:w-auto">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 w-full sm:w-auto">Update Announcement</button>
             </div>
         </form>
     </div>

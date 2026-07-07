@@ -1,14 +1,16 @@
 <div id="sessionDetailsModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-7xl shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
+    <div class="relative mx-auto flex w-full max-w-6xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl">
+        <div class="sticky top-0 z-10 flex justify-between items-start gap-3 border-b bg-white px-4 py-3 sm:px-5">
             <div>
                 <h3 id="session_modal_title" class="text-lg font-bold text-gray-800">Session Details</h3>
                 <p id="session_info" class="text-sm text-gray-500 mt-1"></p>
             </div>
-            <button onclick="closeModal('sessionDetailsModal')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="closeModal('sessionDetailsModal')" class="rounded-full bg-gray-100 px-3 py-2 text-gray-500 hover:text-gray-700">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
+
+        <div class="overflow-y-auto px-4 py-4 sm:px-5">
         
         <div id="session_completed_warning" class="hidden mb-4 p-3 bg-yellow-100 text-yellow-700 rounded-lg">
             <i class="fas fa-exclamation-triangle mr-2"></i> 
@@ -16,14 +18,14 @@
         </div>
         
         <!-- Stats Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-4">
-            <div class="bg-blue-50 rounded-lg p-4">
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-blue-50 rounded-xl p-3 sm:p-4">
                 <p class="text-sm text-gray-600">Total Users</p>
-                <p id="total_users" class="text-2xl font-bold text-blue-600">0</p>
+                <p id="total_users" class="text-xl sm:text-2xl font-bold text-blue-600">0</p>
             </div>
-            <div class="bg-green-50 rounded-lg p-4">
-                <p class="text-sm text-gray-600">Approved Permissions for this session date</p>
-                <p id="approved_permissions" class="text-2xl font-bold text-green-600">0</p>
+            <div class="bg-green-50 rounded-xl p-3 sm:p-4">
+                <p class="text-sm text-gray-600">Approved Permissions</p>
+                <p id="approved_permissions" class="text-xl sm:text-2xl font-bold text-green-600">0</p>
             </div>
         </div>
         
@@ -37,15 +39,15 @@
                        class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
             <button type="button" onclick="exportSessionAttendance()"
-                    class="inline-flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition shadow-sm">
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition shadow-sm">
                 <i class="fas fa-file-export"></i>
                 Export
             </button>
         </div>
 
         <!-- Members Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full border">
+        <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
+            <table class="w-full">
                 <thead class="bg-gray-50 border-b">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USER</th>
@@ -67,9 +69,11 @@
                 </tbody>
             </table>
         </div>
+        <div id="session_members_cards" class="md:hidden max-h-[52vh] overflow-auto rounded-xl border border-gray-100 bg-white"></div>
+        </div>
         
         <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div class="sticky bottom-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t bg-white px-4 py-3 sm:px-5">
             <button type="button" onclick="closeModal('sessionDetailsModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">
                 Close
             </button>
@@ -125,6 +129,15 @@
             </td>
         </tr>
     `;
+    const mobileMembers = document.getElementById('session_members_cards');
+    if (mobileMembers) {
+        mobileMembers.innerHTML = `
+            <div class="p-8 text-center text-gray-500">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading attendance data...</p>
+            </div>
+        `;
+    }
     
     // Use the original encoded type for the API call
     fetch(`/discipline/attendance/session/${date}/${sessionType}`, {
@@ -158,6 +171,9 @@
                     </td>
                 </tr>
             `;
+            if (mobileMembers) {
+                mobileMembers.innerHTML = `<div class="p-8 text-center text-red-500">Error: ${data.message || 'Failed to load session data'}</div>`;
+            }
         }
     })
     .catch(error => {
@@ -169,15 +185,22 @@
                 </td>
             </tr>
         `;
+        if (mobileMembers) {
+            mobileMembers.innerHTML = '<div class="p-8 text-center text-red-500">Error loading session details. Please try again.</div>';
+        }
     });
 }
     
     function renderMembersTable(members, isCompleted) {
         const tbody = document.getElementById('session_members_body');
+        const cards = document.getElementById('session_members_cards');
         if (!tbody) return;
         
         if (!members || members.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-500">No members found</td></tr>';
+            if (cards) {
+            cards.innerHTML = '<div class="p-8 text-center text-gray-500">No members found</div>';
+            }
             return;
         }
         
@@ -224,6 +247,61 @@
                 <td colspan="7" class="text-center py-8 text-sm text-gray-500">No users match your search.</td>
             </tr>
         `;
+
+        if (cards) {
+            const mobileRows = members.map(member => {
+                const permissionText = member.has_permission ? (member.permission_reason || 'Approved') : 'No approved permission';
+                const searchableName = String(member.user_name || '').toLowerCase();
+                const values = {
+                    present: member.permission?.status === 'approved' ? false : (member.has_attendance ? member.present : true),
+                    ontime: member.has_attendance ? member.on_time : true,
+                    communicated: member.has_attendance ? member.communicated : true,
+                    discipline: member.has_attendance ? member.discipline : true
+                };
+
+                return `
+                    <tr class="session-member-card border-b border-gray-100 last:border-b-0" data-user-id="${member.user_id}" data-user-name="${escapeHtml(searchableName)}">
+                        <td class="min-w-[118px] max-w-[140px] px-2 py-2 align-middle">
+                            <div class="truncate text-[13px] font-semibold text-gray-900">${escapeHtml(member.user_name)}</div>
+                            ${member.has_permission ? `<div class="truncate text-[10px] text-yellow-700" title="${escapeHtml(permissionText)}">Permission</div>` : ''}
+                        </td>
+                        ${isCompleted ? `
+                            <td class="px-1 py-2 text-center">${renderReadonlyMiniValue(member.present)}</td>
+                            <td class="px-1 py-2 text-center">${renderReadonlyMiniValue(member.on_time)}</td>
+                            <td class="px-1 py-2 text-center">${renderReadonlyMiniValue(member.communicated)}</td>
+                            <td class="px-1 py-2 text-center">${renderReadonlyMiniValue(member.discipline)}</td>
+                        ` : `
+                            <td class="px-1 py-2 text-center">${renderMobileMiniToggle('present', member.user_id, values.present)}</td>
+                            <td class="px-1 py-2 text-center">${renderMobileMiniToggle('ontime', member.user_id, values.ontime)}</td>
+                            <td class="px-1 py-2 text-center">${renderMobileMiniToggle('communicated', member.user_id, values.communicated)}</td>
+                            <td class="px-1 py-2 text-center">${renderMobileMiniToggle('discipline', member.user_id, values.discipline)}</td>
+                        `}
+                        <td class="points-card-${member.user_id} px-2 py-2 text-center text-xs font-bold text-blue-700">${member.total_points}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            cards.innerHTML = `
+                <table class="w-full min-w-[420px] text-xs">
+                    <thead class="sticky top-0 z-10 bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500 shadow-sm">
+                        <tr>
+                            <th class="px-2 py-2 text-left font-semibold">Name</th>
+                            <th class="px-1 py-2 text-center font-semibold" title="Present">Present</th>
+                            <th class="px-1 py-2 text-center font-semibold" title="On time">Time</th>
+                            <th class="px-1 py-2 text-center font-semibold" title="Communicated">Comm.</th>
+                            <th class="px-1 py-2 text-center font-semibold" title="Discipline">Disc.</th>
+                            <th class="px-2 py-2 text-center font-semibold">Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${mobileRows}
+                        <tr id="session_user_search_empty_mobile" class="hidden">
+                            <td colspan="6" class="px-3 py-6 text-center text-sm text-gray-500">No users match your search.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
         
         if (!isCompleted) {
             document.querySelectorAll('#session_members_body .attendance-toggle').forEach(button => {
@@ -237,6 +315,44 @@
         }
 
         applyUserSearch();
+    }
+
+    function renderReadonlyMobileField(label, value) {
+        return `
+            <div class="rounded-lg ${value ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'} p-2">
+                <span class="block text-xs">${label}</span>
+                <strong>${value ? 'Yes' : 'No'}</strong>
+            </div>
+        `;
+    }
+
+    function renderReadonlyMiniValue(value) {
+        return `<span class="inline-flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-bold ${value ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}">${value ? 'Y' : 'N'}</span>`;
+    }
+
+    function renderMobileMiniToggle(field, userId, value) {
+        return `
+            <button type="button"
+                onclick="window.setAttendanceMobileValue(${userId}, '${field}', ${value ? 'false' : 'true'})"
+                data-mobile-field="${field}"
+                data-mobile-user-id="${userId}"
+                data-mobile-value="${value ? 'true' : 'false'}"
+                class="mobile-attendance-toggle inline-flex h-8 w-8 items-center justify-center rounded-md text-[11px] font-bold ${value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}">
+                ${value ? 'Y' : 'N'}
+            </button>
+        `;
+    }
+
+    function renderMobileToggle(label, field, userId, value) {
+        return `
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-2">
+                <span class="text-sm font-medium text-gray-700">${label}</span>
+                <div class="flex rounded-lg border border-gray-200 bg-white p-1">
+                    <button type="button" onclick="window.setAttendanceMobileValue(${userId}, '${field}', true)" data-mobile-field="${field}" data-mobile-user-id="${userId}" data-mobile-value="true" class="mobile-attendance-toggle rounded-md px-3 py-1 text-xs font-semibold ${value ? 'bg-blue-600 text-white' : 'text-gray-500'}">Yes</button>
+                    <button type="button" onclick="window.setAttendanceMobileValue(${userId}, '${field}', false)" data-mobile-field="${field}" data-mobile-user-id="${userId}" data-mobile-value="false" class="mobile-attendance-toggle rounded-md px-3 py-1 text-xs font-semibold ${!value ? 'bg-gray-700 text-white' : 'text-gray-500'}">No</button>
+                </div>
+            </div>
+        `;
     }
 
     function renderYesNoToggle(field, userId, value, disabled = false) {
@@ -263,6 +379,25 @@
             value ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-700 text-white border-gray-700',
             toggle.disabled ? 'opacity-50 cursor-not-allowed' : ''
         ].join(' ');
+
+        syncMobileToggle(row.getAttribute('data-user-id'), field, value);
+    }
+
+    function syncMobileToggle(userId, field, value) {
+        document.querySelectorAll(`[data-mobile-user-id="${userId}"][data-mobile-field="${field}"]`).forEach(button => {
+            button.dataset.mobileValue = value ? 'true' : 'false';
+            button.textContent = value ? 'Y' : 'N';
+            button.setAttribute('onclick', `window.setAttendanceMobileValue(${userId}, '${field}', ${value ? 'false' : 'true'})`);
+            button.classList.remove('bg-blue-600', 'bg-gray-100', 'text-white', 'text-gray-500');
+            button.classList.add(value ? 'bg-blue-600' : 'bg-gray-100', value ? 'text-white' : 'text-gray-500');
+        });
+    }
+
+    function setAttendanceMobileValue(userId, field, value) {
+        const row = document.querySelector(`#session_members_body tr[data-user-id="${userId}"]`);
+        if (!row) return;
+        setToggleValue(row, field, value);
+        window.updateMemberPoints(userId);
     }
 
     function getToggleValue(row, field) {
@@ -273,6 +408,7 @@
         const searchInput = document.getElementById('session_user_search');
         const query = (searchInput?.value || '').trim().toLowerCase();
         const rows = document.querySelectorAll('#session_members_body tr[data-user-name]');
+        const cards = document.querySelectorAll('#session_members_cards .session-member-card');
         let visibleCount = 0;
 
         rows.forEach(row => {
@@ -281,9 +417,19 @@
             if (matches) visibleCount++;
         });
 
+        cards.forEach(card => {
+            const matches = !query || (card.dataset.userName || '').includes(query);
+            card.classList.toggle('hidden', !matches);
+        });
+
         const noResultsRow = document.getElementById('session_user_search_empty');
         if (noResultsRow) {
             noResultsRow.classList.toggle('hidden', visibleCount > 0 || rows.length === 0);
+        }
+
+        const noResultsCard = document.getElementById('session_user_search_empty_mobile');
+        if (noResultsCard) {
+            noResultsCard.classList.toggle('hidden', visibleCount > 0 || rows.length === 0);
         }
     }
     
@@ -304,6 +450,9 @@
         
         const pointsDisplay = document.querySelector(`.points-display-${userId}`);
         if (pointsDisplay) pointsDisplay.textContent = points;
+
+        const mobilePointsDisplay = document.querySelector(`.points-card-${userId}`);
+        if (mobilePointsDisplay) mobilePointsDisplay.textContent = points;
     }
 
     function exportSessionAttendance() {
@@ -508,5 +657,6 @@
     window.updateMemberPoints = updateMemberPoints;
     window.exportSessionAttendance = exportSessionAttendance;
     window.filterSessionUsers = applyUserSearch;
+    window.setAttendanceMobileValue = setAttendanceMobileValue;
 })();
 </script>

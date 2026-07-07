@@ -3,53 +3,57 @@
         <h3 class="text-lg font-bold text-gray-800">Landing Page Content Manager</h3>
     </div>
 
-    <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-5" aria-label="Public Board content">
-        <button type="button" onclick="switchTab('youtube')" id="tabYoutube" class="board-tab px-4 py-2.5 text-sm font-semibold text-black border-b-2 border-black">
-            <i class="fab fa-youtube mr-1.5"></i> Video
-        </button>
-        <button type="button" onclick="switchTab('featured')" id="tabFeatured" class="board-tab px-4 py-2.5 text-sm font-semibold text-gray-500 border-b-2 border-transparent">
-            <i class="fas fa-image mr-1.5"></i> Image
-        </button>
-        <button type="button" onclick="switchTab('events')" id="tabEvents" class="board-tab px-4 py-2.5 text-sm font-semibold text-gray-500 border-b-2 border-transparent">
-            <i class="fas fa-calendar-alt mr-1.5"></i> Events & Updates
-        </button>
-    </nav>
+    <div class="relative z-30 mb-5 rounded-lg border border-gray-200 bg-white overflow-hidden">
+        <nav class="flex overflow-x-auto board-inner-nav border-b border-gray-200" aria-label="Public Board content">
+            <button type="button" onclick="switchTab('youtube')" id="tabYoutube" class="board-tab px-4 py-2.5 text-sm font-semibold text-black border-b-2 border-black">
+                <i class="fab fa-youtube mr-1.5"></i> Video
+            </button>
+            <button type="button" onclick="switchTab('featured')" id="tabFeatured" class="board-tab px-4 py-2.5 text-sm font-semibold text-gray-500 border-b-2 border-transparent">
+                <i class="fas fa-image mr-1.5"></i> Image
+            </button>
+            <button type="button" onclick="switchTab('events')" id="tabEvents" class="board-tab px-4 py-2.5 text-sm font-semibold text-gray-500 border-b-2 border-transparent">
+                <i class="fas fa-calendar-alt mr-1.5"></i> Events & Updates
+            </button>
+        </nav>
+    </div>
     
     <!-- YouTube Videos Tab -->
-    <div id="youtubeTab" class="board-panel border rounded-xl p-4">
-        <div class="flex justify-between items-center mb-3">
+    <div id="youtubeTab" class="board-panel border rounded-xl p-3 sm:p-4">
+        <div class="flex items-start sm:items-center justify-between gap-3 mb-3">
             <h4 class="font-semibold text-gray-700">YouTube Videos</h4>
-            <button onclick="openYouTubeModal()" class="bg-[#365f7d] hover:bg-[#294b64] text-white px-3 py-1 rounded-lg text-xs">
-                <i class="fab fa-youtube mr-1"></i> Add YouTube Video
+            <button onclick="openYouTubeModal()" class="inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold shrink-0">
+                <i class="fab fa-youtube"></i> <span class="hidden sm:inline">Add YouTube Video</span><span class="sm:hidden">Add</span>
             </button>
         </div>
         
         <div id="youtubeList" class="space-y-2 max-h-96 overflow-y-auto">
             @forelse($youtubeVideos ?? [] as $video)
-            <div class="youtube-item border rounded-lg p-3 hover:bg-gray-50 transition cursor-move" data-id="{{ $video->id }}" data-order="{{ $video->sort_order }}">
-                <div class="flex justify-between items-start">
-                    <div class="flex flex-1 gap-3 min-w-0">
-                        <a href="https://www.youtube.com/watch?v={{ urlencode($video->youtube_id) }}" target="_blank" rel="noopener" class="relative w-32 h-20 rounded-lg overflow-hidden bg-gray-900 flex-shrink-0 group" title="Preview on YouTube">
+            <div class="youtube-item border rounded-xl p-3 hover:bg-gray-50 transition cursor-move" data-id="{{ $video->id }}" data-order="{{ $video->sort_order }}">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div class="flex flex-col sm:flex-row flex-1 gap-3 min-w-0">
+                        <a href="https://www.youtube.com/watch?v={{ urlencode($video->youtube_id) }}" target="_blank" rel="noopener" class="relative w-full sm:w-32 h-28 sm:h-20 rounded-lg overflow-hidden bg-gray-900 flex-shrink-0 group" title="Preview on YouTube">
                             <img src="https://i.ytimg.com/vi/{{ urlencode($video->youtube_id) }}/mqdefault.jpg" alt="Preview of {{ $video->title }}" class="w-full h-full object-cover">
                             <span class="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition"><i class="fas fa-play-circle text-white text-2xl"></i></span>
                         </a>
-                        <div class="min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="min-w-0 flex-1">
+                        <div class="flex items-start gap-2">
                             <i class="fas fa-grip-vertical text-gray-300 cursor-move"></i>
-                            <h5 class="font-medium text-gray-800">{{ $video->title }}</h5>
-                            @if($video->is_published)
-                                <span class="text-xs bg-gray-100 text-black px-2 py-0.5 rounded-full">Published</span>
-                            @else
-                                <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Draft</span>
-                            @endif
+                            <div class="min-w-0">
+                                <h5 class="font-medium text-gray-800 break-words">{{ $video->title }}</h5>
+                                @if($video->is_published)
+                                    <span class="inline-block mt-1 text-xs bg-gray-100 text-black px-2 py-0.5 rounded-full">Published</span>
+                                @else
+                                    <span class="inline-block mt-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Draft</span>
+                                @endif
+                            </div>
                         </div>
-                        <div class="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                        <div class="mt-1 text-xs text-gray-500 break-all">
                             <span><i class="fab fa-youtube"></i> YouTube ID: {{ $video->youtube_id }}</span>
                         </div>
                         <a href="https://www.youtube.com/watch?v={{ urlencode($video->youtube_id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 mt-2 text-xs text-black hover:underline"><i class="fas fa-external-link-alt"></i> Open preview</a>
                         </div>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex justify-end gap-3 sm:gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
                         <button onclick="togglePublish({{ $video->id }}, 'youtube')" class="text-black hover:text-gray-600" title="{{ $video->is_published ? 'Hide from landing page' : 'Publish on landing page' }}" aria-label="{{ $video->is_published ? 'Hide video' : 'Publish video' }}">
                             <i class="fas {{ $video->is_published ? 'fa-eye-slash' : 'fa-eye' }}"></i>
                         </button>
@@ -75,26 +79,26 @@
     </div>
     
     <!-- Featured Images Tab -->
-    <div id="featuredTab" class="board-panel hidden border rounded-xl p-4">
-        <div class="flex justify-between items-center mb-3">
+    <div id="featuredTab" class="board-panel hidden border rounded-xl p-3 sm:p-4">
+        <div class="flex items-start sm:items-center justify-between gap-3 mb-3">
             <h4 class="font-semibold text-gray-700">Featured Images</h4>
-            <button onclick="openFeaturedImageModal()" class="bg-[#365f7d] hover:bg-[#294b64] text-white px-3 py-1 rounded-lg text-xs">
-                <i class="fas fa-upload mr-1"></i> Upload Image
+            <button onclick="openFeaturedImageModal()" class="inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold shrink-0">
+                <i class="fas fa-upload"></i> <span>Upload</span>
             </button>
         </div>
         
         <div id="featuredList" class="space-y-2 max-h-96 overflow-y-auto">
             @forelse($featuredImages ?? [] as $image)
-            <div class="featured-item border rounded-lg p-3 hover:bg-gray-50 transition cursor-move" data-id="{{ $image->id }}" data-order="{{ $image->sort_order }}">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1 flex items-center gap-3">
+            <div class="featured-item border rounded-xl p-3 hover:bg-gray-50 transition cursor-move" data-id="{{ $image->id }}" data-order="{{ $image->sort_order }}">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div class="flex-1 flex items-start gap-3 min-w-0">
                         <i class="fas fa-grip-vertical text-gray-300 cursor-move"></i>
                         <div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                             <img src="{{ asset($image->image_path) }}" alt="{{ $image->title }}" class="w-full h-full object-cover">
                         </div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <h5 class="font-medium text-gray-800">{{ $image->title }}</h5>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h5 class="font-medium text-gray-800 break-words">{{ $image->title }}</h5>
                                 @if($image->is_published)
                                     <span class="text-xs bg-gray-100 text-black px-2 py-0.5 rounded-full">Published</span>
                                 @else
@@ -109,7 +113,7 @@
                             @endif
                         </div>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex justify-end gap-3 sm:gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
                         <button onclick="toggleHero({{ $image->id }})" class="text-black hover:text-gray-600" title="{{ ($image->is_hero ?? false) ? 'Remove from hero' : 'Add to hero' }}">
                             <i class="{{ ($image->is_hero ?? false) ? 'fas' : 'far' }} fa-star"></i>
                         </button>
@@ -137,14 +141,14 @@
         </div>
     </div>
 
-    <div id="eventsTab" class="board-panel hidden border rounded-xl p-4">
-        <div class="flex justify-between items-center mb-3">
+    <div id="eventsTab" class="board-panel hidden border rounded-xl p-3 sm:p-4">
+        <div class="flex items-start sm:items-center justify-between gap-3 mb-3">
             <div>
                 <h4 class="font-semibold text-gray-700">Events & Updates</h4>
                 <p class="text-xs text-gray-500">Published items appear on the public landing page.</p>
             </div>
-            <button onclick="openEventModal()" class="bg-[#365f7d] hover:bg-[#294b64] text-white px-3 py-1.5 rounded-lg text-xs">
-                <i class="fas fa-plus mr-1"></i> Add Item
+            <button onclick="openEventModal()" class="inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold shrink-0">
+                <i class="fas fa-plus"></i> <span>Add</span>
             </button>
         </div>
         <div class="space-y-3 max-h-[32rem] overflow-y-auto">
@@ -177,8 +181,8 @@
 </div>
 
 <!-- Add/Edit YouTube Modal -->
-<div id="youTubeModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+<div id="youTubeModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="youTubeModalTitle" class="text-xl font-bold text-gray-800">Add YouTube Video</h3>
             <button onclick="closeModal('youTubeModal')" class="text-gray-400 hover:text-gray-600">
@@ -213,8 +217,8 @@
     </div>
 </div>
 
-<div id="eventModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-lg bg-white">
+<div id="eventModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="eventModalTitle" class="text-xl font-bold text-gray-800">New Board Item</h3>
             <button onclick="closeModal('eventModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
@@ -238,8 +242,8 @@
 </div>
 
 <!-- Add/Edit Featured Image Modal -->
-<div id="featuredImageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+<div id="featuredImageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="featuredImageModalTitle" class="text-xl font-bold text-gray-800">Add Featured Image</h3>
             <button onclick="closeModal('featuredImageModal')" class="text-gray-400 hover:text-gray-600">
@@ -303,6 +307,7 @@ function switchTab(tab) {
         button?.classList.toggle('border-transparent', !active);
         button?.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+
 }
 
 // Initialize drag and drop
@@ -657,8 +662,16 @@ document.addEventListener('DOMContentLoaded', function() {
     initDragDrop();
     const savedTab = localStorage.getItem('public_board_tab');
     switchTab(['youtube', 'featured', 'events'].includes(savedTab) ? savedTab : 'youtube');
+
 });
 </script>
 
+<style>
+.board-inner-nav {
+    scrollbar-width: none;
+}
 
-
+.board-inner-nav::-webkit-scrollbar {
+    display: none;
+}
+</style>

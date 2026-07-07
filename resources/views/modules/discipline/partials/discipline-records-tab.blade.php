@@ -1,7 +1,7 @@
 <div>
     <!-- Quick Actions Card -->
     <div class="rounded-2xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-indigo-50/40 p-3 mb-4 shadow-sm">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 items-end">
             <div>
                               <input type="date" id="quick_discipline_date" value="{{ date('Y-m-d') }}" class="w-full rounded-lg border border-sky-100 bg-white px-3 py-2 text-gray-800 shadow-sm outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100">
             </div>
@@ -22,7 +22,7 @@
         <div class="flex flex-wrap gap-3 items-end">
             <div class="min-w-[260px] flex-1">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <input type="date" id="discipline_from_date" value="{{ date('Y-m-01') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     </div>
@@ -32,7 +32,7 @@
                 </div>
             </div>
             <div class="flex items-end gap-3">
-                <button onclick="exportDisciplineReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition">
+                <button onclick="exportDisciplineReport()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition">
                     <i class="fas fa-file-export mr-1"></i> Export
                 </button>
             </div>
@@ -40,7 +40,7 @@
     </div>
     
     <!-- Discipline Sessions Table -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="hidden md:block bg-white rounded-xl shadow-md overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50 border-b">
@@ -64,6 +64,7 @@
             </table>
         </div>
     </div>
+    <div id="discipline-mobile-list" class="md:hidden space-y-3"></div>
 </div>
 <div id="discipline-pagination" class="mt-5 flex items-center justify-between gap-3"></div>
 
@@ -218,6 +219,7 @@ function exportDisciplineReport() {
 
 function updateDisciplineTable(records) {
     const tbody = document.getElementById('discipline-table-body');
+    const mobileList = document.getElementById('discipline-mobile-list');
     const paginationContainer = document.getElementById('discipline-pagination');
 
     if (!records || records.length === 0) {
@@ -235,10 +237,21 @@ function updateDisciplineTable(records) {
                 </td>
             </tr>
         `;
+        if (mobileList) {
+            mobileList.innerHTML = `
+                <div class="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-2 opacity-50"></i>
+                    <p>No discipline sessions found</p>
+                    <button onclick="openDisciplineModal()" class="mt-3 text-blue-600 hover:text-blue-700 text-sm">
+                        <i class="fas fa-plus"></i> Create your first session
+                    </button>
+                </div>
+            `;
+        }
         return;
     }
 
-    tbody.innerHTML = records.map(session => {
+    const rowsHtml = records.map(session => {
         const total = Number(session.good_behavior || 0) + Number(session.bad_behavior || 0);
         const goodPercent = total > 0 ? ((Number(session.good_behavior || 0) / total) * 100).toFixed(1) : 100;
         const sessionDate = session.session_date || '';
@@ -272,6 +285,47 @@ function updateDisciplineTable(records) {
             </tr>
         `;
     }).join('');
+
+    tbody.innerHTML = rowsHtml;
+
+    if (mobileList) {
+        mobileList.innerHTML = records.map(session => {
+            const total = Number(session.good_behavior || 0) + Number(session.bad_behavior || 0);
+            const goodPercent = total > 0 ? ((Number(session.good_behavior || 0) / total) * 100).toFixed(1) : 100;
+            const sessionDate = session.session_date || '';
+            const percentColor = goodPercent >= 80 ? 'text-green-600' : (goodPercent >= 60 ? 'text-yellow-600' : 'text-red-600');
+            const barColor = goodPercent >= 80 ? 'bg-green-500' : (goodPercent >= 60 ? 'bg-yellow-500' : 'bg-red-500');
+
+            return `
+                <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-gray-900 truncate">${escapeHtml(session.session_title || '')}</p>
+                            <p class="text-sm text-gray-500"><i class="fas fa-calendar mr-1 text-gray-400"></i>${formatDate(sessionDate)}</p>
+                        </div>
+                        <span class="shrink-0 text-lg font-bold ${percentColor}">${goodPercent}%</span>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        <div class="rounded-lg bg-green-50 p-2 text-green-700">
+                            <span class="block text-xs text-green-600">Good</span>
+                            <strong>${session.good_behavior || 0}</strong>
+                        </div>
+                        <div class="rounded-lg bg-red-50 p-2 text-red-700">
+                            <span class="block text-xs text-red-600">Bad</span>
+                            <strong>${session.bad_behavior || 0}</strong>
+                        </div>
+                    </div>
+                    <div class="mt-3 h-1.5 rounded-full bg-gray-200">
+                        <div class="h-1.5 rounded-full ${barColor}" style="width: ${goodPercent}%"></div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2">
+                        <button type="button" onclick="viewSessionDetails('${sessionDate}', '${escapeHtml(session.session_title || '')}')" class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white">View</button>
+                        <button type="button" onclick="deleteSessionRecords('${sessionDate}', '${escapeHtml(session.session_title || '')}')" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 function renderDisciplinePagination(pagination) {
@@ -292,11 +346,11 @@ function renderDisciplinePagination(pagination) {
     const end = Math.min(currentPage * perPage, total);
 
     container.innerHTML = `
-        <div class="flex items-center justify-between gap-3 w-full rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
             <p class="text-sm text-gray-500">Showing ${start}-${end} of ${total}</p>
             <div class="flex items-center gap-2">
                 <button type="button" onclick="filterDisciplineRecords(${Math.max(1, currentPage - 1)})" ${pagination?.has_prev ? '' : 'disabled'} class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Prev</button>
-                <span class="text-sm text-gray-500">Page ${currentPage} of ${totalPages}</span>
+                <span class="hidden sm:inline text-sm text-gray-500">Page ${currentPage} of ${totalPages}</span>
                 <button type="button" onclick="filterDisciplineRecords(${Math.min(totalPages, currentPage + 1)})" ${pagination?.has_next ? '' : 'disabled'} class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
             </div>
         </div>

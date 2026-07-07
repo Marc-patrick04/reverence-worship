@@ -9,62 +9,62 @@
     'canDeletePlaylists' => false
 ])
 
-<div class="bg-white rounded-lg shadow-lg p-6">
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6">
     <!-- Add to Playlist Section -->
     @if($canEditPlaylists && $canViewSongs)
-    <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div class="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-2xl border border-blue-100">
         <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
             <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
             Add Song to Playlist
         </h4>
         <div class="flex flex-col sm:flex-row gap-3">
-            <select id="playlistSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="playlistSelect" class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Select Playlist</option>
                 @foreach($playlists ?? [] as $playlist)
                     <option value="{{ $playlist->id }}">{{ $playlist->title }} ({{ $playlist->songs->count() }} songs)</option>
                 @endforeach
             </select>
-            <select id="songSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="songSelect" class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Select Song</option>
                 @foreach($songs ?? [] as $song)
                     <option value="{{ $song->id }}">{{ $song->title }}</option>
                 @endforeach
             </select>
-            <button onclick="addToPlaylist()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+            <button onclick="addToPlaylist()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl transition w-full sm:w-auto">
                 <i class="fas fa-plus mr-2"></i> Add to Playlist
             </button>
         </div>
     </div>
     @endif
 
-    <div class="flex flex-col lg:flex-row gap-6">
+    <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
         <!-- PLAYLISTS COLUMN - Fixed height with scroll -->
         <div class="lg:w-1/2">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 pb-2 border-b">
                 <h4 class="font-semibold text-gray-700">
                     <i class="fas fa-list text-blue-600 mr-2"></i>Playlists
                     <span class="text-xs text-gray-400 ml-2">({{ count($playlists ?? []) }} total)</span>
                 </h4>
                 @if($canAddPlaylists)
                 <button onclick="openCreatePlaylistModal()" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs transition">
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:py-1 rounded-xl text-xs transition w-full sm:w-auto">
                     <i class="fas fa-plus-circle mr-1"></i> New Playlist
                 </button>
                 @endif
             </div>
             
-            <div class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+            <div class="space-y-2 max-h-none sm:max-h-[500px] overflow-y-visible sm:overflow-y-auto sm:pr-1">
                 @forelse($playlists ?? [] as $playlist)
-                    <div class="border rounded-lg p-3 hover:bg-gray-50 transition">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
+                    <div class="border border-gray-200 rounded-2xl p-3 hover:bg-gray-50 transition">
+                        <div class="flex justify-between items-start gap-3">
+                            <div class="flex-1 min-w-0">
                                 <h5 class="font-medium text-gray-800">{{ $playlist->title }}</h5>
                                 <p class="text-xs text-gray-500">{{ $playlist->songs->count() }} songs</p>
                                 @if($playlist->description)
                                     <p class="text-xs text-gray-400 mt-1">{{ Str::limit($playlist->description, 50) }}</p>
                                 @endif
                             </div>
-                            <div class="flex space-x-2">
+                            <div class="flex gap-2 shrink-0">
                                 @if($canViewPlaylists)
                                 <button onclick="viewPlaylistSongs({{ $playlist->id }})" class="text-green-600 hover:text-green-800 transition" title="View Songs">
                                     <i class="fas fa-file-lines"></i>
@@ -104,13 +104,13 @@
         
         <!-- SONGS COLUMN - Fixed height with search and scroll -->
         <div class="lg:w-1/2">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 pb-2 border-b">
                 <h4 class="font-semibold text-gray-700">
                     <i class="fas fa-music text-green-600 mr-2"></i>Songs
                     <span class="text-xs text-gray-400 ml-2">({{ count($songs ?? []) }} total)</span>
                 </h4>
                 @if($canAddSongs)
-                <button onclick="openCreateSongModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs transition">
+                <button onclick="openCreateSongModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 sm:py-1 rounded-xl text-xs transition w-full sm:w-auto">
                     <i class="fas fa-plus-circle mr-1"></i> Add Song
                 </button>
                 @endif
@@ -120,18 +120,18 @@
             <div class="relative mb-3">
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input type="text" id="songsSearchInput" placeholder="Search songs by title or key..." 
-                       class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                       class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             
-            <div id="songsListContainer" class="space-y-2 max-h-[450px] overflow-y-auto pr-1">
+            <div id="songsListContainer" class="space-y-2 max-h-none sm:max-h-[450px] overflow-y-visible sm:overflow-y-auto sm:pr-1">
                 @forelse($songs ?? [] as $song)
-                    <div class="song-item border rounded-lg p-3 hover:bg-gray-50 transition" 
+                    <div class="song-item border border-gray-200 rounded-2xl p-3 hover:bg-gray-50 transition"
                          data-title="{{ strtolower($song->title) }}" 
                          data-artist="{{ strtolower($song->artist ?? '') }}"
                          data-key="{{ strtolower($song->key_signature ?? '') }}"
                          data-singer="{{ strtolower($song->assigned_singer ?? '') }}">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
+                        <div class="flex justify-between items-start gap-3">
+                            <div class="flex-1 min-w-0">
                                 <h5 class="font-medium text-gray-800">{{ $song->title }}</h5>
                                 <div class="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
                                     @if($song->key_signature)
@@ -142,7 +142,7 @@
                                     @endif
                                 </div>
                             </div>
-                            <div class="flex space-x-2 ml-2">
+                            <div class="flex gap-2 shrink-0">
                                 @if($canViewSongs)
                                 <button onclick="viewLyrics({{ $song->id }})" class="text-green-600 hover:text-green-800 transition" title="View Lyrics">
                                     <i class="fas fa-file-alt"></i>
@@ -189,8 +189,8 @@
 </div>
 
 <!-- Create Playlist Modal -->
-<div id="createPlaylistModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+<div id="createPlaylistModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-xl font-bold text-gray-800">Create New Playlist</h3>
             <button onclick="closeModal('createPlaylistModal')" class="text-gray-400 hover:text-gray-600">
@@ -266,7 +266,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('createPlaylistModal')" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">
                     Cancel
                 </button>
@@ -279,8 +279,8 @@
 </div>
 
 <!-- Create Song Modal -->
-<div id="createSongModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+<div id="createSongModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-xl font-bold text-gray-800">Add New Song</h3>
             <button onclick="closeModal('createSongModal')" class="text-gray-400 hover:text-gray-600">
@@ -289,8 +289,8 @@
         </div>
         <form method="POST" action="{{ route('music.song.store') }}" id="createSongForm">
             @csrf
-            <div class="mt-4 grid grid-cols-2 gap-4">
-                <div class="col-span-2">
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Song Title *</label>
                     <input type="text" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                 </div>
@@ -302,12 +302,12 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tempo (BPM)</label>
                     <input type="number" name="tempo" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                 </div>
-                <div class="col-span-2">
+                <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Lyrics</label>
                     <textarea name="lyrics" rows="5" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"></textarea>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('createSongModal')" class="px-4 py-2 border rounded-lg">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Save Song</button>
             </div>
@@ -316,8 +316,8 @@
 </div>
 
 <!-- View Playlist Songs Modal -->
-<div id="viewPlaylistModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+<div id="viewPlaylistModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="viewPlaylistTitle" class="text-xl font-bold text-gray-800">Playlist Songs</h3>
             <button type="button" onclick="closeModal('viewPlaylistModal')" class="text-gray-400 hover:text-gray-600">
@@ -326,13 +326,13 @@
         </div>
         <div id="viewPlaylistContent" class="mt-4 max-h-96 overflow-y-auto"></div>
         <div class="flex justify-end mt-4 pt-3 border-t">
-            <button type="button" onclick="closeModal('viewPlaylistModal')" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Close</button>
+            <button type="button" onclick="closeModal('viewPlaylistModal')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg">Close</button>
         </div>
     </div>
 </div>
 
 <div id="lyricsModal" class="modal hidden fixed inset-0 z-[1100] bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
-    <div class="min-h-full w-full flex items-start justify-center px-4 py-8 sm:py-12">
+    <div class="min-h-full w-full flex items-center justify-center px-4 py-8 sm:py-12">
         <div class="w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-[0_40px_120px_rgba(15,23,42,0.28)] ring-1 ring-slate-200">
             <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 sm:px-8 py-5">
                 <div>
@@ -769,5 +769,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-

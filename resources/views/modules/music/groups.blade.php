@@ -1,36 +1,36 @@
 ﻿@props(['canManage' => false, 'generations' => [], 'singers' => [], 'voiceParts' => [], 'performanceLevels' => []])
 
-<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+<div class="bg-white rounded-2xl border border-gray-200 p-3 sm:p-6 shadow-sm">
 
     <!-- Top Bar -->
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
 
-        <h2 class="text-2xl font-bold text-gray-900">
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900">
             Groups
         </h2>
 
-        <div class="flex flex-wrap gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-2 sm:gap-3 w-full lg:w-auto">
             <button onclick="openSettingsModal()"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
+                class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
                 <i class="fas fa-cog"></i>
                 Settings
             </button>
 
             <button onclick="openPreviousModal()"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
+                class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
 
                 <i class="fas fa-history"></i>
                 View Previous
             </button>
 
             <button onclick="openGeneratedListModal()"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
+                class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm text-gray-700 font-small">
                 <i class="fas fa-file-lines"></i>
                 View Generated List
             </button>
 
             <button onclick="openGenerateModal()"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:opacity-90 transition text-white font-small shadow-md">
+                class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:opacity-90 transition text-white font-small shadow-md">
                 <i class="fas fa-plus-circle"></i>
                 Generate Groups
             </button>
@@ -44,7 +44,7 @@
     $teams = $latestGeneration->members->groupBy('team_number');
     @endphp
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         @foreach($teams as $teamNum => $members)
         <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition cursor-pointer"
             onclick="viewTeamDetails({{ $latestGeneration->id }}, {{ $teamNum }})">
@@ -79,8 +79,8 @@
 </div>
 
 <!-- Generate Groups Modal -->
-<div id="generateModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-xl rounded-xl bg-white">
+<div id="generateModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-6 border w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-xl font-bold text-gray-900">Generate Groups</h3>
             <button onclick="closeModal('generateModal')" class="text-gray-400 hover:text-gray-600">
@@ -122,7 +122,7 @@
                 
             </div>
 
-            <div class="flex justify-end gap-3 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-3 border-t">
                 <button type="button" onclick="closeModal('generateModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Generate Groups</button>
             </div>
@@ -132,8 +132,8 @@
 
 <!-- Settings Modal -->
 <!-- Settings Modal -->
-<div id="settingsModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-xl rounded-xl bg-white">
+<div id="settingsModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">Settings</h3>
@@ -154,7 +154,15 @@
                 class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
-        <div class="overflow-x-auto rounded-lg border border-gray-200 max-h-80 overflow-y-auto">
+        @php
+        // Filter singers to only show Permanent members
+        $permanentSingers = $singers->filter(function($singer) {
+        $membershipType = $singer->membership_type ?? '';
+        return strtolower(trim($membershipType)) === 'permanent';
+        });
+        @endphp
+
+        <div class="hidden sm:block overflow-x-auto rounded-lg border border-gray-200 max-h-80 overflow-y-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50 sticky top-0">
                     <tr>
@@ -165,14 +173,6 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
-                    @php
-                    // Filter singers to only show Permanent members
-                    $permanentSingers = $singers->filter(function($singer) {
-                    $membershipType = $singer->membership_type ?? '';
-                    return strtolower(trim($membershipType)) === 'permanent';
-                    });
-                    @endphp
-
                     @forelse($permanentSingers as $singer)
                     <tr class="hover:bg-gray-50 transition singer-row"
                         data-name="{{ strtolower($singer->name) }}"
@@ -245,9 +245,57 @@
             </table>
         </div>
 
+        <div class="sm:hidden max-h-[55vh] overflow-y-auto space-y-3 pr-1" id="singerMobileList">
+            @forelse($permanentSingers as $singer)
+            <div class="singer-mobile-card border border-gray-200 rounded-2xl p-3 bg-white"
+                data-name="{{ strtolower($singer->name) }}"
+                data-email="{{ strtolower($singer->email) }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="font-semibold text-gray-900 text-sm break-words">{{ $singer->name }}</p>
+                        <p class="text-xs text-gray-500 break-all">{{ $singer->email }}</p>
+                    </div>
+                    <span class="shrink-0 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
+                        {{ $singer->membership_type ?? 'Permanent' }}
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 mt-3">
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-500 mb-1">Voice</span>
+                        <select data-user-id="{{ $singer->id }}" data-field="voice_part"
+                            class="singer-select w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select Voice</option>
+                            @foreach($voiceParts ?? [] as $voice)
+                            <option value="{{ $voice }}" {{ $singer->voice_part == $voice ? 'selected' : '' }}>{{ $voice }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="block text-xs font-medium text-gray-500 mb-1">Level</span>
+                        <select data-user-id="{{ $singer->id }}" data-field="singer_level"
+                            class="singer-select w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Select Level</option>
+                            @foreach($performanceLevels ?? [] as $level)
+                            <option value="{{ $level }}" {{ $singer->singer_level == $level ? 'selected' : '' }}>{{ $level }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+            </div>
+            @empty
+            <div class="text-center text-gray-500 py-8 border border-gray-200 rounded-2xl">
+                <i class="fas fa-user-slash text-2xl mb-2 block text-gray-300"></i>
+                <p>No permanent members found.</p>
+                <p class="text-xs mt-1">Only permanent members are shown here.</p>
+            </div>
+            @endforelse
+        </div>
+
         <div class="flex justify-between items-center mt-4 pt-3 border-t">
 
-            <div class="flex gap-2">
+            <div class="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
                 <button onclick="closeModal('settingsModal')" class="px-4 py-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition">
                     Cancel
                 </button>
@@ -260,8 +308,8 @@
 </div>
 
 <!-- View Previous Generations Modal -->
-<div id="previousModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999]">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-2xl rounded-xl bg-white max-h-[90vh]">
+<div id="previousModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999] items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-4xl shadow-2xl rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
         <!-- Header -->
         <div class="flex justify-between items-center pb-3 border-b">
             <div>
@@ -312,7 +360,7 @@
                     </div>
 
                     <!-- Right - Actions -->
-                    <div class="flex flex-wrap gap-1 items-center flex-shrink-0">
+                    <div class="grid grid-cols-2 sm:flex gap-1 items-center flex-shrink-0 w-full md:w-auto">
                         <button onclick="viewFullGenerationDetails({{ $gen->id }})"
                             class="px-2.5 py-1 text-sm font-medium bg-black-50 hover:bg-black-100 text-black-600 rounded transition flex items-center gap-1">
                             <i class="fas fa-file-lines text-sm"></i> View
@@ -354,7 +402,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+        <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4 pt-3 border-t">
             <button onclick="closeModal('previousModal')" class="px-3.5 py-1.5 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition">
                 Close
             </button>
@@ -368,8 +416,8 @@
 </div>
 
 <!-- View Generated List Modal -->
-<div id="generatedListModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999]">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-2xl rounded-xl bg-white max-h-[100vh]">
+<div id="generatedListModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999] items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-6 border w-full max-w-4xl shadow-2xl rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
         <!-- Header -->
         <div class="flex justify-between items-center pb-4 border-b">
             <div>
@@ -426,17 +474,17 @@
 </style>
 
 <!-- View Team Details Modal -->
-<div id="teamDetailsModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-lg bg-white">
-        <div class="flex justify-between items-center pb-3 border-b">
-            <h3 id="teamDetailsTitle" class="text-lg font-bold text-gray-800">Team Members</h3>
+<div id="teamDetailsModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-5 border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
+        <div class="flex items-start justify-between gap-3 pb-3 border-b">
+            <div id="teamDetailsTitle" class="min-w-0 flex-1 text-lg font-bold text-gray-800">Team Members</div>
             <button onclick="closeModal('teamDetailsModal')" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
-        <div id="teamDetailsContent" class="mt-4 max-h-80 overflow-y-auto"></div>
+        <div id="teamDetailsContent" class="mt-4 max-h-[60vh] overflow-y-auto"></div>
         <div class="flex justify-end mt-4 pt-3 border-t">
-            <button onclick="closeModal('teamDetailsModal')" class="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm">Close</button>
+            <button onclick="closeModal('teamDetailsModal')" class="w-full sm:w-auto px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm">Close</button>
         </div>
     </div>
 </div>
@@ -479,6 +527,16 @@
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
+                }
+            });
+
+            document.querySelectorAll('.singer-mobile-card').forEach(card => {
+                const name = card.dataset.name || '';
+                const email = card.dataset.email || '';
+                if (name.includes(searchTerm) || email.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
                 }
             });
         });
@@ -598,170 +656,175 @@
     }
     // ==================== VIEW TEAM DETAILS ====================
     function viewTeamDetails(id, teamNum) {
-    // Get modal elements
-    const modal = document.getElementById('teamDetailsModal');
-    const content = document.getElementById('teamDetailsContent');
-    const title = document.getElementById('teamDetailsTitle');
-    
-    // Show loading state
-    content.innerHTML = `
-        <div class="flex items-center justify-center py-8">
-            <div class="text-center">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-                <p class="mt-2 text-sm text-gray-500">Loading team details...</p>
+        const modal = document.getElementById('teamDetailsModal');
+        const content = document.getElementById('teamDetailsContent');
+        const title = document.getElementById('teamDetailsTitle');
+
+        content.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <div class="text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                    <p class="mt-2 text-sm text-gray-500">Loading team details...</p>
+                </div>
             </div>
-        </div>
-    `;
-    
-    // Show modal immediately with loading state
-    modal.classList.remove('hidden');
-    
-    // Close any existing notification
-    if (window.currentNotification) {
-        window.currentNotification.remove();
-    }
-    
-    fetch(`/music/teams/${id}/details`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
+        `;
+        modal.classList.remove('hidden');
+
+        if (window.currentNotification) {
+            window.currentNotification.remove();
+        }
+
+        fetch(`/music/teams/${id}/details`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to load team details');
+                }
+
                 const teamLetter = String.fromCharCode(64 + teamNum);
-                const team = data.teams[teamNum - 1];
-                
-                // Update title with badge and export button
+                const team = data.teams[teamNum - 1] || { members: [] };
+                const memberCount = team.members.length;
+
                 title.innerHTML = `
-                    <div class="flex items-center justify-between w-full">
-                        <div class="flex items-center gap-3">
-                            <span class="text-lg font-semibold text-gray-800">Service ${teamLetter} - ${escapeHtml(data.service_name)}</span>
-                            <span class="px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                                ${team.members.length} Member${team.members.length > 1 ? 's' : ''}
-                            </span>
-                        </div>
-                        <button onclick="exportTeamMembers(${id}, ${teamNum}, '${escapeHtml(data.service_name)}', '${teamLetter}')" 
-                                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                            </svg>
+                    <div>
+                        <p class="text-base sm:text-lg font-semibold text-gray-900 leading-tight">Service ${teamLetter}</p>
+                        <p class="text-sm text-gray-500 break-words">${escapeHtml(data.service_name)}</p>
+                    </div>
+                `;
+
+                let html = `
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <span class="inline-flex items-center justify-center w-fit px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                            ${memberCount} Member${memberCount === 1 ? '' : 's'}
+                        </span>
+                        <button onclick="exportTeamMembers(${id}, ${teamNum}, '${escapeHtml(data.service_name)}', '${teamLetter}')"
+                                class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition">
+                            <i class="fas fa-file-export"></i>
                             Export CSV
                         </button>
                     </div>
                 `;
 
-                // Build members list in table format with columns
-                let html = `
-                    <div class="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        <table class="w-full">
-                            <thead class="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
-                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Voice</th>
-                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Performance</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                `;
-                
-                if (team.members.length === 0) {
+                if (memberCount === 0) {
                     html += `
-                        <tr>
-                            <td colspan="4" class="text-center py-8 text-gray-400">
-                                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                <p class="text-sm">No members assigned to this team</p>
-                            </td>
-                        </tr>
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-users text-3xl mb-2 text-gray-300"></i>
+                            <p class="text-sm">No members assigned to this team</p>
+                        </div>
                     `;
                 } else {
+                    html += `
+                        <div class="hidden sm:block overflow-x-auto rounded-xl border border-gray-100">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Voice</th>
+                                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Performance</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                    `;
+
                     team.members.forEach((member, index) => {
-                        // Determine performance level color
                         let levelColor = 'bg-gray-100 text-gray-700';
-                        let levelIcon = '';
-                        if (member.performance_level === 'Good') {
-                            levelColor = 'bg-gray-100 text-gray-700';
-                          
-                        } else if (member.performance_level === 'Excellent') {
+                        if (member.performance_level === 'Excellent') {
                             levelColor = 'bg-blue-100 text-blue-700';
-                           
                         } else if (member.performance_level === 'Needs Improvement') {
                             levelColor = 'bg-yellow-100 text-yellow-700';
-                            
                         }
-                        
+
                         html += `
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-4 py-3 text-sm text-gray-400">${index + 1}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                                            ${escapeHtml(member.name.charAt(0).toUpperCase())}
+                                        <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                                            ${escapeHtml((member.name || '?').charAt(0).toUpperCase())}
                                         </div>
-                                        <span class="font-medium text-gray-800 text-sm">${escapeHtml(member.name)}</span>
+                                        <span class="font-medium text-gray-800 text-sm">${escapeHtml(member.name || 'Unknown')}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3">
-                                    <span class="text-sm text-gray-600 flex items-center gap-1">
-                                        
-                                        ${escapeHtml(member.voice_part)}
-                                    </span>
-                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600">${escapeHtml(member.voice_part || 'No voice')}</td>
                                 <td class="px-4 py-3">
                                     <span class="px-2.5 py-1 text-xs font-medium rounded-full ${levelColor}">
-                                        ${levelIcon}${escapeHtml(member.performance_level)}
+                                        ${escapeHtml(member.performance_level || 'Not set')}
                                     </span>
                                 </td>
                             </tr>
                         `;
                     });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="sm:hidden space-y-2">
+                    `;
+
+                    team.members.forEach((member, index) => {
+                        let levelColor = 'bg-gray-100 text-gray-700';
+                        if (member.performance_level === 'Excellent') {
+                            levelColor = 'bg-blue-100 text-blue-700';
+                        } else if (member.performance_level === 'Needs Improvement') {
+                            levelColor = 'bg-yellow-100 text-yellow-700';
+                        }
+
+                        html += `
+                            <div class="border border-gray-200 rounded-2xl p-3 bg-white">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                                        ${escapeHtml((member.name || '?').charAt(0).toUpperCase())}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <p class="font-semibold text-gray-900 text-sm break-words">${escapeHtml(member.name || 'Unknown')}</p>
+                                            <span class="text-xs text-gray-400">#${index + 1}</span>
+                                        </div>
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                                                ${escapeHtml(member.voice_part || 'No voice')}
+                                            </span>
+                                            <span class="px-2.5 py-1 text-xs font-medium rounded-full ${levelColor}">
+                                                ${escapeHtml(member.performance_level || 'Not set')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div>`;
                 }
-                
-                html += `
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                
+
                 content.innerHTML = html;
-                
-                // Add a subtle animation
                 content.classList.add('fade-in');
                 setTimeout(() => content.classList.remove('fade-in'), 300);
-                
-            } else {
-                throw new Error(data.message || 'Failed to load team details');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            
-            // Show error state with retry option
-            content.innerHTML = `
-                <div class="text-center py-8">
-                    <svg class="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-sm text-gray-600 mb-2">Unable to load team details</p>
-                    <p class="text-xs text-gray-400 mb-3">${escapeHtml(error.message || 'Please try again')}</p>
-                    <button onclick="viewTeamDetails(${id}, ${teamNum})" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        Retry
-                    </button>
-                </div>
-            `;
-            
-            // Show user-friendly notification
-            showFriendlyNotification('error', 'Could not load team details. Please check your connection and try again.');
-        });
-}
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-triangle-exclamation text-red-400 text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-600 mb-2">Unable to load team details</p>
+                        <p class="text-xs text-gray-400 mb-3">${escapeHtml(error.message || 'Please try again')}</p>
+                        <button onclick="viewTeamDetails(${id}, ${teamNum})"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+                            <i class="fas fa-rotate-right mr-1"></i>
+                            Retry
+                        </button>
+                    </div>
+                `;
+                showFriendlyNotification('error', 'Could not load team details. Please check your connection and try again.');
+            });
+    }
 
 // Export team members to CSV
 function exportTeamMembers(id, teamNum, serviceName, teamLetter) {
@@ -1071,7 +1134,7 @@ document.head.appendChild(style);
 
                     html += `
                     </div>
-                    <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+                    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-5 pt-4 border-t">
                         <button onclick="closeModal('generatedListModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition">
                             Close
                         </button>
@@ -1149,6 +1212,3 @@ document.head.appendChild(style);
         display: block !important;
     }
 </style>
-
-
-

@@ -7,11 +7,11 @@
            </div>
 
     <!-- Stats Cards - Clean and Minimal -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="rounded-xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-50/40 p-4 shadow-sm">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div class="rounded-xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-50/40 p-3 sm:p-4 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-2xl font-bold text-slate-900" id="total_sessions">0</p>
+                    <p class="text-xl sm:text-2xl font-bold text-slate-900" id="total_sessions">0</p>
                     <p class="text-xs text-gray-500">Total Sessions</p>
                 </div>
                 <div class="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center ring-1 ring-sky-200">
@@ -20,10 +20,10 @@
             </div>
         </div>
         
-        <div class="rounded-xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-teal-50/40 p-4 shadow-sm">
+        <div class="rounded-xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-teal-50/40 p-3 sm:p-4 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-2xl font-bold text-emerald-600" id="present_count">0</p>
+                    <p class="text-xl sm:text-2xl font-bold text-emerald-600" id="present_count">0</p>
                     <p class="text-xs text-gray-500">Timeliness</p>
                 </div>
                 <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center ring-1 ring-emerald-200">
@@ -32,10 +32,10 @@
             </div>
         </div>
         
-        <div class="rounded-xl border border-amber-100 bg-gradient-to-br from-white via-amber-50 to-yellow-50/50 p-4 shadow-sm">
+        <div class="rounded-xl border border-amber-100 bg-gradient-to-br from-white via-amber-50 to-yellow-50/50 p-3 sm:p-4 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-2xl font-bold text-amber-600" id="late_count">0</p>
+                    <p class="text-xl sm:text-2xl font-bold text-amber-600" id="late_count">0</p>
                     <p class="text-xs text-gray-500">Late Avg</p>
                 </div>
                 <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center ring-1 ring-amber-200">
@@ -44,10 +44,10 @@
             </div>
         </div>
         
-        <div class="rounded-xl border border-rose-100 bg-gradient-to-br from-white via-rose-50 to-red-50/40 p-4 shadow-sm">
+        <div class="rounded-xl border border-rose-100 bg-gradient-to-br from-white via-rose-50 to-red-50/40 p-3 sm:p-4 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-2xl font-bold text-rose-600" id="absent_count">0</p>
+                    <p class="text-xl sm:text-2xl font-bold text-rose-600" id="absent_count">0</p>
                     <p class="text-xs text-gray-500">Absent Avg</p>
                 </div>
                 <div class="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center ring-1 ring-rose-200">
@@ -58,48 +58,48 @@
     </div>
 
     <!-- Quick Session Start - Simplified -->
-    <div class="rounded-2xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-indigo-50/40 p-5 shadow-sm">
-        <div class="flex flex-col md:flex-row gap-4 items-end">
-            <div class="flex-1">
-                <label class="block text-xs font-medium mb-1 text-slate-500">Session Date</label>
-                <input type="date" id="quick_date" value="{{ date('Y-m-d') }}" class="w-full rounded-lg border border-sky-100 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100">
+    <div class="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(220px,1fr)_auto] md:items-end">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Date</label>
+                <input type="date" id="quick_date" value="{{ date('Y-m-d') }}" class="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium mb-1 text-slate-500">Session Name</label>
-                <input type="text" id="quick_session_type" placeholder="Sunday Service" class="w-full rounded-lg border border-sky-100 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</label>
+                <input type="text" id="quick_session_type" placeholder="Sunday Service" class="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
             </div>
-            <button onclick="quickMarkAttendance()" class="inline-flex items-center rounded-lg bg-sky-100 px-6 py-2 text-sm font-semibold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-200">
-                <i class="fas fa-play mr-2"></i> Start Session
+            <button onclick="quickMarkAttendance()" class="inline-flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 md:w-auto">
+                <i class="fas fa-play mr-2 text-xs"></i> Start Session
             </button>
         </div>
     </div>
 
     <!-- Filters - Simple Row -->
-    <div class="flex flex-wrap gap-3 items-end">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From</label>
-            <input type="date" id="attendance_start_date" value="{{ date('Y-m-01') }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <input type="date" id="attendance_start_date" value="{{ date('Y-m-01') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
         </div>
         <div>
             <label class="block text-xs text-gray-600 mb-1">To</label>
-            <input type="date" id="attendance_end_date" value="{{ date('Y-m-t') }}" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <input type="date" id="attendance_end_date" value="{{ date('Y-m-t') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
         </div>
         <div>
             <label class="block text-xs text-gray-600 mb-1">Session</label>
-            <select id="attendance_session_filter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+            <select id="attendance_session_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
                 <option value="">All Sessions</option>
             </select>
         </div>
-        <button onclick="applyFilter()" class="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-200">
+        <button onclick="applyFilter()" class="w-full rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-200">
             <i class="fas fa-search mr-1"></i> Filter
         </button>
-        <button onclick="exportAttendanceReport()" class="rounded-lg bg-sky-100 px-4 py-2 text-sm text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-200">
+        <button onclick="exportAttendanceReport()" class="w-full rounded-lg bg-sky-100 px-4 py-2 text-sm text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-200">
             <i class="fas fa-file-export mr-1"></i> Export
         </button>
     </div>
 
     <!-- Sessions Table - Clean -->
-    <div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+    <div class="hidden md:block overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
         <table class="w-full">
             <thead class="bg-sky-50 border-b border-sky-100">
                 <tr>
@@ -121,6 +121,7 @@
             </tbody>
         </table>
     </div>
+    <div id="attendance-mobile-list" class="md:hidden space-y-3"></div>
     <div id="attendance-pagination" class="flex items-center justify-between gap-3 rounded-xl border border-sky-100 bg-white px-4 py-3 shadow-sm"></div>
 </div>
 
@@ -202,11 +203,15 @@ function exportAttendanceReport() {
 
 function renderAttendanceTable(attendances, page = 1) {
     const tbody = document.getElementById('attendance-table-body');
+    const mobileList = document.getElementById('attendance-mobile-list');
     const paginationContainer = document.getElementById('attendance-pagination');
     if (!tbody) return;
     
     if (!attendances || attendances.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400">No attendance records found</td></tr>`;
+        if (mobileList) {
+            mobileList.innerHTML = `<div class="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">No attendance records found</div>`;
+        }
         if (paginationContainer) {
             paginationContainer.innerHTML = '';
         }
@@ -282,6 +287,46 @@ function renderAttendanceTable(attendances, page = 1) {
         `;
     }).join('');
 
+    if (mobileList) {
+        mobileList.innerHTML = pageSessions.map(session => {
+            const totalPresent = session.present + session.late;
+            const totalAbsent = session.absent + session.excused;
+            const attendanceRate = session.total > 0 ? ((totalPresent / session.total) * 100).toFixed(0) : 0;
+            const rateColor = attendanceRate >= 75 ? 'text-emerald-600' : (attendanceRate >= 50 ? 'text-amber-600' : 'text-rose-600');
+            const formattedDate = session.date.split('-').reverse().join('/');
+
+            return `
+                <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-900 truncate">${escapeHtml(session.session)}</p>
+                            <p class="text-sm text-slate-500"><i class="fas fa-calendar mr-1 text-slate-400"></i>${escapeHtml(formattedDate)}</p>
+                        </div>
+                        <span class="shrink-0 text-lg font-bold ${rateColor}">${attendanceRate}%</span>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        <div class="rounded-lg bg-emerald-50 p-2 text-emerald-700">
+                            <span class="block text-xs text-emerald-600">Present</span>
+                            <strong>${totalPresent}</strong>
+                        </div>
+                        <div class="rounded-lg bg-rose-50 p-2 text-rose-700">
+                            <span class="block text-xs text-rose-600">Absent</span>
+                            <strong>${totalAbsent}</strong>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2">
+                        <button onclick="window.viewSession('${session.date}', '${escapeHtml(session.session)}')" class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white">
+                            View
+                        </button>
+                        <button onclick="window.deleteSessionRecord('${session.date}', '${escapeHtml(session.session)}')" class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     renderAttendancePagination(currentAttendancePagination);
 }
 
@@ -306,7 +351,7 @@ function renderAttendancePagination(pagination) {
         <p class="text-sm text-slate-500">Showing ${start}-${end} of ${total}</p>
         <div class="flex items-center gap-2">
             <button type="button" onclick="setAttendancePage(${Math.max(1, currentPage - 1)})" ${pagination?.has_prev ? '' : 'disabled'} class="rounded-lg border border-sky-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50">Prev</button>
-            <span class="text-sm text-slate-500">Page ${currentPage} of ${totalPages}</span>
+            <span class="hidden sm:inline text-sm text-slate-500">Page ${currentPage} of ${totalPages}</span>
             <button type="button" onclick="setAttendancePage(${Math.min(totalPages, currentPage + 1)})" ${pagination?.has_next ? '' : 'disabled'} class="rounded-lg border border-sky-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
         </div>
     `;

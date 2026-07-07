@@ -1,15 +1,15 @@
 ﻿<div class="bg-white rounded-lg shadow-lg p-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
         <h3 class="text-lg font-bold text-gray-800">Photo Gallery</h3>
         
         <!-- Search and Sort Bar -->
-        <div class="flex flex-wrap gap-3">
-            <div class="relative">
+        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div class="relative flex-1 sm:flex-none">
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                 <input type="text" id="searchPhotos" placeholder="Search photos..." 
-                       class="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm w-48 focus:ring-blue-500 focus:border-blue-500">
+                       class="pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-sm w-full sm:w-48 focus:ring-blue-500 focus:border-blue-500">
             </div>
-            <select id="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+            <select id="sortBy" class="px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto">
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="az">A-Z</option>
@@ -17,7 +17,7 @@
             </select>
             
             @if(auth()->user()->canAccess('music-ministry', 'manage-gallery'))
-            <button onclick="openUploadModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+            <button onclick="openUploadModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm w-full sm:w-auto">
                 <i class="fas fa-upload mr-2"></i> Upload Photos
             </button>
             @endif
@@ -29,17 +29,17 @@
         $totalPhotos = count($gallery ?? []);
     @endphp
 
-    <div class="grid grid-cols-1 gap-3 mb-6">
-        <div class="bg-blue-50 rounded-lg p-3 text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ $totalPhotos }}</p>
+    <div class="grid grid-cols-1 gap-3 mb-4 sm:mb-6">
+        <div class="bg-blue-50 rounded-xl p-3 flex sm:block items-center justify-between sm:text-center">
+            <p class="text-xl sm:text-2xl font-bold text-blue-600">{{ $totalPhotos }}</p>
             <p class="text-xs text-gray-600">Total Photos</p>
         </div>
     </div>
     
     <!-- Gallery Grid -->
-    <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         @forelse($gallery ?? [] as $photo)
-        <div class="gallery-item border rounded-lg overflow-hidden hover:shadow-lg transition group relative" 
+        <div class="gallery-item border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition group relative"
              data-id="{{ $photo->id }}"
              data-title="{{ strtolower($photo->title ?? '') }}"
              data-category="{{ $photo->category ?? '' }}"
@@ -47,7 +47,7 @@
             
             <div class="relative overflow-hidden">
                 <img src="{{ asset($photo->image_path) }}" alt="{{ $photo->title ?? 'Gallery Image' }}" 
-                     class="w-full h-48 object-cover group-hover:scale-105 transition duration-300 cursor-pointer"
+                     class="w-full h-44 sm:h-48 object-cover group-hover:scale-105 transition duration-300 cursor-pointer"
                      onclick="openLightbox({{ $photo->id }})">
                 
                 <!-- Action Overlay -->
@@ -110,8 +110,8 @@
 </div>
 
 <!-- Upload Modal -->
-<div id="uploadModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-lg shadow-lg rounded-xl bg-white">
+<div id="uploadModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-6 border w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Upload Photos</h3>
             <button onclick="closeModal('uploadModal')" class="text-gray-400 hover:text-gray-600">
@@ -144,7 +144,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('uploadModal')" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Upload Photos</button>
             </div>
@@ -153,8 +153,8 @@
 </div>
 
 <!-- Edit Modal -->
-<div id="editModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-md shadow-lg rounded-xl bg-white">
+<div id="editModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto my-auto p-4 sm:p-6 border w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">Edit Photo</h3>
             <button onclick="closeModal('editModal')" class="text-gray-400 hover:text-gray-600">
@@ -197,7 +197,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('editModal')" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
             </div>
@@ -468,4 +468,3 @@ document.addEventListener('DOMContentLoaded', function() {
 .modal:not(.hidden) { display: block !important; }
 .gallery-item { transition: all 0.3s ease; }
 </style>
-

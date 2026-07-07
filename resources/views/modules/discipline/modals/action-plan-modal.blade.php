@@ -4,7 +4,7 @@
 @endphp
 
 <div id="actionPlanModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="action_plan_modal_title" class="text-lg font-bold text-gray-800">Action Plan</h3>
             <button type="button" data-modal-close="actionPlanModal" onclick="closeModal('actionPlanModal')" class="text-gray-400 hover:text-gray-600">
@@ -40,7 +40,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-3 border-t">
                 <button type="button" data-modal-close="actionPlanModal" onclick="closeModal('actionPlanModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Save Plan</button>
             </div>

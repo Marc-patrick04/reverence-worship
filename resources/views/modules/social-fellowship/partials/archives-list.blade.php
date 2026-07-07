@@ -1,15 +1,15 @@
-﻿<div class="bg-white rounded-xl shadow-md p-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+﻿<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         <!-- Left Sidebar - Sections -->
-        <div class="md:col-span-1 border-r pr-4">
-            <div class="flex justify-between items-center mb-4">
+        <div class="lg:col-span-1 lg:border-r lg:pr-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-layer-group text-gray-700"></i>
                     <h3 class="text-lg font-bold text-gray-800">Sections</h3>
                 </div>
                 @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('social-fellowship', 'manage-archives'))
-                <button onclick="openSectionModal()" class="text-gray-600 hover:text-gray-800 text-sm flex items-center gap-1">
+                <button onclick="openSectionModal()" class="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 hover:bg-blue-100 text-sm flex items-center justify-center gap-1">
                     <i class="fas fa-plus"></i> New Section
                 </button>
                 @endif
@@ -58,14 +58,14 @@
         </div>
         
         <!-- Right Side - Pages/Content -->
-        <div class="md:col-span-2">
-            <div class="flex justify-between items-center mb-4">
+        <div class="lg:col-span-2">
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-file-alt text-gray-700"></i>
                     <h3 class="text-lg font-bold text-gray-800" id="current-section-title">Pages</h3>
                 </div>
                 @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('social-fellowship', 'manage-archives'))
-                <button onclick="openPageModal()" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1">
+                <button onclick="openPageModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-1 w-full sm:w-auto">
                     <i class="fas fa-plus"></i> New Page
                 </button>
                 @endif
@@ -87,8 +87,8 @@
 </div>
 
 <!-- Section Modal -->
-<div id="sectionModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-40 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+<div id="sectionModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-md max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="sectionModalTitle" class="text-lg font-bold text-gray-800">Create New Section</h3>
             <button onclick="closeModal('sectionModal')" class="text-gray-400 hover:text-gray-600">
@@ -108,7 +108,7 @@
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-gray-500 focus:border-gray-500">
             </div>
             
-            <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('sectionModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm">Save Section</button>
             </div>
@@ -117,8 +117,8 @@
 </div>
 
 <!-- Page Modal -->
-<div id="pageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+<div id="pageModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 items-center justify-center p-3 sm:p-6">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="pageModalTitle" class="text-lg font-bold text-gray-800">Create New Page</h3>
             <button onclick="closeModal('pageModal')" class="text-gray-400 hover:text-gray-600">
@@ -154,7 +154,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('pageModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm">Save Page</button>
             </div>
@@ -424,6 +424,5 @@ function escapeHtml(text) {
 
 <style>
 .modal { display: none; }
-.modal:not(.hidden) { display: block !important; }
+.modal:not(.hidden) { display: flex !important; }
 </style>
-

@@ -4,7 +4,7 @@
 @section('page-title', 'Discipline Management')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
 
     @php
         $canViewOverview = auth()->check() && auth()->user()->canAccess('discipline', 'view-overview');
@@ -21,9 +21,42 @@
     
     <!-- Tabs Navigation - Only show tabs user has permission for -->
     @if($canViewOverview || $canViewAttendance || $canViewPermissions || $canViewDisciplineRecords || $canViewActionPlans)
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="border-b border-gray-200">
-            <nav class="flex flex-wrap -mb-px">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+        <div class="relative z-40 border-b border-gray-200">
+            <div class="md:hidden p-2">
+                <div class="relative w-full max-w-[300px]" id="disciplineMobileTabPicker">
+                    <button type="button" id="disciplineMobileTabButton"
+                        onclick="toggleDisciplineMobileTabs()"
+                        class="h-10 w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        aria-haspopup="true" aria-expanded="false">
+                        <span class="flex items-center gap-2">
+                            <i id="disciplineMobileTabIcon" class="fas fa-chart-line text-blue-600" aria-hidden="true"></i>
+                            <span id="disciplineMobileTabLabel">Overview</span>
+                        </span>
+                        <i class="fas fa-chevron-down text-gray-400 text-[10px]" aria-hidden="true"></i>
+                    </button>
+                    <div id="disciplineMobileTabMenu" class="hidden absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                        <div class="grid grid-cols-1 gap-1">
+                            @if($canViewOverview)
+                            <button type="button" onclick="selectDisciplineMobileTab('overview')" class="discipline-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="overview" data-icon="chart-line">Overview</button>
+                            @endif
+                            @if($canViewAttendance)
+                            <button type="button" onclick="selectDisciplineMobileTab('attendance')" class="discipline-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="attendance" data-icon="calendar-alt">Attendance</button>
+                            @endif
+                            @if($canViewPermissions)
+                            <button type="button" onclick="selectDisciplineMobileTab('permission')" class="discipline-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="permission" data-icon="envelope-open-text">Permission Requests</button>
+                            @endif
+                            @if($canViewDisciplineRecords)
+                            <button type="button" onclick="selectDisciplineMobileTab('discipline-records')" class="discipline-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="discipline-records" data-icon="book">Discipline Records</button>
+                            @endif
+                            @if($canViewActionPlans)
+                            <button type="button" onclick="selectDisciplineMobileTab('action-plans')" class="discipline-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="action-plans" data-icon="tasks">Action Plans</button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <nav class="hidden md:flex flex-wrap -mb-px">
                 @if($canViewOverview)
                 <button class="tab-btn active px-6 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600" data-tab="overview">
                     <i class="fas fa-chart-line mr-2"></i> Overview
@@ -57,7 +90,7 @@
         </div>
         
         <!-- Tab Content -->
-        <div class="p-6">
+        <div class="p-3 sm:p-6">
             @if($canViewOverview)
             <div id="overview-tab" class="tab-content" style="display: block;">
                 @include('modules.discipline.partials.overview-tab')
@@ -136,6 +169,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up tab click handlers
     setupTabClickHandlers();
+
+    document.addEventListener('click', function(event) {
+        const picker = document.getElementById('disciplineMobileTabPicker');
+        const menu = document.getElementById('disciplineMobileTabMenu');
+        const button = document.getElementById('disciplineMobileTabButton');
+        if (picker && menu && button && !picker.contains(event.target)) {
+            menu.classList.add('hidden');
+            button.setAttribute('aria-expanded', 'false');
+        }
+    });
 });
 
 function isValidTab(tabName) {
@@ -163,6 +206,41 @@ function handleTabClick(event) {
     activateTab(tabName);
 }
 
+function toggleDisciplineMobileTabs() {
+    const menu = document.getElementById('disciplineMobileTabMenu');
+    const button = document.getElementById('disciplineMobileTabButton');
+    if (!menu || !button) return;
+
+    const isOpening = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    button.setAttribute('aria-expanded', isOpening ? 'true' : 'false');
+}
+
+function selectDisciplineMobileTab(tabName) {
+    localStorage.setItem(STORAGE_KEY, tabName);
+    activateTab(tabName);
+    document.getElementById('disciplineMobileTabMenu')?.classList.add('hidden');
+    document.getElementById('disciplineMobileTabButton')?.setAttribute('aria-expanded', 'false');
+}
+
+function updateDisciplineMobileTabDisplay(tabName) {
+    const activeOption = document.querySelector(`.discipline-mobile-tab-option[data-tab="${tabName}"]`);
+    const label = document.getElementById('disciplineMobileTabLabel');
+    const icon = document.getElementById('disciplineMobileTabIcon');
+
+    if (activeOption && label && icon) {
+        label.textContent = activeOption.textContent.trim();
+        icon.className = `fas fa-${activeOption.dataset.icon} text-blue-600`;
+    }
+
+    document.querySelectorAll('.discipline-mobile-tab-option').forEach(option => {
+        const isActive = option.dataset.tab === tabName;
+        option.classList.toggle('bg-blue-50', isActive);
+        option.classList.toggle('text-blue-700', isActive);
+        option.classList.toggle('font-semibold', isActive);
+    });
+}
+
 function activateTab(tabName) {
     console.log('Activating tab:', tabName);
     
@@ -181,6 +259,8 @@ function activateTab(tabName) {
     });
     
     // Update tab content visibility
+    updateDisciplineMobileTabDisplay(tabName);
+
     const tabContents = document.querySelectorAll('.tab-content');
     
     tabContents.forEach(content => {
@@ -264,7 +344,6 @@ window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('hidden');
-        modal.style.setProperty('display', 'none', 'important');
         document.body.style.overflow = '';
     }
 };
@@ -359,5 +438,18 @@ function showSessionSummary(date, sessionType) {
     .catch(error => console.error('Error:', error));
 }
 </script>
-@endsection
+<style>
+    .modal:not(.hidden) {
+        align-items: center;
+        display: flex !important;
+        justify-content: center;
+        padding: 0.75rem;
+    }
 
+    @media (min-width: 640px) {
+        .modal:not(.hidden) {
+            padding: 1.5rem;
+        }
+    }
+</style>
+@endsection

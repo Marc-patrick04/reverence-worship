@@ -127,9 +127,55 @@
         .contact-item i { width:18px; color:#93c5fd; margin-top:3px; }
         .footer-bottom { border-top:1px solid rgba(219,234,254,.2); margin-top:38px; padding-top:18px; display:flex; justify-content:space-between; gap:20px; font-size:.8rem; }
         @media(max-width:800px) {
-            .menu { display:block; }
-            .links { display:none; position:absolute; top:64px; left:0; right:0; padding:25px; background:rgba(37,99,235,.96); border-bottom:1px solid rgba(255,255,255,.14); box-shadow:0 14px 30px rgba(15,23,42,.12); flex-direction:column; align-items:flex-start; }
-            .links.open { display:flex; }
+            .wrap { width:min(100%, calc(100% - 18px)); }
+            .nav-inner { min-height:58px; gap:8px; overflow:visible; position:relative; }
+            .brand { gap:8px; flex:0 0 auto; }
+            .brand-logo { width:34px; height:34px; border-radius:10px; padding:4px; }
+            .brand-name { font-size:.78rem; letter-spacing:.01em; }
+            .brand-tagline { font-size:.48rem; letter-spacing:.16em; margin-top:4px; }
+            .menu {
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                flex:0 0 auto;
+                width:34px;
+                height:34px;
+                border-radius:10px;
+                background:rgba(255,255,255,.12);
+                border:1px solid rgba(255,255,255,.22);
+                font-size:1.1rem;
+                line-height:1;
+                order:2;
+            }
+            .links {
+                display:flex;
+                align-items:center;
+                gap:8px;
+                white-space:nowrap;
+                font-size:.72rem;
+                margin-left:auto;
+                padding:4px 0;
+                order:1;
+            }
+            .links a { flex:0 0 auto; padding:7px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
+            .links .login { padding:7px 10px; border-color:rgba(255,255,255,.45); background:rgba(255,255,255,.12); }
+            .links a:not(.mobile-visible):not(.login) { display:none; }
+            .links.open {
+                position:absolute;
+                top:calc(100% + 8px);
+                right:0;
+                z-index:60;
+                width:min(230px, calc(100vw - 18px));
+                padding:10px;
+                background:rgba(37,99,235,.96);
+                border:1px solid rgba(255,255,255,.16);
+                border-radius:16px;
+                box-shadow:0 18px 35px rgba(15,23,42,.18);
+                flex-wrap:wrap;
+                justify-content:flex-end;
+                backdrop-filter:blur(14px);
+            }
+            .links.open a:not(.mobile-visible):not(.login) { display:inline-flex; }
             .hero { min-height:calc(100vh + 80px); }
             .about-grid,.video-grid { grid-template-columns:1fr; }
             .picture-slide { flex-basis:100%; aspect-ratio:4 / 3; }
@@ -153,7 +199,7 @@
             <button class="menu" id="menuButton" aria-label="Open navigation" aria-expanded="false">☰</button>
             <nav class="links" id="navLinks" aria-label="Primary navigation">
                 <a href="#home">Home</a><a href="#about">About us</a><a href="#music">Music</a>
-                <a href="#pictures">Pictures</a><a href="#events">Events</a><a href="#join">Join us</a>
+                <a href="#pictures">Pictures</a><a href="#events">Events</a><a href="#join" class="mobile-visible">Join us</a>
                 @auth
                     <a class="login" href="{{ auth()->user()->isSuperAdmin() ? route('super-admin.dashboard') : route('user.dashboard') }}">Dashboard</a>
                 @else

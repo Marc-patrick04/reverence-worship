@@ -19,6 +19,7 @@
 
         body {
             min-height: 100vh;
+            min-height: 100dvh;
             margin: 0;
             font-family: 'DM Sans', system-ui, sans-serif;
             background:
@@ -136,13 +137,14 @@
         }
 
         h1, h2 { font-family: 'Playfair Display', serif; }
-        .primary-action { background:#2563eb; }
+        .primary-action { background:#2563eb; color:#ffffff; }
         .primary-action:hover { background:#1d4ed8; }
         .auth-link { color:#2563eb; }
         .auth-link:hover { color:#1d4ed8; }
         .brand-subtitle { color:#bfdbfe; }
         .back-home { color:rgba(255,255,255,.72); transition:color .15s ease; }
         .back-home:hover { color:#ffffff; }
+        .mobile-card-brand { display: none; }
 
         .alert {
             border-radius: 0.65rem;
@@ -161,27 +163,65 @@
         }
 
         @media (max-width: 768px) {
+            body {
+                background:
+                    radial-gradient(circle at top, rgba(37, 99, 235, 0.16), transparent 18rem),
+                    linear-gradient(180deg, #eff6ff 0%, #ffffff 48%, #f8fafc 100%);
+            }
+
             .auth-shell {
-                align-items: flex-start;
-                padding: 0.75rem;
+                align-items: center;
+                min-height: 100dvh;
+                padding: 1rem;
             }
 
             .auth-card {
                 min-height: auto;
                 grid-template-columns: 1fr;
-                border-radius: 0.9rem;
+                max-width: 430px;
+                border-radius: 1.25rem;
+                background: #ffffff;
+                box-shadow: 0 18px 45px rgba(30, 64, 175, 0.14);
             }
 
             .brand-panel {
-                min-height: auto;
-                padding: 0.9rem;
-                display: block;
+                display: none;
             }
 
             .brand-mark {
-                width: 2.25rem;
-                height: 2.25rem;
+                width: 2.1rem;
+                height: 2.1rem;
                 border-radius: 0.7rem;
+            }
+
+            .mobile-card-brand {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin: -1.25rem -1.25rem 1.25rem;
+                padding: 1rem 1.25rem;
+                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            }
+
+            .mobile-card-brand p:first-child {
+                font-size: 0.95rem;
+                line-height: 1.1rem;
+                color: #ffffff;
+            }
+
+            .mobile-card-brand p:last-child {
+                font-size: 0.66rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #bfdbfe;
+            }
+
+            .form-panel {
+                background: #ffffff;
+            }
+
+            .form-panel::before {
+                display: none;
             }
 
             .mobile-hide {
@@ -189,7 +229,65 @@
             }
 
             .auth-card section {
-                padding: 0.9rem;
+                padding: 1.25rem;
+            }
+
+            .field {
+                height: 2.8rem;
+                border-radius: 0.75rem;
+                font-size: 1rem;
+                background: #ffffff;
+                padding-left: 2.55rem;
+                padding-right: 2.7rem;
+            }
+
+            .field-icon {
+                left: 0.9rem;
+                font-size: 0.9rem;
+            }
+
+            .password-toggle {
+                width: 2.1rem;
+                height: 2.1rem;
+                right: 0.45rem;
+            }
+
+            .primary-action,
+            .auth-social {
+                height: 2.8rem;
+                min-height: 2.8rem;
+                border-radius: 0.8rem;
+                font-size: 0.92rem;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .auth-shell {
+                padding: 0.85rem;
+            }
+
+            .auth-card {
+                min-height: auto;
+                border-radius: 1.15rem;
+                border-left: 1px solid rgba(37, 99, 235, 0.22);
+                border-right: 1px solid rgba(37, 99, 235, 0.22);
+            }
+
+            .brand-panel {
+                border-radius: 0;
+            }
+
+            .form-panel {
+                align-items: center;
+                justify-content: center;
+            }
+
+            .form-panel > div {
+                max-width: none;
+            }
+
+            .form-panel .mb-4 {
+                margin-bottom: 1rem;
             }
         }
     </style>
@@ -225,6 +323,16 @@
 
             <section class="form-panel flex items-center justify-center p-4 sm:p-5 lg:p-6">
                 <div class="w-full max-w-sm">
+                    <a href="{{ route('home') }}" class="mobile-card-brand" aria-label="Back to Reverence Worship home">
+                        <div class="brand-mark bg-blue-50 border border-blue-100">
+                            <img src="{{ asset('images/logo.png') }}" alt="Reverence Worship" class="w-full h-full object-contain p-1">
+                        </div>
+                        <div>
+                            <p class="font-extrabold tracking-wide">REVERENCE</p>
+                            <p class="font-semibold">Worship Team</p>
+                        </div>
+                    </a>
+
                     <div class="mb-4 flex items-center justify-between gap-3">
                         <h2 class="text-[1.55rem] font-extrabold text-gray-900">Sign In</h2>
                         <a href="{{ route('home') }}" class="auth-link inline-flex items-center gap-2 rounded-full border border-blue-800/20 bg-white/60 px-2.5 py-1.5 text-[0.72rem] font-semibold hover:bg-white transition">
@@ -316,7 +424,7 @@
                         <div class="h-px flex-1 bg-gray-200"></div>
                     </div>
 
-                    <a href="{{ route('google.login') }}" class="w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-[0.82rem] font-semibold text-gray-700 hover:bg-gray-50 transition">
+                    <a href="{{ route('google.login') }}" class="auth-social w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-[0.82rem] font-semibold text-gray-700 hover:bg-gray-50 transition">
                         <i class="fab fa-google text-red-500"></i>
                         Continue with Google
                     </a>

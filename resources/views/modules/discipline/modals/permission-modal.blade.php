@@ -1,5 +1,5 @@
 ﻿<div id="permissionModal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-md max-h-[92vh] overflow-y-auto shadow-lg rounded-lg bg-white">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 id="permission_modal_title" class="text-lg font-bold text-gray-800">Permission Request</h3>
             <button onclick="closeModal('permissionModal')" class="text-gray-400 hover:text-gray-600">
@@ -57,7 +57,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-end gap-2 mt-5 pt-3 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-3 border-t">
                 <button type="button" onclick="closeModal('permissionModal')" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">Submit Request</button>
             </div>
@@ -328,4 +328,3 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 </script>
-

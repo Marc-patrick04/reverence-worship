@@ -4,7 +4,7 @@
 @section('page-title', 'Parent Dashboard')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6 space-y-6">
+<div class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
     @if(isset($error))
     <!-- Error Message for Non-Parents -->
@@ -25,42 +25,42 @@
     @else
 
     <!-- Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
-        <div class="flex items-center gap-4">
-            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                <i class="fas fa-user-friends text-3xl"></i>
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+        <div class="flex items-start sm:items-center gap-3 sm:gap-4">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-2xl sm:rounded-full flex items-center justify-center shrink-0">
+                <i class="fas fa-user-friends text-xl sm:text-3xl"></i>
             </div>
-            <div>
-                <h1 class="text-2xl font-bold">Parent, {{ auth()->user()->name }}</h1>
+            <div class="min-w-0">
+                <h1 class="text-lg sm:text-2xl font-bold leading-tight break-words">Parent, {{ auth()->user()->name }}</h1>
                 @if(isset($familyName) && $familyName)
-                <p class="text-blue-100 text-sm">
+                <p class="text-blue-100 text-sm mt-1 break-words">
                     <i class="fas fa-users mr-1"></i> Family: {{ $familyName }}
                 </p>
                 @else
-                <p class="text-blue-100 text-sm">Manage and track your children's progress</p>
+                <p class="text-blue-100 text-sm mt-1">Manage and track your children's progress</p>
                 @endif
             </div>
         </div>
     </div>
 
     <!-- Tabs -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="border-b border-gray-200">
-            <nav class="flex -mb-px" id="tabNav">
-                <button onclick="switchTab('children')" id="tab-children" class="tab-btn active px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+            <nav class="flex gap-1 overflow-x-auto px-2 sm:px-0 -mb-px parent-tab-nav" id="tabNav">
+                <button onclick="switchTab('children')" id="tab-children" class="tab-btn active shrink-0 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     <i class="fas fa-child mr-2"></i> My Children
                 </button>
-                <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn shrink-0 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                     <i class="fas fa-tasks mr-2"></i> Tasks
                 </button>
-                <button onclick="switchTab('contributions')" id="tab-contributions" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                <button onclick="switchTab('contributions')" id="tab-contributions" class="tab-btn shrink-0 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                     <i class="fas fa-hand-holding-usd mr-2"></i> Contributions
                 </button>
             </nav>
         </div>
 
         <!-- Tab Content -->
-        <div class="p-6">
+        <div class="p-3 sm:p-6">
             <!-- Children Tab -->
             <div id="panel-children" class="tab-panel">
                 @include('modules.parent.partials.children-tab')
@@ -82,7 +82,7 @@
 
 <!-- Child Details Modal -->
 <div id="childDetailsModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 id="childDetailsTitle" class="text-xl font-bold text-gray-800">
                 <i class="fas fa-child text-blue-600"></i> Child Details
@@ -98,14 +98,14 @@
             </div>
         </div>
         <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('childDetailsModal')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">Close</button>
+            <button onclick="closeModal('childDetailsModal')" class="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">Close</button>
         </div>
     </div>
 </div>
 
 <!-- Child Financial Modal -->
 <div id="childFinancialModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-xl rounded-2xl bg-white mb-10">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-4xl shadow-xl rounded-2xl bg-white mb-10">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 id="childFinancialTitle" class="text-xl font-bold text-gray-800">
                 <i class="fas fa-chart-bar text-green-600"></i> Financial Report
@@ -121,14 +121,14 @@
             </div>
         </div>
         <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('childFinancialModal')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">Close</button>
+            <button onclick="closeModal('childFinancialModal')" class="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">Close</button>
         </div>
     </div>
 </div>
 
 <!-- Add Task Modal -->
 <div id="addTaskModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">
                 <i class="fas fa-plus-circle text-purple-600"></i> Add New Task
@@ -171,7 +171,7 @@
                     </button>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('addTaskModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition">Create Task</button>
             </div>
@@ -181,7 +181,7 @@
 
 <!-- Edit Task Modal -->
 <div id="editTaskModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 class="text-xl font-bold text-gray-800">
                 <i class="fas fa-edit text-purple-600"></i> Edit Task
@@ -220,7 +220,7 @@
                     </button>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('editTaskModal')" class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition">Update Task</button>
             </div>
@@ -230,7 +230,7 @@
 
 <!-- View Task Modal -->
 <div id="viewTaskModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
+    <div class="relative sm:top-10 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-2xl shadow-xl rounded-2xl bg-white mb-10">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 id="viewTaskTitle" class="text-xl font-bold text-gray-800">Task Details</h3>
             <button onclick="closeModal('viewTaskModal')" class="text-gray-400 hover:text-gray-600">
@@ -239,14 +239,14 @@
         </div>
         <div id="viewTaskContent" class="mt-4 space-y-3 max-h-[400px] overflow-y-auto"></div>
         <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('viewTaskModal')" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">Close</button>
+            <button onclick="closeModal('viewTaskModal')" class="w-full sm:w-auto px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">Close</button>
         </div>
     </div>
 </div>
 
 <!-- View Details Modal (Contributions) -->
 <div id="viewDetailsModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-full max-w-4xl shadow-xl rounded-2xl bg-white">
+    <div class="relative sm:top-20 mx-3 sm:mx-auto my-6 sm:my-0 p-4 sm:p-6 border w-auto sm:w-full max-w-4xl shadow-xl rounded-2xl bg-white">
         <div class="flex justify-between items-center pb-4 border-b">
             <h3 id="viewDetailsTitle" class="text-xl font-bold text-gray-800">Contribution Details</h3>
             <button onclick="closeModal('viewDetailsModal')" class="text-gray-400 hover:text-gray-600">
@@ -255,7 +255,7 @@
         </div>
         <div id="viewDetailsContent" class="mt-4 max-h-[500px] overflow-y-auto"></div>
         <div class="flex justify-end mt-6 pt-4 border-t">
-            <button onclick="closeModal('viewDetailsModal')" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
+            <button onclick="closeModal('viewDetailsModal')" class="w-full sm:w-auto px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
                 Close
             </button>
         </div>
@@ -729,6 +729,14 @@ document.addEventListener('DOMContentLoaded', function() {
     display: none !important;
 }
 
+.parent-tab-nav {
+    scrollbar-width: none;
+}
+
+.parent-tab-nav::-webkit-scrollbar {
+    display: none;
+}
+
 .subtask-item input[type="checkbox"] {
     width: 16px;
     height: 16px;
@@ -736,4 +744,3 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 @endsection
-
