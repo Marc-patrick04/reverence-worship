@@ -419,9 +419,9 @@
             div.id = 'question-' + q.id;
             div.innerHTML = '<div class="drag-handle cursor-move bg-gray-50 py-1 text-center border-b"><i class="fas fa-grip-horizontal text-gray-400 text-sm"></i><span class="text-xs text-gray-400 ml-1">Drag</span></div>' +
                 '<div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" style="top: 30px;"></div>' +
-                '<div class="p-5"><div class="grid grid-cols-12 gap-4 items-start">' +
-                '<div class="col-span-7"><input type="text" value="' + escapeHtml(q.text) + '" placeholder="Question" onchange="updateAndAutoSave(\'questionText\', ' + q.id + ', null, this.value)" class="w-full text-xl border-0 border-b border-gray-300 focus:ring-0 focus:border-gray-500 bg-gray-50 px-3 py-2"></div>' +
-                '<div class="col-span-4"><select onchange="changeQuestionType(' + q.id + ', this.value)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">' +
+                '<div class="p-4 sm:p-5"><div class="grid grid-cols-12 gap-3 sm:gap-4 items-start">' +
+                '<div class="col-span-12 sm:col-span-7"><input type="text" value="' + escapeHtml(q.text) + '" placeholder="Question" onchange="updateAndAutoSave(\'questionText\', ' + q.id + ', null, this.value)" class="w-full text-lg sm:text-xl border-0 border-b border-gray-300 focus:ring-0 focus:border-gray-500 bg-gray-50 px-3 py-2"></div>' +
+                '<div class="col-span-12 sm:col-span-5"><select onchange="changeQuestionType(' + q.id + ', this.value)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">' +
                 questionTypes.map(function(t) {
                     return '<option value="' + t.value + '" ' + (q.type === t.value ? 'selected' : '') + '>' + t.label + '</option>';
                 }).join('') +
@@ -552,7 +552,7 @@
 
             case 'multiple_choice_grid':
                 var gridHtml = '<div class="bg-gray-50 p-3 rounded-lg">' +
-                    '<div class="grid grid-cols-2 gap-4">' +
+                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' +
                     '<div><label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>' +
                     (q.rows || ['Row 1']).map(function(r, i) {
                         return '<div class="flex items-center gap-1 mb-1"><span class="text-gray-500 w-5 text-xs">' + (i + 1) + '.</span><input type="text" value="' + escapeHtml(r) + '" onchange="updateAndAutoSave(\'row\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeRow(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';
@@ -584,7 +584,7 @@
 
             case 'checkbox_grid':
                 var checkboxGridHtml = '<div class="bg-gray-50 p-3 rounded-lg">' +
-                    '<div class="grid grid-cols-2 gap-4">' +
+                    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' +
                     '<div><label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>' +
                     (q.rows || ['Row 1']).map(function(r, i) {
                         return '<div class="flex items-center gap-1 mb-1"><span class="text-gray-500 w-5 text-xs">' + (i + 1) + '.</span><input type="text" value="' + escapeHtml(r) + '" onchange="updateAndAutoSave(\'row\', ' + q.id + ', ' + i + ', this.value)" class="flex-1 px-2 py-1 border rounded-lg text-xs"><button onclick="event.stopPropagation(); removeRow(' + q.id + ', ' + i + ')" class="text-red-500"><i class="fas fa-times text-xs"></i></button></div>';

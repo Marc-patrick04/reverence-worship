@@ -1,6 +1,14 @@
 ﻿<div class="reports-container">
     
     
+    @php
+        $sortedForms = collect($allForms ?? [])->sortByDesc('created_at')->values();
+        $selectedFormIds = isset($selectedFormIds) && is_array($selectedFormIds) && count($selectedFormIds)
+            ? $selectedFormIds
+            : $sortedForms->pluck('id')->all();
+        $totalFormsCount = $sortedForms->count();
+    @endphp
+
     <!-- Filters -->
     <div class="bg-gray-50 rounded-xl p-4 mb-6 border">
         
@@ -33,19 +41,10 @@
             
             <!-- Forms Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-white" id="formsGrid">
-                @php
-    // Sort forms by created_at descending (latest first)
-    $sortedForms = isset($allForms) ? $allForms->sortByDesc('created_at') : collect();
-    // Get only first 8 forms for display
-    $displayForms = $sortedForms->take(8);
-    // Count total forms
-    $totalFormsCount = $sortedForms->count();
-@endphp
-
 @if(isset($allForms) && count($allForms) > 0)
-    @foreach($displayForms as $form)        
+    @foreach($sortedForms as $formIndex => $form)
                 <label class="form-item flex items-center gap-1.5 text-xs cursor-pointer hover:bg-blue-50 px-2 py-1.5 rounded transition border border-transparent hover:border-blue-200"
-                data-title="{{ strtolower($form->title) }}">
+                data-title="{{ strtolower($form->title) }}" style="{{ $formIndex >= 8 ? 'display:none' : '' }}">
                 <input type="checkbox" class="form-checkbox report-form-checkbox w-3.5 h-3.5" value="{{ $form->id }}" 
                 {{ isset($selectedFormIds) && is_array($selectedFormIds) && in_array($form->id, $selectedFormIds) ? 'checked' : '' }}
                 onchange="applyReportFilters(); updateSelectedCount();">
@@ -62,7 +61,7 @@
     
     @if($totalFormsCount > 8)
     <div class="col-span-full text-center mt-1">
-        <button onclick="showAllForms()" class="text-xs text-blue-600 hover:text-blue-800 transition font-medium">
+        <button type="button" id="showAllFormsBtn" onclick="showAllForms()" class="text-xs text-blue-600 hover:text-blue-800 transition font-medium">
             <i class="fas fa-chevron-down mr-1"></i> Show All {{ $totalFormsCount }} Forms
         </button>
     </div>
@@ -72,48 +71,52 @@
 @endif
         </div>
         
-        <!-- Show/Hide All Forms Toggle -->
-        @if(isset($allForms) && count($allForms) > 10)
-        <div class="mt-2 text-center">
-            <button onclick="toggleAllForms()" id="toggleFormsBtn" class="text-xs text-blue-600 hover:text-blue-800 transition">
-                <i class="fas fa-chevron-down mr-1"></i> Show All Forms
-            </button>
-        </div>
-        @endif
     </div>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                <select id="reportStatusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" onchange="applyReportFilters()">
-                    <option value="all">All Status</option>
-                    <option value="Complete">Complete</option>
-                    <option value="Partial">Partial</option>
-                    <option value="Not Started">Not Started</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Search User</label>
-                <input type="text" id="reportSearchInput" placeholder="Search by name or email..." 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                onkeyup="applyReportFilters()">
-            </div>
-            <div class="flex items-end gap-2">
-                <button onclick="resetReportFilters()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm transition">
-                    <i class="fas fa-undo mr-1"></i> Reset
-                </button>
-            </div>
-            <!-- Summary Card - Only Total Users -->
-<div class="grid grid-cols-1 gap-4 mb-6">
-    <div class="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
-        <p class="text-3xl font-bold text-blue-600" id="totalUsersCount">{{ $summary['total_users'] ?? 0 }}</p>
-        <p class="text-xs text-gray-600">TOTAL USERS (based on filter)</p>
+<div class="mb-5 grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-[180px_1fr_auto]">
+    <div>
+        <label class="mb-1 block text-xs font-medium text-gray-700">Completion status</label>
+        <select id="reportStatusFilter" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" onchange="applyReportFilters()">
+            <option value="all">All statuses</option>
+            <option value="Complete">Complete</option>
+            <option value="Partial">Partial</option>
+            <option value="Not Started">Not Started</option>
+        </select>
+    </div>
+    <div>
+        <label class="mb-1 block text-xs font-medium text-gray-700">Search user</label>
+        <input type="search" id="reportSearchInput" placeholder="Search by name or email..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            oninput="debouncedReportFilter()">
+    </div>
+    <div class="flex items-end">
+        <button type="button" onclick="resetReportFilters()" class="w-full rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
+            <i class="fas fa-undo mr-1"></i> Reset
+        </button>
     </div>
 </div>
-        </div>
+
+<div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-4">
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-3">
+        <p class="text-2xl font-bold text-blue-600" id="totalUsersCount">{{ $summary['total_users'] ?? 0 }}</p>
+        <p class="text-xs text-gray-600">Matching users</p>
+    </div>
+    <div class="rounded-xl border border-green-200 bg-green-50 p-3">
+        <p class="text-2xl font-bold text-green-600" id="completeUsersCount">{{ $summary['complete'] ?? 0 }}</p>
+        <p class="text-xs text-gray-600">Complete</p>
+    </div>
+    <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <p class="text-2xl font-bold text-amber-600" id="partialUsersCount">{{ $summary['partial'] ?? 0 }}</p>
+        <p class="text-xs text-gray-600">Partial</p>
+    </div>
+    <div class="rounded-xl border border-red-200 bg-red-50 p-3">
+        <p class="text-2xl font-bold text-red-600" id="notStartedUsersCount">{{ $summary['not_started'] ?? 0 }}</p>
+        <p class="text-xs text-gray-600">Not started</p>
+    </div>
+</div>
 
 <!-- Report Table - Simplified -->
-<div class="overflow-x-auto border rounded-xl">
+<div class="report-responsive-table overflow-x-auto border rounded-xl">
     <table class="min-w-full divide-y divide-gray-200" id="reportTable">
         <thead class="bg-gray-50">
             <tr>
@@ -127,18 +130,18 @@
                 @if(isset($reportData) && is_array($reportData) && count($reportData) > 0)
                     @foreach($reportData as $data)
                     <tr class="border-t hover:bg-gray-50 transition">
-                        <td class="px-4 py-3 sticky left-0 bg-white">
+                        <td class="px-4 py-3 sticky left-0 bg-white" data-label="User">
                             <div>
                                 <p class="font-medium text-gray-800 text-sm">{{ $data['user']->name ?? 'Unknown' }}</p>
                                 <p class="text-xs text-gray-400">{{ $data['user']->email ?? '' }}</p>
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="px-4 py-3 text-center" data-label="Submitted">
                             <span class="font-medium {{ ($data['total_submitted'] ?? 0) == ($data['total_forms'] ?? 0) ? 'text-green-600' : (($data['total_submitted'] ?? 0) > 0 ? 'text-yellow-600' : 'text-red-600') }}">
                                 {{ $data['total_submitted'] ?? 0 }}/{{ $data['total_forms'] ?? 0 }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="px-4 py-3 text-center" data-label="Status">
                             @php
                                 $status = $data['status'] ?? 'Not Started';
                             @endphp
@@ -156,7 +159,7 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="px-4 py-3 text-center" data-label="Actions">
                             <button onclick="viewUserProgress({{ $data['user']->id }}, '{{ $data['user']->name }}')" 
                                     class="text-blue-600 hover:text-blue-800 transition text-sm flex items-center gap-1 mx-auto">
                                 <i class="fas fa-file-lines"></i> View
@@ -178,11 +181,11 @@
     </div>
 
     <!-- Footer Actions -->
-    <div class="flex justify-between items-center mt-4">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4">
         <div class="text-sm text-gray-500">
             Showing <span id="reportRowCount">{{ isset($reportData) && is_array($reportData) ? count($reportData) : 0 }}</span> users
         </div>
-        <div class="flex gap-2">
+        <div class="grid grid-cols-2 sm:flex gap-2">
             @if(auth()->user()->isSuperAdmin() || auth()->user()->canAccess('intercession', 'export-reports'))
             <button onclick="exportReport()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
                 <i class="fas fa-file-csv"></i> Export CSV
@@ -197,7 +200,7 @@
 
 <!-- User Progress Popup Modal -->
 <div id="userProgressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
-    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-2 sm:mx-4 p-4 sm:p-6 max-h-[calc(100vh-1rem)] sm:max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center pb-3 border-b">
             <h3 class="text-lg font-bold text-gray-800" id="userProgressTitle">
                 <i class="fas fa-user text-blue-600 mr-2"></i> User Progress
@@ -225,6 +228,12 @@
 <script>
 let showingAllForms = false;
 let currentUserId = null;
+let reportFilterTimer = null;
+
+function debouncedReportFilter() {
+    clearTimeout(reportFilterTimer);
+    reportFilterTimer = setTimeout(applyReportFilters, 300);
+}
 
 // ==================== FORM SEARCH ====================
 function filterForms() {
@@ -232,22 +241,23 @@ function filterForms() {
     const items = document.querySelectorAll('.form-item');
     const btn = document.getElementById('showAllFormsBtn');
     let visibleCount = 0;
+    let matchedCount = 0;
     
     // Check if we're showing all forms
     const showingAll = btn && btn.innerHTML.includes('Show Less');
     
-    items.forEach((item, index) => {
+    items.forEach((item) => {
         const title = item.dataset.title || '';
         const match = title.includes(search) || !search;
         
-        // If showing all, show all matches; otherwise only show first 8 matches
         if (match) {
-            if (showingAll || index < 8) {
+            if (showingAll || matchedCount < 8) {
                 item.style.display = '';
                 visibleCount++;
             } else {
                 item.style.display = 'none';
             }
+            matchedCount++;
         } else {
             item.style.display = 'none';
         }
@@ -255,8 +265,7 @@ function filterForms() {
     
     // Update "Show All" button visibility
     if (btn) {
-        const totalVisible = document.querySelectorAll('.form-item[style*="display: none"]').length === 0;
-        if (visibleCount <= 8 && !showingAll) {
+        if (matchedCount <= 8) {
             btn.style.display = 'none';
         } else {
             btn.style.display = '';
@@ -432,6 +441,9 @@ function applyReportFilters() {
             </tr>
         `;
         document.getElementById('totalUsersCount').textContent = '0';
+        document.getElementById('completeUsersCount').textContent = '0';
+        document.getElementById('partialUsersCount').textContent = '0';
+        document.getElementById('notStartedUsersCount').textContent = '0';
         document.getElementById('reportRowCount').textContent = '0';
         return;
     }
@@ -458,27 +470,6 @@ function applyReportFilters() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const filteredUsers = data.reportData.filter(item => {
-                const user = item.user;
-                if ((user.membership_type || '') !== 'Permanent') {
-                    return false;
-                }
-                let isActive = true;
-                if (user.is_active !== undefined) {
-                    isActive = (user.is_active == true || user.is_active == 1);
-                }
-                if (user.status !== undefined && isActive) {
-                    isActive = (user.status === 'active' || user.status === 'Active');
-                }
-                return isActive;
-            });
-            
-            data.reportData = filteredUsers;
-            data.summary.total_users = filteredUsers.length;
-            data.summary.complete = filteredUsers.filter(item => item.status === 'Complete').length;
-            data.summary.partial = filteredUsers.filter(item => item.status === 'Partial').length;
-            data.summary.not_started = filteredUsers.filter(item => item.status === 'Not Started').length;
-            
             updateReportTable(data);
         } else {
             showNotification(data.message || 'Error loading report data', 'error');
@@ -499,6 +490,9 @@ function applyReportFilters() {
 // ==================== UPDATE REPORT TABLE ====================
 function updateReportTable(data) {
     document.getElementById('totalUsersCount').textContent = data.summary.total_users || 0;
+    document.getElementById('completeUsersCount').textContent = data.summary.complete || 0;
+    document.getElementById('partialUsersCount').textContent = data.summary.partial || 0;
+    document.getElementById('notStartedUsersCount').textContent = data.summary.not_started || 0;
     
     const tbody = document.getElementById('reportTableBody');
     
@@ -507,7 +501,7 @@ function updateReportTable(data) {
             <tr>
                 <td colspan="4" class="px-4 py-12 text-center">
                     <i class="fas fa-chart-bar text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">No Permanent users found</p>
+                    <p class="text-gray-500">No users found</p>
                     <p class="text-xs text-gray-400 mt-1">No users match the selected filters</p>
                 </td>
             </tr>
@@ -532,23 +526,23 @@ function updateReportTable(data) {
         
         html += `
             <tr class="border-t hover:bg-gray-50 transition">
-                <td class="px-4 py-3 sticky left-0 bg-white">
+                <td class="px-4 py-3 sticky left-0 bg-white" data-label="User">
                     <div>
                         <p class="font-medium text-gray-800 text-sm">${escapeHtml(user.name || 'Unknown')}</p>
                         <p class="text-xs text-gray-400">${escapeHtml(user.email || '')}</p>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-4 py-3 text-center" data-label="Submitted">
                     <span class="font-medium ${submittedClass}">
                         ${item.total_submitted || 0}/${item.total_forms || 0}
                     </span>
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-4 py-3 text-center" data-label="Status">
                     <span class="px-2 py-1 text-xs rounded-full ${statusClass}">
                         <i class="fas ${statusIcon} mr-1"></i> ${status}
                     </span>
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-4 py-3 text-center" data-label="Actions">
                     <button onclick="viewUserProgress(${user.id || 0}, '${escapeHtml(user.name || 'Unknown')}')" 
                             class="text-blue-600 hover:text-blue-800 transition text-sm flex items-center gap-1 mx-auto">
                         <i class="fas fa-file-lines"></i> View
@@ -720,6 +714,47 @@ function hideExcessForms() {
     width: 14px;
     height: 14px;
     cursor: pointer;
+}
+
+@media(max-width:639px) {
+    .report-responsive-table { overflow:visible; border:0; }
+    .report-responsive-table table,
+    .report-responsive-table tbody { display:block; width:100%; }
+    .report-responsive-table thead { display:none; }
+    .report-responsive-table tbody { display:grid; gap:.75rem; }
+    .report-responsive-table tbody tr {
+        display:block;
+        overflow:hidden;
+        border:1px solid #e2e8f0;
+        border-radius:.75rem;
+        background:#fff;
+    }
+    .report-responsive-table tbody td {
+        position:static !important;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:1rem;
+        width:100%;
+        padding:.65rem .8rem;
+        border:0;
+        border-bottom:1px solid #f1f5f9;
+        text-align:right;
+    }
+    .report-responsive-table tbody td:last-child { border-bottom:0; }
+    .report-responsive-table tbody td::before {
+        content:attr(data-label);
+        flex:0 0 34%;
+        color:#64748b;
+        font-size:.7rem;
+        font-weight:600;
+        text-align:left;
+        text-transform:uppercase;
+    }
+    .report-responsive-table tbody td[data-label="User"] { display:block; text-align:left; }
+    .report-responsive-table tbody td[data-label="User"]::before { display:none; }
+    .report-responsive-table tbody td[colspan] { display:block; text-align:center; }
+    .report-responsive-table tbody td[colspan]::before { display:none; }
 }
 
 #formsGrid {

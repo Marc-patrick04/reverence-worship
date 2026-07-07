@@ -11,63 +11,71 @@
         $canViewReports = auth()->check() && auth()->user()->canAccess('intercession', 'view-reports');
         $canExportReports = auth()->check() && auth()->user()->canAccess('intercession', 'export-reports');
         $isSuperAdmin = auth()->check() && auth()->user()->isSuperAdmin();
+        $canBrowseForms = auth()->check();
+        $canViewOwnResults = auth()->check();
+        $availableCount = collect($availableForms ?? [])->count();
+        $myResultsCount = collect($mySubmissions ?? [])->count();
+        $managedFormsCount = collect($allForms ?? [])->count();
     @endphp
 
     {{-- Stats --}}
-    @if($canViewForms)
-    <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-blue-50 rounded-xl p-4 text-center">
-            <p class="text-3xl font-bold text-blue-600">{{ $stats['total_forms'] ?? 0 }}</p>
-            <p class="text-xs text-gray-600">TOTAL FORMS</p>
+    @if($canBrowseForms)
+    <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div class="bg-blue-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center min-w-0">
+            <p class="text-xl sm:text-3xl font-bold text-blue-600 leading-tight">{{ $stats['total_forms'] ?? 0 }}</p>
+            <p class="text-[9px] sm:text-xs text-gray-600 leading-tight mt-1">TOTAL FORMS</p>
         </div>
-        <div class="bg-green-50 rounded-xl p-4 text-center">
-            <p class="text-3xl font-bold text-green-600">{{ $stats['my_attempts'] ?? 0 }}</p>
-            <p class="text-xs text-gray-600">MY ATTEMPTS</p>
+        <div class="bg-green-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center min-w-0">
+            <p class="text-xl sm:text-3xl font-bold text-green-600 leading-tight">{{ $stats['my_attempts'] ?? 0 }}</p>
+            <p class="text-[9px] sm:text-xs text-gray-600 leading-tight mt-1">ATTEMPTS</p>
         </div>
-        <div class="bg-purple-50 rounded-xl p-4 text-center">
-            <p class="text-3xl font-bold text-purple-600">{{ number_format($stats['best_avg'] ?? 0, 1) }}%</p>
-            <p class="text-xs text-gray-600">BEST AVG</p>
+        <div class="bg-purple-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center min-w-0">
+            <p class="text-xl sm:text-3xl font-bold text-purple-600 leading-tight">{{ number_format($stats['best_avg'] ?? 0, 1) }}%</p>
+            <p class="text-[9px] sm:text-xs text-gray-600 leading-tight mt-1">BEST SCORE</p>
         </div>
     </div>
     @endif
 
     {{-- Form Actions --}}
-    <div class="flex justify-between items-center mb-6">
-        <div class="flex gap-2 flex-wrap">
-            @if($canViewForms)
-            <button onclick="showFormSection('available')" id="form-section-available" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">
-                Available Forms
+    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-6">
+        <div class="grid w-full grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 sm:inline-flex sm:w-auto">
+            @if($canBrowseForms)
+            <button onclick="showFormSection('available')" id="form-section-available" class="section-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">
+                <i class="fas fa-clipboard-list mr-1.5"></i> Available
+                <span class="section-count ml-1 rounded-full px-1.5 py-0.5 text-[10px]">{{ $availableCount }}</span>
             </button>
             @endif
             
-            @if($canViewResults)
-            <button onclick="showFormSection('results')" id="form-section-results" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
-                My Results
+            @if($canViewOwnResults)
+            <button onclick="showFormSection('results')" id="form-section-results" class="section-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600">
+                <i class="fas fa-chart-line mr-1.5"></i> My Results
+                <span class="section-count ml-1 rounded-full px-1.5 py-0.5 text-[10px]">{{ $myResultsCount }}</span>
             </button>
             @endif
             
             @if($canManageForms || $isSuperAdmin)
-            <button onclick="showFormSection('manage')" id="form-section-manage" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
-                Manage Forms
+            <button onclick="showFormSection('manage')" id="form-section-manage" class="section-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600">
+                <i class="fas fa-sliders-h mr-1.5"></i> Manage
+                <span class="section-count ml-1 rounded-full px-1.5 py-0.5 text-[10px]">{{ $managedFormsCount }}</span>
             </button>
             @endif
             @if($canViewReports || $isSuperAdmin)
-<button onclick="showFormSection('reports')" id="form-section-reports" class="section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700">
-    <i class="fas fa-chart-bar mr-1"></i> Reports
-</button>
-@endif
+            <button onclick="showFormSection('reports')" id="form-section-reports" class="section-btn whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600">
+                <i class="fas fa-chart-bar mr-1.5"></i> Reports
+            </button>
+            @endif
         </div>
         
         {{-- Create Form Button --}}
         @if($canCreateForms || $isSuperAdmin)
-        <a href="{{ route('forms.manage.create') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition">
+        <a href="{{ route('forms.manage.create') }}" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
             <i class="fas fa-plus mr-1"></i> Create Form
         </a>
         @endif
     </div>
 
     {{-- Available Forms Section --}}
-    @if($canViewForms)
+    @if($canBrowseForms)
     <div id="available-forms-section" class="form-section">
         <h3 class="text-lg font-bold mb-4">Available Forms</h3>
         <div id="available-forms-list">
@@ -85,21 +93,22 @@
                 if (!is_array($questions)) {
                     $questions = [];
                 }
-                $questionsCount = count($questions);
+                $questionsCount = collect($questions)->reject(fn($question) => in_array($question['type'] ?? '', ['title_section', 'section_break']))->count();
                 $createdDate = isset($form->created_at) ? \Carbon\Carbon::parse($form->created_at)->format('F j, Y') : 'Date unknown';
                 $hasTaken = isset($mySubmissions) && $mySubmissions->contains('form_id', $form->id);
                 
                 // Determine button state
                 $buttonDisabled = $hasTaken && $limitOneResponse;
-                $buttonText = $hasTaken ? ($limitOneResponse ? 'Already Submitted' : 'Submit Again') : 'Take Form';
+                $buttonText = $hasTaken ? ($limitOneResponse ? 'Submitted' : 'Fill Again') : 'Open Form';
+                $buttonIcon = $hasTaken ? ($limitOneResponse ? 'fa-circle-check' : 'fa-rotate-right') : 'fa-arrow-right';
                 $buttonColor = $buttonDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700';
             @endphp
             @if($isPublished)
-            <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition-all duration-300">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
+            <div class="available-form-card rounded-xl p-4 sm:p-5 mb-3 transition-all duration-200">
+                <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,520px)_auto] sm:items-center gap-3 sm:gap-6">
+                    <div class="min-w-0">
                         <div class="flex items-center gap-2 mb-2">
-                            <h4 class="font-semibold text-gray-800 text-lg">{{ $form->title }}</h4>
+                            <h4 class="font-semibold text-slate-800 text-base sm:text-lg">{{ $form->title }}</h4>
                             @if($hasTaken)
                             <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                 <i class="fas fa-check-circle"></i> Completed
@@ -111,8 +120,8 @@
                             </span>
                             @endif
                         </div>
-                        <p class="text-sm text-gray-600 mb-2">{{ Str::limit($form->description ?? 'No description', 150) }}</p>
-                        <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+                        <p class="text-sm text-slate-500 mb-3 leading-relaxed">{{ Str::limit($form->description ?? 'No description', 150) }}</p>
+                        <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
                             <span class="flex items-center gap-1">
                                 <i class="fas fa-question-circle text-blue-500"></i>
                                 {{ $questionsCount }} {{ Str::plural('question', $questionsCount) }}
@@ -129,14 +138,14 @@
                             @endif
                         </div>
                     </div>
-                    <div class="ml-4">
+                    <div>
                         @if($buttonDisabled)
-                            <button disabled class="{{ $buttonColor }} text-white px-5 py-2 rounded-lg text-sm flex items-center gap-2 opacity-70">
-                                <i class="fas fa-check-circle"></i> {{ $buttonText }}
+                            <button disabled class="justify-self-start bg-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm inline-flex items-center gap-2 cursor-not-allowed">
+                                <i class="fas {{ $buttonIcon }}"></i> {{ $buttonText }}
                             </button>
                         @else
-                            <a href="{{ route('forms.take', $form->id) }}" class="{{ $buttonColor }} text-white px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
-                                <i class="fas fa-pen-alt"></i> {{ $buttonText }}
+                            <a href="{{ route('forms.take', $form->id) }}" class="justify-self-start bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-flex items-center gap-2 shadow-sm">
+                                <span>{{ $buttonText }}</span><i class="fas {{ $buttonIcon }} text-xs"></i>
                             </a>
                         @endif
                     </div>
@@ -155,7 +164,7 @@
     @endif
 
    {{-- My Results Section --}}
-@if($canViewResults)
+@if($canViewOwnResults)
 <div id="results-section" class="form-section hidden">
     <h3 class="text-lg font-bold mb-4">My Results</h3>
     <div id="results-list">
@@ -173,7 +182,7 @@
             if (!is_array($questions)) {
                 $questions = [];
             }
-            $questionsCount = count($questions);
+            $questionsCount = collect($questions)->reject(fn($question) => in_array($question['type'] ?? '', ['title_section', 'section_break']))->count();
             
             // Get answers from the submission - handle both string and array
             $answers = [];
@@ -191,7 +200,14 @@
             // Recalculate score using the same logic as results page
             $totalPoints = 0;
             $earnedPoints = 0;
-            $allowPartialPoints = true;
+            $resultSettings = isset($submission->form)
+                ? (is_string($submission->form->settings) ? json_decode($submission->form->settings, true) : ($submission->form->settings ?? []))
+                : [];
+            $allowPartialPoints = $resultSettings['allow_partial_points'] ?? true;
+            $releaseGrade = $resultSettings['release_grade'] ?? 'immediately';
+            $isReleased = !empty($submission->released_at) || !empty($submission->is_released);
+            $showResultScore = $releaseGrade === 'immediately' || ($releaseGrade === 'later' && $isReleased);
+            $submissionManualGrades = json_decode($submission->manual_grades ?? '[]', true) ?: [];
             
             if (!empty($questions) && !empty($answers)) {
                 foreach($questions as $index => $question) {
@@ -217,29 +233,28 @@
                         }
                     } elseif ($questionType == 'checkboxes') {
                         if (isset($question['correctAnswers']) && is_array($question['correctAnswers']) && !empty($question['correctAnswers'])) {
-                            $correctAnswers = $question['correctAnswers'];
-                            $userAnswers = is_array($answer) ? $answer : [];
+                            $correctAnswers = array_values(array_unique($question['correctAnswers']));
+                            $userAnswers = is_array($answer) ? array_values(array_unique($answer)) : [];
                             
                             if (!empty($userAnswers)) {
                                 $totalCorrect = count($correctAnswers);
-                                $correctSelected = 0;
-                                
-                                foreach ($userAnswers as $userAnswer) {
-                                    if (in_array($userAnswer, $correctAnswers)) {
-                                        $correctSelected++;
-                                    }
-                                }
+                                $correctSelected = count(array_intersect($userAnswers, $correctAnswers));
+                                $incorrectSelected = count(array_diff($userAnswers, $correctAnswers));
+                                $isExactMatch = $correctSelected === $totalCorrect
+                                    && $incorrectSelected === 0
+                                    && count($userAnswers) === $totalCorrect;
                                 
                                 if ($allowPartialPoints && $correctSelected > 0) {
-                                    $earnedPoints += ($correctSelected / $totalCorrect) * $points;
-                                } elseif (!$allowPartialPoints && $correctSelected == $totalCorrect) {
+                                    $credit = max(0, $correctSelected - $incorrectSelected);
+                                    $earnedPoints += ($credit / $totalCorrect) * $points;
+                                } elseif (!$allowPartialPoints && $isExactMatch) {
                                     $earnedPoints += $points;
                                 }
                             }
                         }
                     } elseif ($questionType == 'short_answer' || $questionType == 'paragraph') {
                         if (isset($question['correctAnswer']) && $question['correctAnswer'] !== '') {
-                            if (strtolower(trim($answer)) == strtolower(trim($question['correctAnswer']))) {
+                            if (strtolower(trim((string) $answer)) == strtolower(trim((string) $question['correctAnswer']))) {
                                 $earnedPoints += $points;
                             }
                         }
@@ -281,15 +296,17 @@
                                 $correctRowAnswers = $question['correctAnswers'][$rowIndex] ?? [];
                                 
                                 if (!empty($correctRowAnswers) && !empty($userRowAnswers)) {
-                                    $correctCount = 0;
-                                    foreach ($correctRowAnswers as $correctAns) {
-                                        if (in_array($correctAns, $userRowAnswers)) {
-                                            $correctCount++;
-                                        }
-                                    }
+                                    $correctRowAnswers = array_values(array_unique($correctRowAnswers));
+                                    $userRowAnswers = array_values(array_unique($userRowAnswers));
+                                    $correctCount = count(array_intersect($correctRowAnswers, $userRowAnswers));
+                                    $incorrectCount = count(array_diff($userRowAnswers, $correctRowAnswers));
+                                    $rowExact = $correctCount === count($correctRowAnswers)
+                                        && $incorrectCount === 0
+                                        && count($userRowAnswers) === count($correctRowAnswers);
                                     if ($allowPartialPoints && $correctCount > 0) {
-                                        $earnedPoints += ($correctCount / count($correctRowAnswers)) * ($points / count($rows));
-                                    } elseif (!$allowPartialPoints && $correctCount == count($correctRowAnswers)) {
+                                        $credit = max(0, $correctCount - $incorrectCount);
+                                        $earnedPoints += ($credit / count($correctRowAnswers)) * ($points / max(1, count($rows)));
+                                    } elseif (!$allowPartialPoints && $rowExact) {
                                         $earnedPoints += $points / count($rows);
                                     }
                                 }
@@ -301,32 +318,42 @@
             
             $earnedPoints = round($earnedPoints, 2);
             $displayScore = $totalPoints > 0 ? round(($earnedPoints / $totalPoints) * 100, 1) : ($submission->score ?? 0);
+            if (!empty($submissionManualGrades) && $submission->score !== null) {
+                $displayScore = (float) $submission->score;
+                $earnedPoints = $totalPoints > 0
+                    ? round(($displayScore / 100) * $totalPoints, 2)
+                    : 0;
+            }
             $formattedScore = number_format($displayScore, 1);
             
-            // Status based on score
-            $status = $displayScore >= 80 ? 'Excellent' : ($displayScore >= 60 ? 'Good' : ($displayScore >= 40 ? 'Average' : 'Needs Improvement'));
-            $statusColor = $displayScore >= 80 ? 'text-green-600' : ($displayScore >= 60 ? 'text-blue-600' : ($displayScore >= 40 ? 'text-yellow-600' : 'text-red-600'));
-            $statusIcon = $displayScore >= 80 ? 'fa-star' : ($displayScore >= 60 ? 'fa-thumbs-up' : ($displayScore >= 40 ? 'fa-minus-circle' : 'fa-exclamation-triangle'));
         @endphp
-        <div class="border rounded-lg p-4 mb-3 hover:shadow-md transition">
-            <div class="flex justify-between items-center">
+        <div class="border rounded-lg p-3 sm:p-4 mb-3 hover:shadow-md transition">
+            <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,420px)_auto] sm:items-center gap-3 sm:gap-6">
                 <div>
                     <h4 class="font-semibold text-gray-800">{{ $submission->form->title ?? 'Form' }}</h4>
-                    <div class="flex gap-3 mt-1 text-xs text-gray-500">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
                         <span><i class="fas fa-question-circle"></i> {{ $questionsCount }} questions</span>
-                        <span><i class="fas fa-calendar"></i> {{ isset($submission->submitted_at) ? \Carbon\Carbon::parse($submission->submitted_at)->format('M d, Y') : 'N/A' }}</span>
-                        <span><i class="fas fa-star {{ $statusColor }}"></i> {{ $status }}</span>
+                        <span>
+                            <i class="fas fa-calendar-check"></i>
+                            Submitted {{ isset($submission->submitted_at) ? \Carbon\Carbon::parse($submission->submitted_at)->format('M d, Y \a\t h:i A') : 'N/A' }}
+                        </span>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-2xl font-bold {{ $statusColor }}">{{ $formattedScore }}%</p>
-                    <div class="flex items-center justify-end gap-2">
-                        <span class="text-xs text-gray-400">{{ number_format($earnedPoints, 1) }} / {{ $totalPoints }} pts</span>
-                        <button onclick="viewFormResult({{ $submission->form_id ?? 0 }}, {{ $submission->id ?? 0 }})" 
-                                class="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                            View Details <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    @if($showResultScore)
+                    <p class="text-xl font-bold text-blue-700">{{ $formattedScore }}%</p>
+                    @elseif($releaseGrade === 'later')
+                    <p class="text-sm font-semibold text-amber-600"><i class="fas fa-clock mr-1"></i> Pending review</p>
+                    @else
+                    <p class="text-sm font-semibold text-gray-500"><i class="fas fa-lock mr-1"></i> Score private</p>
+                    @endif
+                    @if($showResultScore)
+                    <span class="text-xs text-gray-400">{{ number_format($earnedPoints, 1) }} / {{ $totalPoints }} pts</span>
+                    @endif
+                    <button onclick="viewFormResult({{ $submission->form_id ?? 0 }}, {{ $submission->id ?? 0 }})"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                        Details <i class="fas fa-arrow-right text-[10px]"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -344,7 +371,7 @@
     @if($canManageForms || $isSuperAdmin)
     <div id="manage-section" class="form-section hidden">
         <h3 class="text-lg font-bold mb-4">Manage Forms</h3>
-        <div class="overflow-x-auto">
+        <div class="intercession-responsive-table overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -371,33 +398,46 @@
                         if (!is_array($questions)) {
                             $questions = [];
                         }
-                        $questionsCount = count($questions);
-                        $submissionsCount = DB::table('form_submissions')->where('form_id', $form->id)->count();
+                        $questionsCount = collect($questions)->reject(fn($question) => in_array($question['type'] ?? '', ['title_section', 'section_break']))->count();
+                        $submissionsCount = $form->submissions_count ?? 0;
                     @endphp
                     <tr class="border-t hover:bg-gray-50" id="form-row-{{ $form->id }}">
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Form">
                             <div>
                                 <p class="font-medium text-gray-800">{{ $form->title }}</p>
                                 <p class="text-xs text-gray-500">{{ Str::limit($form->description ?? '', 50) }}</p>
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500 text-center">{{ $questionsCount }}</td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 text-sm text-gray-500 text-center" data-label="Questions">{{ $questionsCount }}</td>
+                        <td class="px-4 py-3" data-label="Status">
                             <span id="status-badge-{{ $form->id }}" class="px-2 py-1 text-xs rounded-full 
                                 {{ $isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
                                 {{ $isPublished ? 'Published' : 'Draft' }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500 text-center">{{ $submissionsCount }}</td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 text-sm text-gray-500 text-center" data-label="Submissions">{{ $submissionsCount }}</td>
+                        <td class="px-4 py-3" data-label="Response limit">
                             <span class="px-2 py-1 text-xs rounded-full {{ $limitOneResponse ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500' }}">
                                 {{ $limitOneResponse ? '1 Response' : 'Multiple' }}
                             </span>
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Actions">
                             <div class="flex gap-2 flex-wrap">
-                                
-                                
+                                @if($isPublished)
+                                <button type="button"
+                                    data-share-url="{{ route('forms.take', $form->id) }}"
+                                    data-share-title="{{ $form->title }}"
+                                    onclick="shareFormLink(this.dataset.shareUrl, this.dataset.shareTitle)"
+                                    class="text-sky-600 hover:text-sky-800"
+                                    title="Share answer link">
+                                    <i class="fas fa-share-nodes"></i>
+                                </button>
+                                @else
+                                <button type="button" disabled class="cursor-not-allowed text-gray-300" title="Publish this form before sharing">
+                                    <i class="fas fa-share-nodes"></i>
+                                </button>
+                                @endif
+
                                 @if($canPublishForms || $isSuperAdmin)
                                 <button onclick="togglePublish({{ $form->id }})" 
                                     id="publish-btn-{{ $form->id }}"
@@ -413,7 +453,7 @@
                                 </button>
                                 @endif
                                 
-                                @if($canViewResults || $isSuperAdmin)
+                                @if($canViewResults || $canManageForms || $isSuperAdmin)
                                 <button onclick="viewSubmissions({{ $form->id }})" class="text-purple-600 hover:text-purple-800" title="Submissions">
                                     <i class="fas fa-users"></i>
                                 </button>
@@ -441,6 +481,77 @@
 @endif
 
 </div>
+
+<style>
+.available-form-card {
+    border:1px solid #e5eaf0;
+    background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);
+    box-shadow:0 2px 8px rgba(15,23,42,.025);
+}
+#available-forms-list {
+    padding:.75rem;
+    border-radius:.875rem;
+    background:#f8fafc;
+}
+.available-form-card:hover {
+    border-color:#cbdcf8;
+    box-shadow:0 8px 24px rgba(37,99,235,.055);
+}
+.section-count {
+    min-width:1.25rem;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#e2e8f0;
+    color:#334155;
+    font-weight:700;
+}
+.section-btn.bg-blue-600 .section-count {
+    background:rgba(255,255,255,.22);
+    color:#fff;
+}
+@media(max-width:639px) {
+    #forms-tab > .bg-white { padding:.75rem; }
+    .intercession-responsive-table { overflow:visible; }
+    .intercession-responsive-table table,
+    .intercession-responsive-table tbody { display:block; width:100%; }
+    .intercession-responsive-table thead { display:none; }
+    .intercession-responsive-table tbody { display:grid; gap:.75rem; }
+    .intercession-responsive-table tbody tr {
+        display:block;
+        overflow:hidden;
+        border:1px solid #e2e8f0;
+        border-radius:.75rem;
+        background:#fff;
+    }
+    .intercession-responsive-table tbody td {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:1rem;
+        width:100%;
+        padding:.65rem .8rem;
+        border:0;
+        border-bottom:1px solid #f1f5f9;
+        text-align:right;
+    }
+    .intercession-responsive-table tbody td:last-child { border-bottom:0; }
+    .intercession-responsive-table tbody td::before {
+        content:attr(data-label);
+        flex:0 0 38%;
+        color:#64748b;
+        font-size:.7rem;
+        font-weight:600;
+        text-align:left;
+        text-transform:uppercase;
+    }
+    .intercession-responsive-table tbody td[data-label="Form"] { display:block; text-align:left; }
+    .intercession-responsive-table tbody td[data-label="Form"]::before { display:none; }
+    .intercession-responsive-table tbody td[data-label="Actions"] > div { justify-content:flex-end; }
+    .intercession-responsive-table tbody td[colspan] { display:block; text-align:center; }
+    .intercession-responsive-table tbody td[colspan]::before { display:none; }
+}
+</style>
 
 <script>
 // ==================== SHOW FORM SECTION ====================
@@ -514,6 +625,35 @@ window.editForm = function(id) {
 
 window.viewSubmissions = function(id) {
     window.location.href = `/forms/manage/${id}/submissions`;
+};
+
+window.shareFormLink = async function(url, title) {
+    const shareText = `${title}\n${url}`;
+
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: title,
+                text: shareText
+            });
+            return;
+        }
+
+        await navigator.clipboard.writeText(shareText);
+        showNotification('Form title and link copied.', 'success');
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+
+        const input = document.createElement('textarea');
+        input.value = shareText;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+        showNotification('Form title and link copied.', 'success');
+    }
 };
 
 window.viewFormResult = function(formId, submissionId) {
@@ -657,31 +797,32 @@ function refreshAvailableForms() {
                     const description = form.description || 'No description';
                     
                     const buttonDisabled = hasTaken && limitOneResponse;
-                    const buttonText = hasTaken ? (limitOneResponse ? 'Already Submitted' : 'Submit Again') : 'Take Form';
+                    const buttonText = hasTaken ? (limitOneResponse ? 'Submitted' : 'Fill Again') : 'Open Form';
+                    const buttonIcon = hasTaken ? (limitOneResponse ? 'fa-circle-check' : 'fa-rotate-right') : 'fa-arrow-right';
                     const buttonColor = buttonDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700';
                     
                     html += `
-                        <div class="border rounded-lg p-4 mb-4 hover:shadow-lg transition-all duration-300">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
+                        <div class="available-form-card rounded-xl p-4 sm:p-5 mb-3 transition-all duration-200">
+                            <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,520px)_auto] sm:items-center gap-3 sm:gap-6">
+                                <div class="min-w-0">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <h4 class="font-semibold text-gray-800 text-lg">${escapeHtml(form.title)}</h4>
+                                        <h4 class="font-semibold text-slate-800 text-base sm:text-lg">${escapeHtml(form.title)}</h4>
                                         ${hasTaken ? `<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"><i class="fas fa-check-circle"></i> Completed</span>` : ''}
                                         ${limitOneResponse ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"><i class="fas fa-lock"></i> Limit 1</span>` : ''}
                                     </div>
-                                    <p class="text-sm text-gray-600 mb-2">${escapeHtml(description.substring(0, 150))}</p>
-                                    <div class="flex flex-wrap gap-4 text-xs text-gray-500">
+                                    <p class="text-sm text-slate-500 mb-3 leading-relaxed">${escapeHtml(description.substring(0, 150))}</p>
+                                    <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
                                         <span class="flex items-center gap-1"><i class="fas fa-question-circle text-blue-500"></i> ${questionsCount} ${questionsCount === 1 ? 'question' : 'questions'}</span>
                                         <span class="flex items-center gap-1"><i class="fas fa-calendar-alt text-gray-400"></i> Created: ${createdDate}</span>
                                     </div>
                                 </div>
-                                <div class="ml-4">
+                                <div>
                                     ${buttonDisabled ? 
-                                        `<button disabled class="${buttonColor} text-white px-5 py-2 rounded-lg text-sm flex items-center gap-2 opacity-70">
-                                            <i class="fas fa-check-circle"></i> ${buttonText}
+                                        `<button disabled class="justify-self-start bg-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm inline-flex items-center gap-2 cursor-not-allowed">
+                                            <i class="fas ${buttonIcon}"></i> ${buttonText}
                                         </button>` :
-                                        `<a href="/forms/${form.id}/take" class="${buttonColor} text-white px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
-                                            <i class="fas fa-pen-alt"></i> ${buttonText}
+                                        `<a href="/forms/${form.id}/take" class="justify-self-start bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-flex items-center gap-2 shadow-sm">
+                                            <span>${buttonText}</span><i class="fas ${buttonIcon} text-xs"></i>
                                         </a>`
                                     }
                                 </div>
@@ -810,70 +951,30 @@ window.escapeHtml = function(text) {
 
 // ==================== DOM READY ====================
 document.addEventListener('DOMContentLoaded', function() {
+    const requestedSection = new URLSearchParams(window.location.search).get('form_section');
     const savedSection = localStorage.getItem('activeFormSection');
-    
-    let allowedSection = 'available';
-    
-    @if(isset($canViewForms) && $canViewForms)
-        allowedSection = 'available';
-    @elseif(isset($canViewResults) && $canViewResults)
-        allowedSection = 'results';
-    @elseif((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))
-        allowedSection = 'manage';
-    @elseif((isset($canViewReports) && $canViewReports) || (isset($isSuperAdmin) && $isSuperAdmin))
-        allowedSection = 'reports';
-    @endif
-    
-    // Determine which section to show
-    let sectionToShow = allowedSection;
-    if (savedSection === 'results' && isset($canViewResults) && $canViewResults) {
-        sectionToShow = 'results';
-    } else if (savedSection === 'manage' && ((isset($canManageForms) && $canManageForms) || (isset($isSuperAdmin) && $isSuperAdmin))) {
-        sectionToShow = 'manage';
-    } else if (savedSection === 'reports' && ((isset($canViewReports) && $canViewReports) || (isset($isSuperAdmin) && $isSuperAdmin))) {
-        sectionToShow = 'reports';
+
+    const permittedSections = {
+        available: @json((bool) $canBrowseForms),
+        results: @json((bool) $canViewOwnResults),
+        manage: @json((bool) ($canManageForms || $isSuperAdmin)),
+        reports: @json((bool) ($canViewReports || $isSuperAdmin))
+    };
+
+    const defaultSection = Object.keys(permittedSections).find(section => permittedSections[section]);
+    const sectionToShow = requestedSection && permittedSections[requestedSection]
+        ? requestedSection
+        : (savedSection && permittedSections[savedSection] ? savedSection : defaultSection);
+
+    if (sectionToShow) {
+        showFormSection(sectionToShow);
     }
-    
-    const availableSection = document.getElementById('available-forms-section');
-    const resultsSection = document.getElementById('results-section');
-    const manageSection = document.getElementById('manage-section');
-    const reportsSection = document.getElementById('reports-section');
-    
-    if (availableSection) availableSection.classList.add('hidden');
-    if (resultsSection) resultsSection.classList.add('hidden');
-    if (manageSection) manageSection.classList.add('hidden');
-    if (reportsSection) reportsSection.classList.add('hidden');
-    
-    if (sectionToShow === 'results' && resultsSection) {
-        resultsSection.classList.remove('hidden');
-    } else if (sectionToShow === 'manage' && manageSection) {
-        manageSection.classList.remove('hidden');
-    } else if (sectionToShow === 'reports' && reportsSection) {
-        reportsSection.classList.remove('hidden');
-        // If switching to reports, refresh the data
-        if (typeof applyReportFilters === 'function') {
-            setTimeout(applyReportFilters, 300);
-        }
-    } else if (availableSection) {
-        availableSection.classList.remove('hidden');
-    }
-    
-    const availableBtn = document.getElementById('form-section-available');
-    const resultsBtn = document.getElementById('form-section-results');
-    const manageBtn = document.getElementById('form-section-manage');
-    const reportsBtn = document.getElementById('form-section-reports');
-    
-    [availableBtn, resultsBtn, manageBtn, reportsBtn].forEach(btn => {
-        if (btn) {
-            btn.classList.remove('bg-blue-600', 'text-white');
-            btn.classList.add('bg-gray-200', 'text-gray-700');
-        }
-    });
-    
-    const activeButton = document.getElementById(`form-section-${sectionToShow}`);
-    if (activeButton) {
-        activeButton.classList.remove('bg-gray-200', 'text-gray-700');
-        activeButton.classList.add('bg-blue-600', 'text-white');
+
+    if (requestedSection) {
+        setTimeout(function() {
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, '', cleanUrl);
+        }, 0);
     }
 });
 
@@ -881,4 +982,3 @@ document.addEventListener('DOMContentLoaded', function() {
 window.showFormSection = showFormSection;
 window.refreshAvailableForms = refreshAvailableForms;
 </script>
-

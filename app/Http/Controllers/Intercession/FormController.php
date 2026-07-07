@@ -613,22 +613,21 @@ class FormController extends Controller
                     // === CHECKBOXES ===
                     elseif ($questionType == 'checkboxes') {
                         if (isset($question['correctAnswers']) && is_array($question['correctAnswers']) && !empty($question['correctAnswers'])) {
-                            $userAnswers = is_array($userAnswer) ? $userAnswer : [];
-                            $correctAnswers = $question['correctAnswers'];
+                            $userAnswers = is_array($userAnswer) ? array_values(array_unique($userAnswer)) : [];
+                            $correctAnswers = array_values(array_unique($question['correctAnswers']));
 
                             if (!empty($userAnswers)) {
                                 $totalCorrect = count($correctAnswers);
-                                $correctSelected = 0;
-
-                                foreach ($userAnswers as $answer) {
-                                    if (in_array($answer, $correctAnswers)) {
-                                        $correctSelected++;
-                                    }
-                                }
+                                $correctSelected = count(array_intersect($userAnswers, $correctAnswers));
+                                $incorrectSelected = count(array_diff($userAnswers, $correctAnswers));
+                                $isExactMatch = $correctSelected === $totalCorrect
+                                    && $incorrectSelected === 0
+                                    && count($userAnswers) === $totalCorrect;
 
                                 if ($allowPartialPoints && $correctSelected > 0) {
-                                    $earnedPoints += ($correctSelected / $totalCorrect) * $points;
-                                } elseif (!$allowPartialPoints && $correctSelected == $totalCorrect) {
+                                    $credit = max(0, $correctSelected - $incorrectSelected);
+                                    $earnedPoints += ($credit / $totalCorrect) * $points;
+                                } elseif (!$allowPartialPoints && $isExactMatch) {
                                     $earnedPoints += $points;
                                 }
                             }
@@ -638,7 +637,7 @@ class FormController extends Controller
                     // === SHORT ANSWER / PARAGRAPH ===
                     elseif ($questionType == 'short_answer' || $questionType == 'paragraph') {
                         if (isset($question['correctAnswer']) && $question['correctAnswer'] !== '') {
-                            if (strtolower(trim($userAnswer)) == strtolower(trim($question['correctAnswer']))) {
+                            if (strtolower(trim((string) $userAnswer)) == strtolower(trim((string) $question['correctAnswer']))) {
                                 $earnedPoints += $points;
                             }
                         }
@@ -721,16 +720,18 @@ class FormController extends Controller
 
                                 $rowEarned = 0;
                                 if (!empty($correctRowAnswers) && !empty($userRowAnswers)) {
-                                    $correctCount = 0;
-                                    foreach ($userRowAnswers as $userAnswer) {
-                                        if (in_array($userAnswer, $correctRowAnswers)) {
-                                            $correctCount++;
-                                        }
-                                    }
+                                    $userRowAnswers = array_values(array_unique($userRowAnswers));
+                                    $correctRowAnswers = array_values(array_unique($correctRowAnswers));
+                                    $correctCount = count(array_intersect($userRowAnswers, $correctRowAnswers));
+                                    $incorrectCount = count(array_diff($userRowAnswers, $correctRowAnswers));
+                                    $rowExact = $correctCount === count($correctRowAnswers)
+                                        && $incorrectCount === 0
+                                        && count($userRowAnswers) === count($correctRowAnswers);
 
                                     if ($allowPartialPoints && $correctCount > 0) {
-                                        $rowEarned = ($correctCount / count($correctRowAnswers)) * $rowPoints;
-                                    } elseif (!$allowPartialPoints && $correctCount == count($correctRowAnswers)) {
+                                        $credit = max(0, $correctCount - $incorrectCount);
+                                        $rowEarned = ($credit / count($correctRowAnswers)) * $rowPoints;
+                                    } elseif (!$allowPartialPoints && $rowExact) {
                                         $rowEarned = $rowPoints;
                                     }
                                 }
@@ -761,13 +762,18 @@ class FormController extends Controller
             ]);
 
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
+                $response = [
                     'success' => true,
                     'message' => 'Form submitted successfully',
-                    'score' => $score,
                     'form_id' => $id,
                     'submission_id' => $submissionId
-                ]);
+                ];
+
+                if ($isQuiz && ($settings['release_grade'] ?? 'immediately') === 'immediately') {
+                    $response['score'] = $score;
+                }
+
+                return response()->json($response);
             }
 
             return redirect()->route('forms.results', ['id' => $id, 'submission_id' => $submissionId])
@@ -783,6 +789,200 @@ class FormController extends Controller
             }
             return redirect()->back()->with('error', 'Error submitting form: ' . $e->getMessage());
         }
+    }
+
+    // ==================== MANUAL GRADING ====================
+    public function gradeSubmissionQuestion(Request $request, $id)
+    {
+        if (!auth()->user()->isSuperAdmin()
+            && !auth()->user()->canAccess('intercession', 'manage-forms')) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
+        }
+
+        $validated = $request->validate([
+            'question_index' => ['required', 'integer', 'min:0'],
+            'decision' => ['required', 'in:correct,incorrect,auto'],
+        ]);
+
+        $submission = DB::table('form_submissions')->where('id', $id)->first();
+        if (!$submission) {
+            return response()->json(['success' => false, 'message' => 'Submission not found'], 404);
+        }
+        if ((int) $submission->user_id === (int) auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot manually grade your own submission',
+            ], 403);
+        }
+
+        $form = DB::table('forms')->where('id', $submission->form_id)->first();
+        if (!$form) {
+            return response()->json(['success' => false, 'message' => 'Form not found'], 404);
+        }
+
+        $questions = json_decode($form->questions, true) ?: [];
+        $answers = json_decode($submission->answers, true) ?: [];
+        $settings = json_decode($form->settings, true) ?: [];
+        $questionIndex = $validated['question_index'];
+
+        if (!isset($questions[$questionIndex])) {
+            return response()->json(['success' => false, 'message' => 'Question not found'], 422);
+        }
+
+        $questionType = $questions[$questionIndex]['type'] ?? 'short_answer';
+        if (in_array($questionType, ['title_section', 'section_break'], true)) {
+            return response()->json(['success' => false, 'message' => 'Sections cannot be graded'], 422);
+        }
+
+        $manualGrades = json_decode($submission->manual_grades ?? '[]', true) ?: [];
+        if ($validated['decision'] === 'auto') {
+            unset($manualGrades[$questionIndex]);
+        } else {
+            $manualGrades[$questionIndex] = [
+                'decision' => $validated['decision'],
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now()->toIso8601String(),
+            ];
+        }
+
+        $totalPoints = 0;
+        $earnedPoints = 0;
+        $allowPartialPoints = $settings['allow_partial_points'] ?? true;
+
+        foreach ($questions as $index => $question) {
+            $type = $question['type'] ?? 'short_answer';
+            if (in_array($type, ['title_section', 'section_break'], true)) {
+                continue;
+            }
+
+            $points = (float) ($question['points'] ?? 1);
+            $totalPoints += $points;
+            $decision = $manualGrades[$index]['decision'] ?? null;
+
+            if ($decision === 'correct') {
+                $earnedPoints += $points;
+            } elseif ($decision !== 'incorrect') {
+                $earnedPoints += $this->calculateAutomaticQuestionPoints(
+                    $question,
+                    $index,
+                    $answers,
+                    $allowPartialPoints
+                );
+            }
+        }
+
+        $score = $totalPoints > 0
+            ? round(min(100, max(0, ($earnedPoints / $totalPoints) * 100)), 1)
+            : 0;
+
+        DB::table('form_submissions')->where('id', $id)->update([
+            'manual_grades' => json_encode($manualGrades),
+            'score' => $score,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $validated['decision'] === 'auto'
+                ? 'Automatic grading restored'
+                : 'Manual grade saved',
+            'score' => $score,
+        ]);
+    }
+
+    private function calculateAutomaticQuestionPoints(
+        array $question,
+        int $index,
+        array $answers,
+        bool $allowPartialPoints
+    ): float {
+        $type = $question['type'] ?? 'short_answer';
+        $points = (float) ($question['points'] ?? 1);
+        $answerKey = 'question_' . $index;
+        $answer = $answers[$answerKey] ?? null;
+
+        if (in_array($type, ['multiple_choice', 'dropdown', 'date', 'time'], true)) {
+            $correct = $question['correctAnswer'] ?? null;
+            return $correct !== null && $correct !== '' && $answer == $correct ? $points : 0;
+        }
+
+        if (in_array($type, ['short_answer', 'paragraph'], true)) {
+            $correct = trim((string) ($question['correctAnswer'] ?? ''));
+            return $correct !== '' && mb_strtolower(trim((string) $answer)) === mb_strtolower($correct)
+                ? $points
+                : 0;
+        }
+
+        if ($type === 'checkboxes') {
+            $correct = array_values(array_unique($question['correctAnswers'] ?? []));
+            $selected = is_array($answer) ? array_values(array_unique($answer)) : [];
+            if (!$correct || !$selected) {
+                return 0;
+            }
+
+            $correctCount = count(array_intersect($selected, $correct));
+            $incorrectCount = count(array_diff($selected, $correct));
+            $exact = $correctCount === count($correct)
+                && $incorrectCount === 0
+                && count($selected) === count($correct);
+
+            if (!$allowPartialPoints) {
+                return $exact ? $points : 0;
+            }
+
+            return round((max(0, $correctCount - $incorrectCount) / count($correct)) * $points, 2);
+        }
+
+        if (in_array($type, ['linear_scale', 'rating'], true)) {
+            $correct = $question['correctAnswer'] ?? null;
+            if ($correct !== null && $correct !== '') {
+                return $answer == $correct ? $points : 0;
+            }
+            return $answer !== null && $answer !== '' ? $points : 0;
+        }
+
+        if (in_array($type, ['multiple_choice_grid', 'checkbox_grid'], true)) {
+            $rows = $question['rows'] ?? [];
+            $correctAnswers = $question['correctAnswers'] ?? [];
+            $rowPoints = count($rows) ? $points / count($rows) : 0;
+            $earned = 0;
+            $nestedAnswers = is_array($answer) ? $answer : [];
+
+            foreach ($rows as $rowIndex => $row) {
+                $rowKey = $answerKey . '_' . $rowIndex;
+                $userRowAnswer = $answers[$rowKey] ?? ($nestedAnswers[$rowKey] ?? null);
+                $correctRowAnswer = $correctAnswers[$rowIndex] ?? null;
+
+                if ($type === 'multiple_choice_grid') {
+                    if ($correctRowAnswer !== null && $correctRowAnswer !== '' && $userRowAnswer == $correctRowAnswer) {
+                        $earned += $rowPoints;
+                    }
+                    continue;
+                }
+
+                $correct = is_array($correctRowAnswer) ? array_values(array_unique($correctRowAnswer)) : [];
+                $selected = is_array($userRowAnswer) ? array_values(array_unique($userRowAnswer)) : [];
+                if (!$correct || !$selected) {
+                    continue;
+                }
+
+                $correctCount = count(array_intersect($selected, $correct));
+                $incorrectCount = count(array_diff($selected, $correct));
+                $exact = $correctCount === count($correct)
+                    && $incorrectCount === 0
+                    && count($selected) === count($correct);
+
+                $earned += $allowPartialPoints
+                    ? (max(0, $correctCount - $incorrectCount) / count($correct)) * $rowPoints
+                    : ($exact ? $rowPoints : 0);
+            }
+
+            return round($earned, 2);
+        }
+
+        return 0;
     }
 
     // ==================== RELEASE SUBMISSION ====================
@@ -805,6 +1005,12 @@ class FormController extends Controller
                     'is_released' => true,
                     'updated_at' => now()
                 ]);
+
+            if (DB::getSchemaBuilder()->hasTable('form_result_notification_reads')) {
+                DB::table('form_result_notification_reads')
+                    ->where('submission_id', $id)
+                    ->delete();
+            }
 
             return response()->json([
                 'success' => true,
@@ -907,14 +1113,24 @@ class FormController extends Controller
                 return response()->json(['success' => false, 'message' => 'Form ID is required'], 400);
             }
 
-            $count = DB::table('form_submissions')
+            $submissionIds = DB::table('form_submissions')
                 ->where('form_id', $formId)
                 ->whereNotNull('released_at')
+                ->pluck('id');
+
+            $count = DB::table('form_submissions')
+                ->whereIn('id', $submissionIds)
                 ->update([
                     'released_at' => null,
                     'is_released' => false,
                     'updated_at' => now()
                 ]);
+
+            if ($submissionIds->isNotEmpty() && DB::getSchemaBuilder()->hasTable('form_result_notification_reads')) {
+                DB::table('form_result_notification_reads')
+                    ->whereIn('submission_id', $submissionIds)
+                    ->delete();
+            }
 
             return response()->json([
                 'success' => true,
@@ -956,7 +1172,11 @@ class FormController extends Controller
     public function getAvailableForms(Request $request)
     {
         try {
-            $forms = DB::table('forms')->orderBy('created_at', 'desc')->get();
+            $forms = DB::table('forms')
+                ->where('is_active', true)
+                ->whereRaw("(settings::jsonb ->> 'is_published') = 'true'")
+                ->orderBy('created_at', 'desc')
+                ->get();
             $mySubmissions = DB::table('form_submissions')
                 ->where('user_id', auth()->id())
                 ->pluck('form_id')
@@ -979,7 +1199,9 @@ class FormController extends Controller
     // ==================== SUBMISSIONS (ADMIN) ====================
     public function submissions($id)
     {
-        if (!auth()->user()->canAccess('intercession', 'view-results')) {
+        if (!auth()->user()->isSuperAdmin()
+            && !auth()->user()->canAccess('intercession', 'view-results')
+            && !auth()->user()->canAccess('intercession', 'manage-forms')) {
             abort(403, 'You do not have permission to view submissions.');
         }
 
@@ -1000,6 +1222,44 @@ class FormController extends Controller
         return view('modules.intercession.forms.submissions', compact('submissions', 'form', 'questions'));
     }
 
+    public function reviewSubmission($formId, $submissionId)
+    {
+        if (!auth()->user()->isSuperAdmin()
+            && !auth()->user()->canAccess('intercession', 'manage-forms')) {
+            abort(403, 'You do not have permission to review submissions.');
+        }
+
+        $submission = DB::table('form_submissions')
+            ->where('id', $submissionId)
+            ->where('form_id', $formId)
+            ->first();
+
+        if (!$submission) {
+            abort(404, 'Submission not found.');
+        }
+
+        $form = DB::table('forms')->where('id', $formId)->first();
+        if (!$form) {
+            abort(404, 'Form not found.');
+        }
+
+        $questions = json_decode($form->questions, true) ?: [];
+        $answers = json_decode($submission->answers, true) ?: [];
+        $userName = DB::table('users')->where('id', $submission->user_id)->value('name') ?? 'Unknown User';
+        $managerReviewMode = true;
+        $managerReadOnly = (int) $submission->user_id === (int) auth()->id();
+
+        return view('modules.intercession.forms.review', compact(
+            'form',
+            'questions',
+            'answers',
+            'submission',
+            'userName',
+            'managerReviewMode',
+            'managerReadOnly'
+        ));
+    }
+
     // ==================== RESULTS ====================
     public function results($id, Request $request)
     {
@@ -1017,7 +1277,8 @@ class FormController extends Controller
 
             $isOwner = (int) $submission->user_id === (int) auth()->id();
             $canViewOtherResults = auth()->user()->isSuperAdmin()
-                || auth()->user()->canAccess('intercession', 'view-results');
+                || auth()->user()->canAccess('intercession', 'view-results')
+                || auth()->user()->canAccess('intercession', 'manage-forms');
 
             if (!$isOwner && !$canViewOtherResults) {
                 abort(403, 'You do not have permission to view this result.');

@@ -67,7 +67,7 @@ Route::prefix('reports')->name('reports.')->middleware('auth')->group(function (
 // ==================== FORMS ROUTES ====================
 Route::middleware('auth')->prefix('forms')->name('forms.')->group(function () {
     // Form management routes (admin)
-    Route::get('/', [FormController::class, 'index'])->name('index');
+    Route::get('/', [IntercessionController::class, 'index'])->name('index');
     Route::get('/manage', [IntercessionController::class, 'index'])->name('manage');
     Route::get('/manage/create', [FormController::class, 'create'])->name('manage.create');
     Route::post('/manage/store', [FormController::class, 'store'])->name('manage.store');
@@ -76,11 +76,14 @@ Route::middleware('auth')->prefix('forms')->name('forms.')->group(function () {
     Route::delete('/manage/{id}', [FormController::class, 'destroy'])->name('manage.delete');
     Route::post('/manage/{id}/toggle-publish', [FormController::class, 'togglePublish'])->name('manage.toggle-publish');
     Route::get('/manage/{id}/submissions', [FormController::class, 'submissions'])->name('manage.submissions');
+    Route::get('/manage/{formId}/submissions/{submissionId}/review', [FormController::class, 'reviewSubmission'])
+        ->name('manage.submissions.review');
     // Bulk release/unrelease routes
     Route::post('/submissions/bulk-release', [FormController::class, 'bulkRelease'])->name('submissions.bulk-release');
     Route::post('/submissions/bulk-unrelease', [FormController::class, 'bulkUnrelease'])->name('submissions.bulk-unrelease');
     Route::post('/submissions/{id}/unrelease', [FormController::class, 'unreleaseSubmission'])->name('submissions.unrelease');
     Route::post('/submissions/{id}/release', [FormController::class, 'releaseSubmission'])->name('submissions.release');
+    Route::post('/submissions/{id}/grade', [FormController::class, 'gradeSubmissionQuestion'])->name('submissions.grade');
     Route::delete('/submissions/{id}', [FormController::class, 'deleteSubmission'])->name('submissions.delete');
     // Add route for refreshing available forms
     Route::get('/available-forms', [FormController::class, 'getAvailableForms'])->name('available-forms');

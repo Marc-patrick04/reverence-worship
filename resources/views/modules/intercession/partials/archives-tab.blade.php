@@ -50,7 +50,7 @@
     <!-- Folder List -->
     <div id="archiveList" class="space-y-2">
         @forelse($archiveSections ?? [] as $section)
-        <div class="folder-item bg-gray-50 hover:bg-blue-50 rounded-lg p-3 transition cursor-pointer flex items-center justify-between group"
+        <div class="folder-item bg-gray-50 hover:bg-blue-50 rounded-lg p-3 transition cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 group"
              data-id="{{ $section->id }}"
              data-name="{{ strtolower($section->name) }}"
              onclick="openFolder({{ $section->id }})">
@@ -66,7 +66,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+            <div class="flex items-center gap-2 sm:ml-2 flex-shrink-0 self-end sm:self-auto">
                 <a href="#" onclick="event.stopPropagation(); openFolder({{ $section->id }})" 
                    class="text-blue-600 hover:text-blue-800 text-xs font-medium transition">
                     Open <i class="fas fa-arrow-right ml-0.5"></i>
@@ -714,4 +714,3 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 </script>
-

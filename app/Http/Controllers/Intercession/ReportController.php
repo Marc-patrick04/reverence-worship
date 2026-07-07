@@ -116,7 +116,7 @@ class ReportController extends Controller
 
             // Calculate summary stats
             $summary = [
-                'total_users' => $users->count(),
+                'total_users' => count($reportData),
                 'complete' => collect($reportData)->filter(fn($d) => $d['status'] === 'Complete')->count(),
                 'partial' => collect($reportData)->filter(fn($d) => $d['status'] === 'Partial')->count(),
                 'not_started' => collect($reportData)->filter(fn($d) => $d['status'] === 'Not Started')->count(),
@@ -170,16 +170,8 @@ class ReportController extends Controller
         // Get all users
         $allUsers = User::select($columns)->orderBy('name')->get();
         
-        // Filter users: Must be Permanent AND Active (if columns exist)
+        // Reports include every active user, regardless of membership type.
         return $allUsers->filter(function($user) use ($hasIsActive, $hasStatus) {
-            // Check if Permanent
-            $isPermanent = ($user->membership_type ?? '') === 'Permanent';
-            
-            if (!$isPermanent) {
-                return false;
-            }
-            
-            // Check if Active (if column exists)
             $isActive = true;
             
             if ($hasIsActive && isset($user->is_active)) {
@@ -253,16 +245,8 @@ class ReportController extends Controller
             
             $allUsers = $query->orderBy('name')->get();
             
-            // Filter: Permanent AND Active
+            // Include every active user, regardless of membership type.
             $users = $allUsers->filter(function($user) use ($hasIsActive, $hasStatus) {
-                // Check if Permanent
-                $isPermanent = ($user->membership_type ?? '') === 'Permanent';
-                
-                if (!$isPermanent) {
-                    return false;
-                }
-                
-                // Check if Active (if column exists)
                 $isActive = true;
                 
                 if ($hasIsActive && isset($user->is_active)) {
@@ -345,7 +329,7 @@ class ReportController extends Controller
 
             // Calculate summary stats
             $summary = [
-                'total_users' => $users->count(),
+                'total_users' => count($reportData),
                 'complete' => collect($reportData)->filter(fn($d) => $d['status'] === 'Complete')->count(),
                 'partial' => collect($reportData)->filter(fn($d) => $d['status'] === 'Partial')->count(),
                 'not_started' => collect($reportData)->filter(fn($d) => $d['status'] === 'Not Started')->count(),

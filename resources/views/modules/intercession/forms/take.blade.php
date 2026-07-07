@@ -1066,18 +1066,17 @@ $isLoggedIn = auth()->check();
         .then(function(data) {
             if (data.success) {
                 clearAutoSave();
-                var scoreMessage = data.score !== undefined ? ' Your score: ' + data.score + '%' : '';
-                appAlert('Form submitted successfully!' + scoreMessage + '\nThank you!');
-                window.location.href = '/forms/' + data.form_id + '/results';
+                const submissionQuery = data.submission_id ? `?submission_id=${data.submission_id}` : '';
+                window.location.href = `/forms/${data.form_id}/results${submissionQuery}`;
             } else {
-                appAlert('âŒ Error: ' + data.message);
+                appAlert('Error: ' + data.message);
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Form';
             }
         })
         .catch(function(error) {
             console.error('Error:', error);
-            appAlert('âŒ Error submitting form. Please try again.');
+            appAlert('Error submitting form. Please try again.');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Form';
         });

@@ -1,7 +1,7 @@
 ﻿<div class="bg-white rounded-xl shadow-md p-6">
     
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Daily Devotion</h2>
             <p class="text-gray-500 text-sm mt-1">Manage daily bible verses and devotion content</p>
@@ -15,7 +15,7 @@
 
     <!-- Bible Verses Section -->
     <div class="mb-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
             <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-bible text-blue-600"></i>
                 Bible Verses
@@ -72,7 +72,7 @@
     <div class="space-y-3">
         @forelse($allDevotions ?? [] as $devotion)
         <div class="border rounded-lg p-4 hover:shadow-md transition-all duration-300">
-            <div class="flex justify-between items-start">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
                         <h4 class="font-semibold text-gray-800">{{ $devotion->title }}</h4>
@@ -96,7 +96,7 @@
                     @endif
                     <p class="text-sm text-gray-600 mt-2">{{ Str::limit($devotion->content, 150) }}</p>
                 </div>
-                <div class="ml-4 flex gap-2">
+                <div class="sm:ml-4 flex gap-3 self-end sm:self-auto">
                     <a href="{{ route('intercession.devotion.show', $devotion->id) }}" 
                        class="text-blue-600 hover:text-blue-800 text-sm">
                         Read More <i class="fas fa-arrow-right ml-1"></i>

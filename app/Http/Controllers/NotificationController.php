@@ -78,8 +78,35 @@ class NotificationController extends Controller
                 ", [$userId]);
                 $notifications = array_merge($notifications, $forms);
             }
+
+            // 3. Reviewed form results released to this user.
+            if ($this->tableExists('form_result_notification_reads')
+                && $this->tableExists('forms')
+                && $this->tableExists('form_submissions')) {
+                $releasedResults = DB::select("
+                    SELECT
+                        'form_result' as type,
+                        fs.id as source_id,
+                        'Form Result Available' as title,
+                        CONCAT(f.title, ' has been reviewed. Your result is now available.') as message,
+                        COALESCE(fs.released_at, fs.updated_at) as created_at,
+                        reads.read_at,
+                        CONCAT('/forms/', fs.form_id, '/results?submission_id=', fs.id) as link
+                    FROM form_submissions fs
+                    JOIN forms f ON f.id = fs.form_id
+                    LEFT JOIN form_result_notification_reads reads
+                        ON reads.submission_id = fs.id
+                        AND reads.user_id = fs.user_id
+                    WHERE fs.user_id = ?
+                    AND (fs.is_released = true OR fs.released_at IS NOT NULL)
+                    AND reads.read_at IS NULL
+                    ORDER BY COALESCE(fs.released_at, fs.updated_at) DESC
+                    LIMIT 10
+                ", [$userId]);
+                $notifications = array_merge($notifications, $releasedResults);
+            }
             
-            // 3. Pending Users - Only Super Admin can see
+            // 4. Pending Users - Only Super Admin can see
             if ($isSuperAdmin && $this->tableExists('users')) {
                 $pendingUsers = DB::select("
                     SELECT 
@@ -238,6 +265,21 @@ class NotificationController extends Controller
                 ", [$userId]);
                 $total += $forms[0]->count ?? 0;
             }
+
+            if ($this->tableExists('form_result_notification_reads')
+                && $this->tableExists('form_submissions')) {
+                $releasedResults = DB::select("
+                    SELECT COUNT(*) as count
+                    FROM form_submissions fs
+                    LEFT JOIN form_result_notification_reads reads
+                        ON reads.submission_id = fs.id
+                        AND reads.user_id = fs.user_id
+                    WHERE fs.user_id = ?
+                    AND (fs.is_released = true OR fs.released_at IS NOT NULL)
+                    AND reads.read_at IS NULL
+                ", [$userId]);
+                $total += $releasedResults[0]->count ?? 0;
+            }
             
             // Pending Users - Only Super Admin
             if ($isSuperAdmin && $this->tableExists('users')) {
@@ -329,6 +371,15 @@ class NotificationController extends Controller
                     ", [$id, $userId]);
                 }
             }
+
+            if ($type === 'form_result' && $this->tableExists('form_result_notification_reads')) {
+                DB::statement("
+                    INSERT INTO form_result_notification_reads (submission_id, user_id, read_at)
+                    VALUES (?, ?, NOW())
+                    ON CONFLICT (submission_id, user_id)
+                    DO UPDATE SET read_at = EXCLUDED.read_at
+                ", [$id, $userId]);
+            }
             
             return response()->json([
                 'success' => true,
@@ -361,6 +412,19 @@ class NotificationController extends Controller
                     WHERE status = 'active'
                     ON CONFLICT (announcement_id, user_id) DO UPDATE
                     SET read_at = NOW()
+                ", [$userId]);
+            }
+
+            if ($this->tableExists('form_result_notification_reads')
+                && $this->tableExists('form_submissions')) {
+                DB::statement("
+                    INSERT INTO form_result_notification_reads (submission_id, user_id, read_at)
+                    SELECT fs.id, fs.user_id, NOW()
+                    FROM form_submissions fs
+                    WHERE fs.user_id = ?
+                    AND (fs.is_released = true OR fs.released_at IS NOT NULL)
+                    ON CONFLICT (submission_id, user_id)
+                    DO UPDATE SET read_at = EXCLUDED.read_at
                 ", [$userId]);
             }
             

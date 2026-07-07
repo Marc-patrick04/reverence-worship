@@ -27,9 +27,11 @@ class GoogleController extends Controller
             if ($user) {
                 // User exists, log them in
                 Auth::login($user);
-                return redirect()->route(
-                    $user->isSuperAdmin() ? 'super-admin.dashboard' : 'user.dashboard'
-                )->with('success', 'Welcome back!');
+                $defaultDestination = $user->isSuperAdmin()
+                    ? route('super-admin.dashboard')
+                    : route('user.dashboard');
+
+                return redirect()->intended($defaultDestination)->with('success', 'Welcome back!');
             } else {
                 // Create new user
                 $newUser = User::create([
@@ -47,7 +49,7 @@ class GoogleController extends Controller
                 }
                 
                 Auth::login($newUser);
-                return redirect()->route('user.dashboard')->with('success', 'Account created successfully!');
+                return redirect()->intended(route('user.dashboard'))->with('success', 'Account created successfully!');
             }
             
         } catch (\Exception $e) {

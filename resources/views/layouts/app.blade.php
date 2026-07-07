@@ -381,6 +381,20 @@
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             }
 
+            .sidebar-toggle {
+                display: none;
+            }
+
+            .top-header > div {
+                padding-left: 76px;
+                padding-right: 12px;
+            }
+
+            .top-header h1 {
+                font-size: 1.15rem;
+                line-height: 1.35;
+            }
+
             .mobile-footer-nav {
                 display: flex;
                 position: fixed;
@@ -735,6 +749,11 @@
                     icon: 'fas fa-clipboard-list',
                     color: '#2563eb',
                     bgColor: '#eff6ff'
+                },
+                'form_result': {
+                    icon: 'fas fa-square-poll-vertical',
+                    color: '#16a34a',
+                    bgColor: '#f0fdf4'
                 },
                 'permission': {
                     icon: 'fas fa-shield-alt',

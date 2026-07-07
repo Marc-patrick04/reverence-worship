@@ -1,15 +1,19 @@
 @extends('layouts.app')
 
-@section('title', 'Form Results')
-@section('page-title', 'Form Results')
+@section('title', ($managerReviewMode ?? false) ? (($managerReadOnly ?? false) ? 'View Submission' : 'Review Submission') : 'Form Results')
+@section('page-title', ($managerReviewMode ?? false) ? (($managerReadOnly ?? false) ? 'View Submission' : 'Review Submission') : 'Form Results')
 
 @section('content')
 <div class="results-page max-w-6xl mx-auto py-5 px-3 sm:px-5">
     
     <!-- Back Button -->
     <div class="mb-4">
-        <a href="{{ route('intercession.index') }}#forms-tab" class="inline-flex items-center text-gray-600 hover:text-blue-600 transition">
-            <i class="fas fa-arrow-left mr-2"></i> Back to My Results
+        <a href="{{ ($managerReviewMode ?? false)
+                ? route('forms.manage.submissions', $form->id)
+                : route('intercession.index') . '#forms-tab' }}"
+            class="inline-flex items-center text-gray-600 hover:text-blue-600 transition">
+            <i class="fas fa-arrow-left mr-2"></i>
+            {{ ($managerReviewMode ?? false) ? 'Back to Submissions' : 'Back to My Results' }}
         </a>
     </div>
     
@@ -21,7 +25,12 @@
             <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-white">{{ $form->title }}</h1>
-                    <p class="text-blue-100 text-sm mt-1">{{ $userName }} <span class="mx-1">•</span> Form Results</p>
+                    <p class="text-blue-100 text-sm mt-1">
+                        {{ $userName }} <span class="mx-1">•</span>
+                        {{ ($managerReviewMode ?? false)
+                            ? (($managerReadOnly ?? false) ? 'Manager View · Read only' : 'Manager Review')
+                            : 'Form Results' }}
+                    </p>
                 </div>
                 <div class="text-right">
                     @if(isset($submission) && isset($submission->submitted_at))
@@ -40,6 +49,12 @@
             $releaseGrade = $settings['release_grade'] ?? 'immediately';
             $allowViewResponse = $settings['allow_view_response'] ?? true;
             $allowPartialPoints = $settings['allow_partial_points'] ?? true;
+            $manualGrades = json_decode($submission->manual_grades ?? '[]', true) ?: [];
+            $isViewingOwnSubmission = (int) ($submission->user_id ?? 0) === (int) auth()->id();
+            $canManuallyGrade = ($managerReviewMode ?? false) && !$isViewingOwnSubmission && (
+                auth()->user()->isSuperAdmin()
+                || auth()->user()->canAccess('intercession', 'manage-forms')
+            );
             
             // Check if submission is released - Check BOTH column types
             $isReleased = false;
@@ -78,7 +93,12 @@
             $canReviewResponses = auth()->user()->isSuperAdmin()
                 || auth()->user()->canAccess('intercession', 'manage-forms')
                 || auth()->user()->canAccess('intercession', 'view-results');
-            $showAnswers = $showAnswers && ($allowViewResponse || $canReviewResponses);
+            if ($managerReviewMode ?? false) {
+                $showScore = true;
+                $showAnswers = true;
+            } else {
+                $showAnswers = $showAnswers && ($allowViewResponse || $canReviewResponses);
+            }
             
             // Check for multiple submissions
             $submissionCount = 0;
@@ -131,6 +151,7 @@
                 $isPartiallyCorrect = false;
                 $storedRows = null;
                 $storedColumns = null;
+                $manualDecision = $manualGrades[$index]['decision'] ?? null;
                 
                 // Format user answer for display
                 if (is_array($answer)) {
@@ -333,6 +354,16 @@
                         $isPartiallyCorrect = !$isCorrect && $questionEarnedPoints > 0;
                     }
                 }
+
+                if ($manualDecision === 'correct') {
+                    $questionEarnedPoints = $points;
+                    $isCorrect = true;
+                    $isPartiallyCorrect = false;
+                } elseif ($manualDecision === 'incorrect') {
+                    $questionEarnedPoints = 0;
+                    $isCorrect = false;
+                    $isPartiallyCorrect = false;
+                }
                 
                 $earnedPoints += $questionEarnedPoints;
                 
@@ -346,7 +377,8 @@
                     'type' => $questionType,
                     'grid_answers' => $gridAnswers,
                     'rows' => $storedRows,
-                    'columns' => $storedColumns
+                    'columns' => $storedColumns,
+                    'manual_decision' => $manualDecision,
                 ];
             }
             
@@ -377,6 +409,26 @@
             }
         @endphp
 
+        @if($managerReviewMode ?? false)
+        <div class="mx-5 sm:mx-7 mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-user-check mt-0.5 text-blue-600"></i>
+                <div>
+                    <p class="text-sm font-semibold text-blue-900">
+                        {{ ($managerReadOnly ?? false) ? 'Submission details' : 'Manager review' }}
+                    </p>
+                    <p class="mt-1 text-xs leading-5 text-blue-700">
+                        @if($managerReadOnly ?? false)
+                            This is your own submission. You may inspect the answers and score here, but manual grading is disabled.
+                        @else
+                            Review each submitted answer, override automatic grading where necessary, then return to Submissions to release the result.
+                        @endif
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Multiple Submissions Notice -->
         @if($isQuiz && $submissionCount > 1 && !isset($submission_id))
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mx-6 mt-4 flex items-center gap-3">
@@ -393,9 +445,10 @@
         @endif
         
         <!-- Release Status Banner -->
-        <div class="px-5 sm:px-7 py-3 border-b flex items-start sm:items-center gap-3 {{ $showScore ? 'bg-green-50' : 'bg-yellow-50' }}">
-            <i class="fas {{ $releaseStatusIcon }} {{ $showScore ? 'text-green-500' : 'text-yellow-500' }}"></i>
-            <span class="text-sm {{ $showScore ? 'text-green-700' : 'text-yellow-700' }}">
+        @php $resultReleasedToUser = $releaseGrade === 'immediately' || $isReleased; @endphp
+        <div class="px-5 sm:px-7 py-3 border-b flex items-start sm:items-center gap-3 {{ $resultReleasedToUser ? 'bg-green-50' : 'bg-yellow-50' }}">
+            <i class="fas {{ $releaseStatusIcon }} {{ $resultReleasedToUser ? 'text-green-500' : 'text-yellow-500' }}"></i>
+            <span class="text-sm {{ $resultReleasedToUser ? 'text-green-700' : 'text-yellow-700' }}">
                 <strong>Status:</strong> {{ $releaseStatusMessage }}
                 @if($isQuiz && $releaseGrade == 'later' && $isReleased)
                     <span class="text-xs text-green-600 ml-2">
@@ -534,6 +587,22 @@
                                 $total = $qData['total'];
                                 $rows = $qData['rows'] ?? null;
                                 $columns = $qData['columns'] ?? null;
+                                $manualDecision = $qData['manual_decision'] ?? null;
+
+                                $hasAnswer = false;
+                                if ($questionType == 'multiple_choice_grid' || $questionType == 'checkbox_grid') {
+                                    foreach ((array) $gridAnswers as $gridValue) {
+                                        $values = is_array($gridValue) ? $gridValue : [$gridValue];
+                                        if (count(array_filter($values, fn ($value) => $value !== null && $value !== '')) > 0) {
+                                            $hasAnswer = true;
+                                            break;
+                                        }
+                                    }
+                                } elseif (is_array($answer)) {
+                                    $hasAnswer = count(array_filter($answer, fn ($value) => $value !== null && $value !== '')) > 0;
+                                } else {
+                                    $hasAnswer = $answer !== null && $answer !== '';
+                                }
                                 
                                 // Use grid answers if available
                                 if (!empty($gridAnswers) && ($questionType == 'multiple_choice_grid' || $questionType == 'checkbox_grid')) {
@@ -545,7 +614,10 @@
                                 $statusBadgeColor = '';
                                 
                                 // For multiple choice and dropdown, always show status
-                                if (($questionType == 'multiple_choice' || $questionType == 'dropdown') && $correctDisplay !== '') {
+                                if (!$hasAnswer) {
+                                    $statusBadge = 'No answer provided';
+                                    $statusBadgeColor = 'bg-slate-100 text-slate-600';
+                                } elseif (($questionType == 'multiple_choice' || $questionType == 'dropdown') && $correctDisplay !== '') {
                                     if ($isCorrect) {
                                         $statusBadge = 'Correct';
                                         $statusBadgeColor = 'bg-green-100 text-green-700';
@@ -586,15 +658,23 @@
                                     @if($isQuiz)
                                         <div class="flex items-center gap-1 flex-shrink-0 ml-2">
                                             @if($questionType == 'checkboxes' || $questionType == 'multiple_choice_grid' || $questionType == 'checkbox_grid')
-                                                <span class="text-xs {{ $earned > 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
+                                                <span class="text-xs {{ !$hasAnswer ? 'text-slate-500' : ($earned > 0 ? 'text-green-600' : 'text-red-600') }} font-medium">
                                                     {{ number_format($earned, 1) }}/{{ $total }} pts
                                                 </span>
                                             @elseif($questionType == 'linear_scale' || $questionType == 'rating')
-                                                <span class="text-xs text-green-600 font-medium">
-                                                    +{{ $total }} pts
-                                                </span>
+                                                @if(!$hasAnswer)
+                                                    <span class="text-xs text-slate-500 font-medium">No answer</span>
+                                                @elseif($correctDisplay && !$isCorrect)
+                                                    <i class="fas fa-times-circle text-red-500"></i>
+                                                    <span class="text-xs text-red-600 font-medium">0 pts</span>
+                                                @else
+                                                    <i class="fas fa-check-circle text-green-500"></i>
+                                                    <span class="text-xs text-green-600 font-medium">+{{ $total }} pts</span>
+                                                @endif
                                             @elseif($questionType == 'multiple_choice' || $questionType == 'dropdown')
-                                                @if($correctDisplay === '')
+                                                @if(!$hasAnswer)
+                                                    <span class="text-xs text-slate-500 font-medium">No answer</span>
+                                                @elseif($correctDisplay === '')
                                                     <span class="text-xs text-gray-500 font-medium">Not graded</span>
                                                 @elseif($isCorrect)
                                                     <i class="fas fa-check-circle text-green-500"></i>
@@ -604,7 +684,9 @@
                                                     <span class="text-xs text-red-600 font-medium">0 pts</span>
                                                 @endif
                                             @else
-                                                @if($isCorrect)
+                                                @if(!$hasAnswer)
+                                                    <span class="text-xs text-slate-500 font-medium">No answer</span>
+                                                @elseif($isCorrect)
                                                     <i class="fas fa-check-circle text-green-500"></i>
                                                     <span class="text-xs text-green-600 font-medium">+{{ $total }} pts</span>
                                                 @else
@@ -623,21 +705,43 @@
                                         <div class="bg-gray-50 rounded-lg p-3 
                                             {{ $correctDisplay ? ($isCorrect ? 'border-l-4 border-green-500' : ($isPartial ? 'border-l-4 border-yellow-500' : 'border-l-4 border-red-500')) : '' }}">
                                             
-                                            @if($questionType == 'checkboxes' && is_array($answer))
+                                            @if(!$hasAnswer)
+                                                <p class="flex items-center gap-2 text-slate-500 italic">
+                                                    <i class="far fa-circle"></i>
+                                                    <span>No answer provided</span>
+                                                </p>
+                                            @elseif($questionType == 'checkboxes' && is_array($answer))
                                                 @if(!empty($answer))
-                                                    <ul class="list-disc list-inside space-y-0.5">
+                                                    @php
+                                                        $checkboxCorrectAnswers = array_map('strval', (array) ($question['correctAnswers'] ?? []));
+                                                    @endphp
+                                                    <ul class="space-y-1">
                                                         @foreach($answer as $selectedOption)
-                                                            <li class="text-gray-700 text-sm">{{ $selectedOption }}</li>
+                                                            @php
+                                                                $selectedIsCorrect = in_array((string) $selectedOption, $checkboxCorrectAnswers, true);
+                                                            @endphp
+                                                            <li class="flex items-center gap-2 text-sm {{ $selectedIsCorrect ? 'text-green-700' : 'text-red-700' }}">
+                                                                <i class="fas {{ $selectedIsCorrect ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600' }}"></i>
+                                                                <span>{{ $selectedOption }}</span>
+                                                            </li>
                                                         @endforeach
                                                     </ul>
-                                                @else
-                                                    <p class="text-gray-400 italic">No options selected</p>
                                                 @endif
                                             @elseif(($questionType == 'multiple_choice' || $questionType == 'dropdown') && $answer !== null)
-                                                <p class="text-gray-700">{{ $answer }}</p>
+                                                <p class="flex items-center gap-2 {{ $correctDisplay !== '' ? ($isCorrect ? 'text-green-700' : 'text-red-700') : 'text-gray-700' }}">
+                                                    @if($correctDisplay !== '')
+                                                        <i class="fas {{ $isCorrect ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600' }}"></i>
+                                                    @endif
+                                                    <span>{{ $answer }}</span>
+                                                </p>
                                             @elseif($questionType == 'linear_scale' || $questionType == 'rating')
-                                                <p class="text-gray-700">{{ $userAnswerDisplay ?: 'Not answered' }}</p>
-                                            @elseif(($questionType == 'multiple_choice_grid' || $questionType == 'checkbox_grid') && !empty($gridAnswers) && $rows && $columns)
+                                                <p class="flex items-center gap-2 {{ $correctDisplay ? ($isCorrect ? 'text-green-700' : 'text-red-700') : 'text-gray-700' }}">
+                                                    @if($correctDisplay)
+                                                        <i class="fas {{ $isCorrect ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600' }}"></i>
+                                                    @endif
+                                                    <span>{{ $userAnswerDisplay ?: 'Not answered' }}</span>
+                                                </p>
+                                            @elseif(($questionType == 'multiple_choice_grid' || $questionType == 'checkbox_grid') && $hasAnswer && $rows && $columns)
                                                 <div class="overflow-x-auto">
                                                     <table class="min-w-full border rounded-lg text-sm">
                                                         <thead>
@@ -659,14 +763,21 @@
                                                                             if ($questionType == 'multiple_choice_grid') {
                                                                                 $userValue = $gridAnswers[$rowKey] ?? null;
                                                                                 $isChecked = ($userValue == $col);
+                                                                                $correctRowValues = [(string) (($question['correctAnswers'][$rowIndex] ?? null))];
                                                                             } else {
                                                                                 $userRowAnswers = isset($gridAnswers[$rowKey]) ? (array)$gridAnswers[$rowKey] : [];
                                                                                 $isChecked = in_array($col, $userRowAnswers);
+                                                                                $correctRowValues = array_map('strval', (array) ($question['correctAnswers'][$rowIndex] ?? []));
                                                                             }
+                                                                            $checkedIsCorrect = $isChecked && in_array((string) $col, $correctRowValues, true);
                                                                         @endphp
                                                                         <td class="px-3 py-2 text-center">
                                                                             @if($isChecked)
-                                                                                <span class="text-green-600"><i class="fas fa-check-circle"></i></span>
+                                                                                @if($checkedIsCorrect)
+                                                                                    <span class="text-green-600" title="Correct answer"><i class="fas fa-check-circle"></i></span>
+                                                                                @else
+                                                                                    <span class="text-red-600" title="Incorrect answer"><i class="fas fa-times-circle"></i></span>
+                                                                                @endif
                                                                             @else
                                                                                 <span class="text-gray-300"><i class="far fa-circle"></i></span>
                                                                             @endif
@@ -678,10 +789,51 @@
                                                     </table>
                                                 </div>
                                             @else
-                                                <p class="text-gray-700">{{ $userAnswerDisplay ?: 'Not answered' }}</p>
+                                                <p class="flex items-start gap-2 {{ $correctDisplay ? ($isCorrect ? 'text-green-700' : 'text-red-700') : 'text-gray-700' }}">
+                                                    @if($correctDisplay)
+                                                        <i class="fas {{ $isCorrect ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600' }} mt-1"></i>
+                                                    @endif
+                                                    <span>{{ $userAnswerDisplay ?: 'Not answered' }}</span>
+                                                </p>
                                             @endif
                                         </div>
                                     </div>
+
+                                    @if($canManuallyGrade)
+                                    <div class="manual-review-box mb-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+                                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                            <p class="text-xs font-semibold text-slate-700">
+                                                <i class="fas fa-user-check mr-1 text-blue-600"></i> Human review
+                                            </p>
+                                            @if($manualDecision)
+                                            <span class="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-blue-700">
+                                                Manually marked {{ $manualDecision }}
+                                            </span>
+                                            @else
+                                            <span class="text-[10px] text-slate-500">Using automatic grading</span>
+                                            @endif
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button type="button"
+                                                onclick="gradeSubmissionQuestion({{ $submission->id }}, {{ $index }}, 'correct', this)"
+                                                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition {{ $manualDecision === 'correct' ? 'bg-green-600 text-white' : 'bg-white text-green-700 border border-green-200 hover:bg-green-50' }}">
+                                                <i class="fas fa-check mr-1"></i> Correct
+                                            </button>
+                                            <button type="button"
+                                                onclick="gradeSubmissionQuestion({{ $submission->id }}, {{ $index }}, 'incorrect', this)"
+                                                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition {{ $manualDecision === 'incorrect' ? 'bg-red-600 text-white' : 'bg-white text-red-700 border border-red-200 hover:bg-red-50' }}">
+                                                <i class="fas fa-times mr-1"></i> Incorrect
+                                            </button>
+                                            @if($manualDecision)
+                                            <button type="button"
+                                                onclick="gradeSubmissionQuestion({{ $submission->id }}, {{ $index }}, 'auto', this)"
+                                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+                                                <i class="fas fa-rotate-left mr-1"></i> Use automatic
+                                            </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @endif
                                     
                                     <!-- Correct Answer - ALWAYS SHOW for multiple choice and dropdown -->
                                     @if($isQuiz && ($questionType == 'multiple_choice' || $questionType == 'dropdown') && $correctDisplay !== '')
@@ -832,6 +984,39 @@
 }
 </style>
 <script>
+async function gradeSubmissionQuestion(submissionId, questionIndex, decision, button) {
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const response = await fetch(`/forms/submissions/${submissionId}/grade`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                question_index: questionIndex,
+                decision: decision
+            })
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Unable to save the manual grade.');
+        }
+
+        window.appNotify(data.message, 'success');
+        window.location.reload();
+    } catch (error) {
+        button.disabled = false;
+        button.innerHTML = originalContent;
+        window.appNotify(error.message, 'error');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.responses-section .text-gray-400').forEach(function (element) {
         element.textContent = element.textContent.replace(/\u00e2\u20ac\u00a2/g, '\u2022');

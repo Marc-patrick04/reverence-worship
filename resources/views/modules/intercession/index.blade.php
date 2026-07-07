@@ -4,22 +4,39 @@
 @section('page-title', 'Intercession & Spiritual Growth')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="intercession-page max-w-7xl mx-auto space-y-4 px-2 sm:px-4 py-3 sm:py-5">
 
    
 
     {{-- TABS --}}
     @php
         $hasReports = auth()->check() && auth()->user()->canAccess('intercession', 'view-reports');
-        $hasForms = auth()->check() && (auth()->user()->canAccess('intercession', 'view-forms') || $hasReports);
+        // Published forms and a user's own results are available to every authenticated user.
+        $hasForms = auth()->check();
         $hasDevotions = auth()->check() && auth()->user()->canAccess('intercession', 'view-devotions');
         $hasActions = auth()->check() && auth()->user()->canAccess('intercession', 'view-actions');
         $hasArchives = auth()->check() && auth()->user()->canAccess('intercession', 'view-archives');
     @endphp
 
     @if($hasForms || $hasDevotions || $hasActions || $hasArchives)
-    <div class="border-b border-gray-200">
-        <nav class="flex space-x-8 overflow-x-auto">
+    <div class="md:hidden rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
+        <button type="button" id="intercessionMobileTabButton" class="flex h-11 w-full items-center justify-between rounded-lg px-3 text-sm font-semibold text-gray-700" aria-expanded="false">
+            <span class="flex items-center gap-2">
+                <i id="intercessionMobileTabIcon" class="fas fa-file-alt text-blue-600"></i>
+                <span id="intercessionMobileTabLabel">Forms</span>
+            </span>
+            <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+        </button>
+        <div id="intercessionMobileTabMenu" class="mt-1 hidden grid-cols-2 gap-1 border-t border-gray-100 pt-2">
+            @if($hasForms)<button type="button" onclick="selectIntercessionMobileTab('forms')" class="intercession-mobile-tab-option h-10 rounded-md px-3 text-left text-sm hover:bg-gray-100" data-tab="forms" data-icon="file-alt">Forms</button>@endif
+            @if($hasDevotions)<button type="button" onclick="selectIntercessionMobileTab('devotions')" class="intercession-mobile-tab-option h-10 rounded-md px-3 text-left text-sm hover:bg-gray-100" data-tab="devotions" data-icon="hands-praying">Devotions</button>@endif
+            @if($hasActions)<button type="button" onclick="selectIntercessionMobileTab('actions')" class="intercession-mobile-tab-option h-10 rounded-md px-3 text-left text-sm hover:bg-gray-100" data-tab="actions" data-icon="tasks">Action Plans</button>@endif
+            @if($hasArchives)<button type="button" onclick="selectIntercessionMobileTab('archives')" class="intercession-mobile-tab-option h-10 rounded-md px-3 text-left text-sm hover:bg-gray-100" data-tab="archives" data-icon="archive">Archives</button>@endif
+        </div>
+    </div>
+
+    <div class="hidden md:block border-b border-gray-200">
+        <nav class="flex space-x-6 overflow-x-auto">
             @if($hasForms)
             <button type="button" onclick="showTab('forms')" id="tab-forms" class="tab-btn py-2 px-1 border-b-2 font-medium text-sm transition">
                 <i class="fas fa-file-alt mr-2"></i>Forms
@@ -119,10 +136,37 @@
 
         // Save current tab to localStorage
         localStorage.setItem('activeIntercessionTab', tabName);
+
+        const mobileOption = document.querySelector(`.intercession-mobile-tab-option[data-tab="${tabName}"]`);
+        const mobileLabel = document.getElementById('intercessionMobileTabLabel');
+        const mobileIcon = document.getElementById('intercessionMobileTabIcon');
+        if (mobileOption && mobileLabel && mobileIcon) {
+            mobileLabel.textContent = mobileOption.textContent.trim();
+            mobileIcon.className = `fas fa-${mobileOption.dataset.icon} text-blue-600`;
+            document.querySelectorAll('.intercession-mobile-tab-option').forEach(option => {
+                option.classList.toggle('bg-blue-50', option === mobileOption);
+                option.classList.toggle('text-blue-700', option === mobileOption);
+            });
+        }
+    }
+
+    window.selectIntercessionMobileTab = function(tabName) {
+        showTab(tabName);
+        document.getElementById('intercessionMobileTabMenu')?.classList.add('hidden');
+        document.getElementById('intercessionMobileTabButton')?.setAttribute('aria-expanded', 'false');
     }
 
     // On page load, restore the last active tab
     document.addEventListener('DOMContentLoaded', function() {
+        const mobileButton = document.getElementById('intercessionMobileTabButton');
+        const mobileMenu = document.getElementById('intercessionMobileTabMenu');
+        mobileButton?.addEventListener('click', function() {
+            mobileMenu?.classList.toggle('hidden');
+            mobileMenu?.classList.toggle('grid');
+            this.setAttribute('aria-expanded', String(!mobileMenu?.classList.contains('hidden')));
+        });
+
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
         const savedTab = localStorage.getItem('activeIntercessionTab');
         const validTabs = [];
         
@@ -131,7 +175,9 @@
         @if($hasActions) validTabs.push('actions'); @endif
         @if($hasArchives) validTabs.push('archives'); @endif
 
-        if (savedTab && validTabs.includes(savedTab)) {
+        if (requestedTab && validTabs.includes(requestedTab)) {
+            showTab(requestedTab);
+        } else if (savedTab && validTabs.includes(savedTab)) {
             showTab(savedTab);
         } else if (validTabs.length > 0) {
             // Default to first available tab
@@ -146,6 +192,16 @@
     }
     .tab-btn:hover {
         opacity: 0.8;
+    }
+    @media(max-width:639px) {
+        .intercession-page .tab-content > .bg-white { padding:.75rem; }
+        .intercession-page .modal > div {
+            top:0 !important;
+            width:calc(100% - 1rem) !important;
+            max-height:calc(100vh - 1rem);
+            margin:.5rem auto !important;
+            overflow-y:auto;
+        }
     }
 </style>
 @endsection

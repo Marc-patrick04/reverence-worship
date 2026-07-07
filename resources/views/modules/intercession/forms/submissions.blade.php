@@ -4,21 +4,21 @@
 @section('page-title', 'Form Submissions')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6">
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+<div class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         
         <!-- Header -->
-        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-5">
+        <div class="bg-white px-4 sm:px-6 py-5 border-b border-slate-200">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <a href="{{ route('intercession.index') }}" class="text-white/80 hover:text-white transition flex items-center gap-2 text-sm mb-2">
-                        <i class="fas fa-arrow-left"></i> Back to Forms
+                    <a href="{{ route('intercession.index', ['tab' => 'forms', 'form_section' => 'manage']) }}#forms-tab" class="text-slate-500 hover:text-blue-600 transition flex items-center gap-2 text-xs font-semibold mb-2">
+                        <i class="fas fa-arrow-left"></i> Back to Manage Forms
                     </a>
-                    <h1 class="text-2xl font-bold text-white">{{ $form->title }}</h1>
-                    <p class="text-indigo-100 text-sm mt-1">Manage Submissions</p>
+                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">{{ $form->title }}</h1>
+                    <p class="text-slate-500 text-sm mt-1">Review submitted answers and release results.</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="bg-white/20 text-white px-3 py-1 rounded-full text-sm">
+                    <span class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm font-semibold">
                         <i class="fas fa-users mr-1"></i> {{ count($submissions) }} Responses
                     </span>
                 </div>
@@ -40,10 +40,12 @@
             
             // Calculate total points for this form
             $formTotalPoints = 0;
+            $formQuestionCount = 0;
             if (is_array($questions)) {
                 foreach($questions as $q) {
                     $qType = $q['type'] ?? 'short_answer';
                     if ($qType != 'title_section' && $qType != 'section_break') {
+                        $formQuestionCount++;
                         $formTotalPoints += isset($q['points']) ? (int)$q['points'] : 1;
                     }
                 }
@@ -163,8 +165,10 @@
                     }
                 }
                 
-                // Round to 2 decimal places
-                $sub->earned_points = round($earned, 2);
+                // The stored score includes any manager's manual grading overrides.
+                $sub->earned_points = $sub->score !== null
+                    ? round(((float) $sub->score / 100) * $formTotalPoints, 2)
+                    : round($earned, 2);
                 $sub->total_points = $formTotalPoints;
                 
                 // Check if submission is released
@@ -189,7 +193,7 @@
         @endphp
         
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 p-6 bg-gray-50 border-b">
+        <div class="hidden">
             <div class="bg-white rounded-lg p-4 shadow-sm">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -297,49 +301,101 @@
             @endif
         </div>
         
-        <!-- Filters -->
-        <div class="p-4 border-b bg-white flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-filter text-gray-400 text-sm"></i>
-                <span class="text-sm text-gray-600">Filter:</span>
+        <div class="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-4">
+            <div class="bg-white p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Responses</p>
+                <p class="mt-1 text-xl font-bold text-slate-800">{{ count($submissions) }}</p>
             </div>
-            <select id="filterScore" class="text-sm border rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onchange="filterSubmissions()">
-                <option value="all">All Scores</option>
-                <option value="high">High (â‰¥ 80%)</option>
-                <option value="medium">Medium (60-79%)</option>
-                <option value="low">Low (40-59%)</option>
-                <option value="fail">Fail (&lt; 40%)</option>
-            </select>
-            <select id="filterRelease" class="text-sm border rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onchange="filterSubmissions()">
-                <option value="all">All Status</option>
-                <option value="released">Released</option>
-                <option value="pending">Pending Release</option>
-            </select>
-            <input type="text" id="searchInput" placeholder="Search by user..." class="text-sm border rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onkeyup="filterSubmissions()">
-            <span class="text-xs text-gray-400 ml-auto" id="resultCount">Showing {{ count($submissions) }} results</span>
+            <div class="bg-white p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Questions</p>
+                <p class="mt-1 text-xl font-bold text-slate-800">{{ $formQuestionCount }}</p>
+            </div>
+            @if($releaseGrade === 'later')
+            <div class="bg-white p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Pending review</p>
+                <p class="mt-1 text-xl font-bold text-amber-600">{{ $pendingCount }}</p>
+            </div>
+            <div class="bg-white p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Released</p>
+                <p class="mt-1 text-xl font-bold text-green-600">{{ $releasedCount }}</p>
+            </div>
+            @else
+            <div class="col-span-2 bg-white p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Result policy</p>
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                    {{ $releaseGrade === 'immediately' ? 'Available immediately' : 'Results remain private' }}
+                </p>
+            </div>
+            @endif
+        </div>
+
+        <!-- Filters -->
+        <div class="border-b bg-slate-50 p-3 sm:p-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
+                <div>
+                    <label for="searchInput" class="mb-1 block text-xs font-semibold text-slate-600">Search member</label>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                        <input type="search" id="searchInput" placeholder="Name or email"
+                            class="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            oninput="filterSubmissions()">
+                    </div>
+                </div>
+                @if($isQuiz)
+                <div>
+                    <label for="filterScore" class="mb-1 block text-xs font-semibold text-slate-600">Score range</label>
+                    <select id="filterScore" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100" onchange="filterSubmissions()">
+                        <option value="all">All scores</option>
+                        <option value="high">80% and above</option>
+                        <option value="medium">60% – 79%</option>
+                        <option value="low">40% – 59%</option>
+                        <option value="fail">Below 40%</option>
+                    </select>
+                </div>
+                @endif
+                @if($releaseGrade === 'later')
+                <div>
+                    <label for="filterRelease" class="mb-1 block text-xs font-semibold text-slate-600">Release status</label>
+                    <select id="filterRelease" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100" onchange="filterSubmissions()">
+                        <option value="all">All statuses</option>
+                        <option value="released">Released</option>
+                        <option value="pending">Pending review</option>
+                    </select>
+                </div>
+                @endif
+                <div class="flex items-end">
+                    <button type="button" onclick="resetSubmissionFilters()"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 lg:w-auto">
+                        <i class="fas fa-rotate-left mr-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3 text-xs text-slate-500" id="resultCount">
+                Showing {{ count($submissions) }} of {{ count($submissions) }} submissions
+            </div>
         </div>
         
         <!-- Bulk Actions -->
         @if($releaseGrade == 'later')
-        <div class="p-4 border-b flex flex-wrap items-center justify-between gap-3 {{ $pendingCount > 0 ? 'bg-yellow-50' : 'bg-gray-50' }}">
+        <div class="p-3 sm:p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white">
             <div class="flex items-center gap-3">
                 @if($pendingCount > 0)
                     <i class="fas fa-info-circle text-yellow-600"></i>
-                    <span class="text-sm text-yellow-700">{{ $pendingCount }} submission(s) pending review</span>
+                    <span class="text-sm text-slate-600"><strong class="text-amber-700">{{ $pendingCount }}</strong> awaiting release</span>
                 @else
                     <i class="fas fa-check-circle text-green-600"></i>
                     <span class="text-sm text-green-700">All submissions have been released</span>
                 @endif
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 @if($pendingCount > 0)
-                <button onclick="bulkRelease()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition text-sm flex items-center gap-2 shadow-sm hover:shadow-md">
-                    <i class="fas fa-check-double"></i> Release All ({{ $pendingCount }})
+                <button onclick="bulkRelease()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-2">
+                    <i class="fas fa-check-double"></i> Release pending
                 </button>
                 @endif
                 @if($releasedCount > 0)
-                <button onclick="bulkUnrelease()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition text-sm flex items-center gap-2 shadow-sm hover:shadow-md">
-                    <i class="fas fa-undo"></i> Unrelease All ({{ $releasedCount }})
+                <button onclick="bulkUnrelease()" class="border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-2">
+                    <i class="fas fa-eye-slash"></i> Hide released
                 </button>
                 @endif
             </div>
@@ -347,18 +403,17 @@
         @endif
         
         <!-- Table -->
-        <div class="overflow-x-auto">
+        <div class="submissions-responsive-table overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200" id="submissionsTable">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
                         @if($isQuiz)
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marks</th>
                         @endif
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result status</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -366,11 +421,11 @@
                     @forelse($submissions as $index => $sub)
                     <tr class="border-t hover:bg-gray-50 transition submission-row" 
                         data-score="{{ $sub->score ?? 0 }}" 
-                        data-user="{{ strtolower($sub->user_name ?? 'User #' . $sub->user_id) }}" 
+                        data-user="{{ strtolower(($sub->user_name ?? 'User #' . $sub->user_id) . ' ' . ($sub->email ?? '')) }}"
                         data-id="{{ $sub->id }}"
                         data-released="{{ $sub->is_released ? 'true' : 'false' }}">
-                        <td class="px-4 py-3 text-sm text-gray-400">{{ $index + 1 }}</td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 text-sm text-gray-400" data-label="#">{{ $index + 1 }}</td>
+                        <td class="px-4 py-3" data-label="Member">
                             <div class="flex items-center gap-2">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
                                     {{ strtoupper(substr($sub->user_name ?? 'User', 0, 2)) }}
@@ -382,36 +437,18 @@
                             </div>
                         </td>
                         @if($isQuiz)
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Marks">
                             @if($sub->score !== null)
-                                @php
-                                    // Calculate percentage from earned points
-                                    $calculatedScore = $sub->total_points > 0 ? round(($sub->earned_points / $sub->total_points) * 100, 1) : 0;
-                                    $scoreColor = $calculatedScore >= 80 ? 'bg-green-100 text-green-700' : ($calculatedScore >= 60 ? 'bg-blue-100 text-blue-700' : ($calculatedScore >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'));
-                                @endphp
-                                @if($releaseGrade == 'never')
-                                    <span class="text-xs text-gray-400">Private</span>
-                                @elseif($releaseGrade == 'later' && !$sub->is_released)
-                                    <span class="text-xs text-yellow-600">Pending Release</span>
-                                @else
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $scoreColor }}">
-                                        {{ number_format($calculatedScore, 1) }}%
-                                    </span>
-                                @endif
+                                <span class="font-semibold text-slate-800">
+                                    {{ number_format($sub->earned_points, 2) }}
+                                </span>
+                                <span class="text-sm text-slate-400">/ {{ number_format($sub->total_points ?: $formTotalPoints, 2) }}</span>
                             @else
-                                <span class="text-xs text-gray-400">Pending</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3 text-sm">
-                            @if($sub->score !== null)
-                                <span class="text-sm font-medium text-gray-700">{{ number_format($sub->earned_points, 2) }}</span>
-                                <span class="text-xs text-gray-400">/ {{ $formTotalPoints }}</span>
-                            @else
-                                <span class="text-sm text-gray-400">-</span>
+                                <span class="text-xs text-amber-600">Awaiting review</span>
                             @endif
                         </td>
                         @endif
-                        <td class="px-4 py-3 text-sm text-gray-600">
+                        <td class="px-4 py-3 text-sm text-gray-600" data-label="Submitted">
                             <div class="flex items-center gap-1">
                                 <i class="fas fa-calendar-alt text-gray-400 text-xs"></i>
                                 {{ \Carbon\Carbon::parse($sub->submitted_at)->format('M d, Y') }}
@@ -420,47 +457,39 @@
                                 {{ \Carbon\Carbon::parse($sub->submitted_at)->format('h:i A') }}
                             </div>
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Status">
                             @if($releaseGrade == 'never')
-                                <span class="text-xs text-gray-500">Private</span>
+                                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                                    <i class="fas fa-lock"></i> Private
+                                </span>
                             @elseif($releaseGrade == 'later' && !$sub->is_released)
-                                <span class="text-xs text-yellow-600">
-                                    <i class="fas fa-clock mr-1"></i> Awaiting Release
+                                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                                    <i class="fas fa-clock"></i> Pending review
                                 </span>
-                            @elseif($isQuiz && $sub->score !== null)
-                                @php
-                                    $calculatedScore = $sub->total_points > 0 ? round(($sub->earned_points / $sub->total_points) * 100, 1) : 0;
-                                    $status = $calculatedScore >= 80 ? 'Excellent' : ($calculatedScore >= 60 ? 'Good' : ($calculatedScore >= 40 ? 'Average' : 'Needs Improvement'));
-                                    $statusColor = $calculatedScore >= 80 ? 'text-green-600' : ($calculatedScore >= 60 ? 'text-blue-600' : ($calculatedScore >= 40 ? 'text-yellow-600' : 'text-red-600'));
-                                @endphp
-                                <span class="text-xs font-medium {{ $statusColor }}">
-                                    <i class="fas {{ $calculatedScore >= 80 ? 'fa-star' : ($calculatedScore >= 60 ? 'fa-thumbs-up' : ($calculatedScore >= 40 ? 'fa-minus-circle' : 'fa-exclamation-triangle')) }} mr-1"></i>
-                                    {{ $status }}
-                                </span>
-                            @elseif($isQuiz)
-                                <span class="text-xs text-yellow-600">
-                                    <i class="fas fa-clock mr-1"></i> Pending Review
+                            @elseif($releaseGrade == 'later')
+                                <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs text-green-700">
+                                    <i class="fas fa-check-circle"></i> Released
                                 </span>
                             @else
-                                <span class="text-xs text-green-600">
-                                    <i class="fas fa-check-circle mr-1"></i> Completed
+                                <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                                    <i class="fas fa-eye"></i> Available
                                 </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Actions">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <a href="{{ route('forms.results', ['id' => $sub->form_id, 'submission_id' => $sub->id]) }}" 
-                                   class="text-blue-600 hover:text-blue-800 text-sm transition flex items-center gap-1">
-                                    <i class="fas fa-file-lines"></i> View
+                                <a href="{{ route('forms.manage.submissions.review', ['formId' => $sub->form_id, 'submissionId' => $sub->id]) }}"
+                                   class="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition flex items-center gap-1">
+                                    <i class="fas fa-user-check"></i> Review
                                 </a>
                                 @if($releaseGrade == 'later' && $sub->score !== null)
                                     @if(!$sub->is_released)
-                                    <button onclick="releaseSubmission({{ $sub->id }})" class="text-green-600 hover:text-green-800 text-sm transition flex items-center gap-1">
+                                    <button onclick="releaseSubmission({{ $sub->id }})" class="rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 transition flex items-center gap-1">
                                         <i class="fas fa-check-circle"></i> Release
                                     </button>
                                     @else
-                                    <button onclick="unreleaseSubmission({{ $sub->id }})" class="text-gray-600 hover:text-gray-800 text-sm transition flex items-center gap-1">
-                                        <i class="fas fa-undo"></i> Unrelease
+                                    <button onclick="unreleaseSubmission({{ $sub->id }})" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition flex items-center gap-1">
+                                        <i class="fas fa-eye-slash"></i> Hide
                                     </button>
                                     @endif
                                 @endif
@@ -474,7 +503,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ $isQuiz ? 7 : 5 }}" class="px-4 py-12 text-center">
+                        <td colspan="{{ $isQuiz ? 6 : 5 }}" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                     <i class="fas fa-inbox text-gray-400 text-2xl"></i>
@@ -490,17 +519,14 @@
         </div>
         
         <!-- Footer -->
-        <div class="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
-            <div class="text-sm text-gray-500">
-                <i class="fas fa-info-circle mr-1"></i> 
-                Showing {{ count($submissions) }} submission{{ count($submissions) > 1 ? 's' : '' }}
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="exportSubmissions()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition text-sm flex items-center gap-2">
-                    <i class="fas fa-file-csv"></i> Export CSV
-                </button>
-            </div>
+        @if($allowExport && count($submissions) > 0)
+        <div class="border-t bg-slate-50 px-4 py-3 sm:px-6">
+            <button type="button" onclick="exportSubmissions()"
+                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
+                <i class="fas fa-download text-xs"></i> Export CSV
+            </button>
         </div>
+        @endif
     </div>
 </div>
 
@@ -631,8 +657,8 @@ let unreleaseTargetId = null;
 // ==================== FILTER FUNCTION ====================
 function filterSubmissions() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const filterScore = document.getElementById('filterScore').value;
-    const filterRelease = document.getElementById('filterRelease').value;
+    const filterScore = document.getElementById('filterScore')?.value || 'all';
+    const filterRelease = document.getElementById('filterRelease')?.value || 'all';
     const rows = document.querySelectorAll('.submission-row');
     let visibleCount = 0;
     
@@ -662,7 +688,14 @@ function filterSubmissions() {
         if (show) visibleCount++;
     });
     
-    document.getElementById('resultCount').textContent = `Showing ${visibleCount} results`;
+    document.getElementById('resultCount').textContent = `Showing ${visibleCount} of ${rows.length} submissions`;
+}
+
+function resetSubmissionFilters() {
+    document.getElementById('searchInput').value = '';
+    if (document.getElementById('filterScore')) document.getElementById('filterScore').value = 'all';
+    if (document.getElementById('filterRelease')) document.getElementById('filterRelease').value = 'all';
+    filterSubmissions();
 }
 
 // ==================== RELEASE FUNCTIONS ====================
@@ -925,7 +958,7 @@ function exportSubmissions() {
     let csv = [];
     
     @if($isQuiz)
-    csv.push(['#', 'User', 'Email', 'Score', 'Points', 'Submitted', 'Status', 'Released'].join(','));
+    csv.push(['#', 'User', 'Email', 'Marks', 'Submitted', 'Status', 'Released'].join(','));
     @else
     csv.push(['#', 'User', 'Email', 'Submitted'].join(','));
     @endif
@@ -941,13 +974,11 @@ function exportSubmissions() {
         rowData.push(`"${cells[1]?.querySelector('.text-xs')?.textContent?.trim() || ''}"`);
         
         @if($isQuiz)
-        const scoreText = cells[2]?.textContent?.trim() || '';
-        rowData.push(scoreText.replace('%', ''));
-        const pointsText = cells[3]?.textContent?.trim() || '';
-        rowData.push(pointsText);
-        const submittedText = cells[4]?.textContent?.trim() || '';
+        const marksText = cells[2]?.textContent?.trim() || '';
+        rowData.push(`"${marksText}"`);
+        const submittedText = cells[3]?.textContent?.trim() || '';
         rowData.push(submittedText);
-        const statusText = cells[5]?.textContent?.trim() || '';
+        const statusText = cells[4]?.textContent?.trim() || '';
         rowData.push(statusText);
         const releasedText = row.dataset.released === 'true' ? 'Released' : 'Pending';
         rowData.push(releasedText);
@@ -968,7 +999,7 @@ function exportSubmissions() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    showNotification('ðŸ“Š Export completed!', 'success');
+    showNotification('Export completed.', 'success');
 }
 
 // ==================== DELETE FUNCTIONS ====================
@@ -1007,10 +1038,10 @@ function confirmDelete() {
     .then(data => {
         closeDeleteModal();
         if (data.success) {
-            showNotification('âœ… Submission deleted successfully!', 'success');
+            showNotification('Submission deleted successfully.', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
-            showNotification('âŒ Error: ' + data.message, 'error');
+            showNotification('Error: ' + data.message, 'error');
             if (btn) {
                 btn.innerHTML = '<i class="fas fa-trash"></i>';
                 btn.disabled = false;
@@ -1019,7 +1050,7 @@ function confirmDelete() {
     })
     .catch(error => {
         closeDeleteModal();
-        showNotification('âŒ Error deleting submission', 'error');
+        showNotification('Error deleting submission.', 'error');
         if (btn) {
             btn.innerHTML = '<i class="fas fa-trash"></i>';
             btn.disabled = false;
@@ -1111,14 +1142,6 @@ tbody tr {
     transition: background-color 0.2s ease;
 }
 
-.bg-white.rounded-lg {
-    transition: all 0.2s ease;
-}
-.bg-white.rounded-lg:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
 .modal .bg-white {
     animation: modalPop 0.3s ease-out;
 }
@@ -1127,6 +1150,48 @@ tbody tr {
     from { transform: scale(0.9); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
+
+@media(max-width:639px) {
+    .submissions-responsive-table { overflow:visible; }
+    .submissions-responsive-table table,
+    .submissions-responsive-table tbody { display:block; width:100%; }
+    .submissions-responsive-table thead { display:none; }
+    .submissions-responsive-table tbody { display:grid; gap:.75rem; padding:.75rem; }
+    .submissions-responsive-table tbody tr {
+        display:block;
+        overflow:hidden;
+        border:1px solid #e2e8f0;
+        border-radius:.75rem;
+        background:#fff;
+    }
+    .submissions-responsive-table tbody td {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:1rem;
+        width:100%;
+        padding:.65rem .8rem;
+        border:0;
+        border-bottom:1px solid #f1f5f9;
+        text-align:right;
+    }
+    .submissions-responsive-table tbody td:last-child { border-bottom:0; }
+    .submissions-responsive-table tbody td::before {
+        content:attr(data-label);
+        flex:0 0 32%;
+        color:#64748b;
+        font-size:.7rem;
+        font-weight:600;
+        text-align:left;
+        text-transform:uppercase;
+    }
+    .submissions-responsive-table tbody td[data-label="#"] { display:none; }
+    .submissions-responsive-table tbody td[data-label="Member"] { display:block; text-align:left; }
+    .submissions-responsive-table tbody td[data-label="Member"]::before { display:none; }
+    .submissions-responsive-table tbody td[data-label="Actions"] > div { justify-content:flex-end; }
+    .submissions-responsive-table tbody td[colspan] { display:block; text-align:center; }
+    .submissions-responsive-table tbody td[colspan]::before { display:none; }
+    .modal > div { width:calc(100% - 1rem) !important; margin:.5rem !important; }
+}
 </style>
 @endsection
-

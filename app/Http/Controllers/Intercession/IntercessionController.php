@@ -39,12 +39,30 @@ class IntercessionController extends Controller
     $allForms = collect();
     
     try {
-        $stats['total_forms'] = Form::count() ?? 0;
+        $canManageForms = auth()->user()->isSuperAdmin()
+            || auth()->user()->canAccess('intercession', 'manage-forms');
+        $publishedFormsQuery = Form::query()
+            ->where('is_active', true)
+            ->whereRaw("(settings::jsonb ->> 'is_published') = 'true'");
+
+        $stats['total_forms'] = $canManageForms
+            ? Form::count()
+            : (clone $publishedFormsQuery)->count();
         $stats['my_attempts'] = FormSubmission::where('user_id', auth()->id())->count() ?? 0;
-        $stats['best_avg'] = FormSubmission::where('user_id', auth()->id())->avg('score') ?? 0;
-        $availableForms = Form::where('is_active', true)->get();
-        $mySubmissions = FormSubmission::where('user_id', auth()->id())->with('form')->get();
-        $allForms = Form::all();
+        $availableForms = $publishedFormsQuery->latest()->get();
+        $mySubmissions = FormSubmission::where('user_id', auth()->id())
+            ->with('form')
+            ->latest('submitted_at')
+            ->get();
+        $visibleScores = $mySubmissions->filter(function ($submission) {
+            $releaseGrade = $submission->form?->settings['release_grade'] ?? 'immediately';
+            $isReleased = !empty($submission->released_at) || !empty($submission->is_released);
+
+            return $releaseGrade === 'immediately'
+                || ($releaseGrade === 'later' && $isReleased);
+        })->pluck('score')->filter(fn ($score) => $score !== null);
+        $stats['best_avg'] = $visibleScores->max() ?? 0;
+        $allForms = Form::withCount('submissions')->latest()->get();
     } catch (\Exception $e) {
         // Table doesn't exist yet
     }
@@ -105,23 +123,6 @@ class IntercessionController extends Controller
         'allDevotions',
         'users', 
         'archiveSections'  // Add this
-    ));
-    // For reports - get membership types
-    $membershipTypes = collect();
-    try {
-        $membershipTypes = DB::table('users')
-            ->select('membership_type')
-            ->distinct()
-            ->whereNotNull('membership_type')
-            ->pluck('membership_type')
-            ->toArray();
-    } catch (\Exception $e) {
-        // Table doesn't exist yet
-    }
-    
-    return view('modules.intercession.index', compact(
-        // ... existing variables ...
-        'membershipTypes'  // Add this
     ));
 }
     

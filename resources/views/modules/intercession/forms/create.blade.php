@@ -386,9 +386,9 @@
             div.id = `question-${q.id}`;
             div.innerHTML = `<div class="drag-handle cursor-move bg-gray-50 py-1 text-center border-b"><i class="fas fa-grip-horizontal text-gray-400 text-sm"></i><span class="text-xs text-gray-400 ml-1">Drag</span></div>
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" style="top: 30px;"></div>
-            <div class="p-5"><div class="grid grid-cols-12 gap-4 items-start">
-                <div class="col-span-7"><input type="text" value="${escapeHtml(q.text)}" placeholder="Question" onchange="updateAndAutoSave('questionText', ${q.id}, null, this.value)" class="w-full text-xl border-0 border-b border-gray-300 focus:ring-0 focus:border-gray-500 bg-gray-50 px-3 py-2"></div>
-                <div class="col-span-4"><select onchange="changeQuestionType(${q.id}, this.value)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">${questionTypes.map(t => `<option value="${t.value}" ${q.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
+            <div class="p-4 sm:p-5"><div class="grid grid-cols-12 gap-3 sm:gap-4 items-start">
+                <div class="col-span-12 sm:col-span-7"><input type="text" value="${escapeHtml(q.text)}" placeholder="Question" onchange="updateAndAutoSave('questionText', ${q.id}, null, this.value)" class="w-full text-lg sm:text-xl border-0 border-b border-gray-300 focus:ring-0 focus:border-gray-500 bg-gray-50 px-3 py-2"></div>
+                <div class="col-span-12 sm:col-span-5"><select onchange="changeQuestionType(${q.id}, this.value)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">${questionTypes.map(t => `<option value="${t.value}" ${q.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
             </div>
             ${isQuizMode ? `<div class="mt-3 flex items-center gap-3 bg-gray-50 p-2 rounded-lg"><div class="flex items-center gap-2"><span class="text-xs text-gray-600">Points:</span><input type="number" value="${q.points || 1}" min="0" max="100" onchange="updateAndAutoSave('points', ${q.id}, null, this.value)" class="w-16 px-2 py-1 border rounded-md text-sm text-center"></div></div>` : ''}
             <div id="options-${q.id}" class="mt-5">${renderOptionsByType(q)}</div>
@@ -520,7 +520,7 @@
 
             case 'multiple_choice_grid':
                 let gridHtml = `<div class="bg-gray-50 p-3 rounded-lg">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>
                             ${(q.rows || ['Row 1']).map((r,i)=>`
@@ -561,7 +561,7 @@
 
             case 'checkbox_grid':
                 let checkboxGridHtml = `<div class="bg-gray-50 p-3 rounded-lg">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Rows</label>
                             ${(q.rows || ['Row 1']).map((r,i)=>`
