@@ -56,7 +56,6 @@ class DashboardController extends Controller
             
             // System-wide statistics
             'total_forms' => DB::table('spiritual_forms')->count() ?? 0,
-            'total_devotions' => DB::table('devotions')->count() ?? 0,
             'total_songs' => DB::table('songs')->count() ?? 0,
             'total_playlists' => DB::table('playlists')->count() ?? 0,
             'total_sponsors' => $this->tableCount('sponsors'),
@@ -97,8 +96,8 @@ class DashboardController extends Controller
                 $activity = min(100, 70 + ($songCount * 5));
                 break;
             case 'intercession':
-                $devotionCount = DB::table('user_devotion_completions')->whereMonth('completed_at', now()->month)->count();
-                $activity = min(100, 70 + ($devotionCount * 2));
+                $prayerCount = DB::table('prayer_requests')->whereMonth('created_at', now()->month)->count();
+                $activity = min(100, 70 + ($prayerCount * 2));
                 break;
             case 'social-fellowship':
                 $familyCount = DB::table('families')->whereMonth('created_at', now()->month)->count();

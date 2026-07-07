@@ -161,9 +161,6 @@ $attentionItems = [
             <div class="system-count"><span>{{ number_format($stats['total_forms'] ?? 0) }}</span>
                 <p>Forms</p>
             </div>
-            <div class="system-count"><span>{{ number_format($stats['total_devotions'] ?? 0) }}</span>
-                <p>Devotions</p>
-            </div>
             <div class="system-count"><span>{{ number_format($stats['total_songs'] ?? 0) }}</span>
                 <p>Songs</p>
             </div>

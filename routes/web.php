@@ -127,7 +127,19 @@ Route::middleware('auth')->group(function () {
     });
 
     // Finance Debug Route
-    Route::get('/finance/debug/sponsor-payments', [App\Http\Controllers\Finance\FinanceController::class, 'debugSponsorPayments']);
+    Route::get('/finance/debug/sponsor-payments', function () {
+        try {
+            $rows = DB::table('sponsor_payments')
+                ->join('sponsors', 'sponsor_payments.sponsor_id', '=', 'sponsors.id')
+                ->select('sponsor_payments.*', 'sponsors.name as sponsor_name')
+                ->orderBy('sponsor_payments.created_at', 'desc')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $rows]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    });
 
     // Finance Data Debug
     Route::get('/debug-finance-data', function () {

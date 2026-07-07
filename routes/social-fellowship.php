@@ -34,18 +34,4 @@ Route::prefix('social-fellowship')->group(function () {
     Route::post('/action-plans/{id}/task', [SocialFellowshipController::class, 'addActionPlanTask'])->name('social-fellowship.action-plans.tasks.store');
     Route::put('/action-plans/task/{taskId}', [SocialFellowshipController::class, 'updateActionPlanTask'])->name('social-fellowship.action-plans.tasks.update');
     Route::delete('/action-plans/task/{taskId}', [SocialFellowshipController::class, 'deleteActionPlanTask'])->name('social-fellowship.action-plans.tasks.delete');
-    
-    // ==================== ARCHIVE ROUTES ====================
-    Route::prefix('archives')->group(function () {
-        Route::post('/sections/store', [SocialFellowshipController::class, 'storeArchiveSection'])->name('social-fellowship.archives.sections.store');
-        Route::put('/sections/{id}', [SocialFellowshipController::class, 'updateArchiveSection'])->name('social-fellowship.archives.sections.update');
-        Route::delete('/sections/{id}', [SocialFellowshipController::class, 'deleteArchiveSection'])->name('social-fellowship.archives.sections.delete');
-        Route::get('/sections/{id}/pages', [SocialFellowshipController::class, 'getSectionPages'])->name('social-fellowship.archives.sections.pages');
-        
-        Route::post('/pages/store', [SocialFellowshipController::class, 'storeArchivePage'])->name('social-fellowship.archives.pages.store');
-        Route::put('/pages/{id}', [SocialFellowshipController::class, 'updateArchivePage'])->name('social-fellowship.archives.pages.update');
-        Route::delete('/pages/{id}', [SocialFellowshipController::class, 'deleteArchivePage'])->name('social-fellowship.archives.pages.delete');
-        Route::get('/pages/{id}/edit', [SocialFellowshipController::class, 'editArchivePage'])->name('social-fellowship.archives.pages.edit');
-        Route::get('/pages/{id}', [SocialFellowshipController::class, 'showArchivePage'])->name('social-fellowship.archives.pages.show');
-    });
 });

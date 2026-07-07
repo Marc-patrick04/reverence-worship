@@ -6,13 +6,10 @@ use App\Http\Controllers\Intercession\ReportController;
 // ==================== INTERCESSION MAIN ROUTES ====================
 Route::middleware('auth')->prefix('intercession')->name('intercession.')->group(function () {
     Route::get('/', [IntercessionController::class, 'index'])->name('index');
-    Route::get('/devotion/{id}', [IntercessionController::class, 'showDevotion'])->name('devotion.show');
-    Route::post('/devotion/{id}/complete', [IntercessionController::class, 'completeDevotion'])->name('devotion.complete');
+    Route::get('/bible-study/chapter', [IntercessionController::class, 'bibleStudyChapter'])->name('bible-study.chapter');
     Route::get('/action-plans', [IntercessionController::class, 'actionPlans'])->name('action-plans');
     Route::post('/action-plans/store', [IntercessionController::class, 'storeActionPlan'])->name('action-plans.store');
     Route::put('/action-plans/{id}/status', [IntercessionController::class, 'updateActionPlanStatus'])->name('action-plans.status');
-    Route::get('/archives', [IntercessionController::class, 'archives'])->name('archives');
-    Route::post('/prayer/store', [IntercessionController::class, 'storePrayerRequest'])->name('prayer.store');
 });
 
 // ==================== ACTION PLANS ROUTES ====================
@@ -29,34 +26,6 @@ Route::prefix('intercession/action-plans')->middleware('auth')->group(function (
     Route::delete('/task/{taskId}', [IntercessionController::class, 'deleteTask'])->name('intercession.action-plans.tasks.delete');
 });
 
-// ==================== DEVOTIONS ROUTES ====================
-Route::prefix('intercession/devotions')->middleware('auth')->group(function () {
-    Route::post('/store', [IntercessionController::class, 'storeDevotion'])->name('intercession.devotions.store');
-    Route::get('/{id}/edit', [IntercessionController::class, 'editDevotion'])->name('intercession.devotions.edit');
-    Route::post('/{id}', [IntercessionController::class, 'updateDevotion'])->name('intercession.devotions.update');
-    Route::delete('/{id}', [IntercessionController::class, 'deleteDevotion'])->name('intercession.devotions.delete');
-});
-
-Route::get('/intercession/devotion/show/{id}', [IntercessionController::class, 'showDevotion'])->name('intercession.devotion.show')->middleware('auth');
-
-// ==================== ARCHIVES ROUTES ====================
-Route::prefix('intercession/archives')->middleware('auth')->group(function () {
-    // Sections routes
-    Route::post('/sections/store', [IntercessionController::class, 'storeArchiveSection'])->name('intercession.archives.sections.store');
-    Route::put('/sections/{id}', [IntercessionController::class, 'updateArchiveSection'])->name('intercession.archives.sections.update');
-    Route::delete('/sections/{id}', [IntercessionController::class, 'deleteArchiveSection'])->name('intercession.archives.sections.delete');
-    Route::get('/sections/{id}/pages', [IntercessionController::class, 'getSectionPages'])->name('intercession.archives.sections.pages');
-    
-    // Pages routes - SPECIFIC routes FIRST
-    Route::get('/pages/{id}/edit', [IntercessionController::class, 'editArchivePage'])->name('intercession.archives.pages.edit');
-    Route::get('/pages/{id}/download', [IntercessionController::class, 'downloadArchivePage'])->name('intercession.archives.pages.download');
-    Route::post('/pages/store', [IntercessionController::class, 'storeArchivePage'])->name('intercession.archives.pages.store');
-    Route::put('/pages/{id}', [IntercessionController::class, 'updateArchivePage'])->name('intercession.archives.pages.update');
-    Route::delete('/pages/{id}', [IntercessionController::class, 'deleteArchivePage'])->name('intercession.archives.pages.delete');
-    
-    // WILDCARD route - MUST be LAST
-    Route::get('/pages/{id}', [IntercessionController::class, 'showArchivePage'])->name('intercession.archives.pages.show');
-});
 // ==================== REPORTS ROUTES ====================
 Route::prefix('reports')->name('reports.')->middleware('auth')->group(function () {
     Route::get('/', [ReportController::class, 'index'])->name('index');

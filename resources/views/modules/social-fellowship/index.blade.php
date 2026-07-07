@@ -11,13 +11,12 @@
         $canViewUsers = auth()->check() && auth()->user()->canAccess('social-fellowship', 'view-users');
         $canViewTasks = auth()->check() && auth()->user()->canAccess('social-fellowship', 'view-tasks');
         $canViewActionPlans = auth()->check() && auth()->user()->canAccess('social-fellowship', 'view-action-plans');
-        $canViewArchives = auth()->check() && auth()->user()->canAccess('social-fellowship', 'view-archives');
     @endphp
 
    
    
     <!-- Navigation Tabs - Only show tabs user has permission for -->
-    @if($canViewFamilies || $canViewUsers || $canViewTasks || $canViewActionPlans || $canViewArchives)
+    @if($canViewFamilies || $canViewUsers || $canViewTasks || $canViewActionPlans)
     <div class="relative z-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-visible mb-4">
         <div class="md:hidden p-2">
             <div class="relative w-full max-w-[280px]" id="socialMobileTabPicker">
@@ -44,9 +43,6 @@
                         @endif
                         @if($canViewActionPlans)
                         <button type="button" onclick="selectSocialMobileTab('actionPlans')" class="social-mobile-tab-option h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="actionPlans" data-icon="clipboard-list">Action Plans</button>
-                        @endif
-                        @if($canViewArchives)
-                        <button type="button" onclick="selectSocialMobileTab('archives')" class="social-mobile-tab-option col-span-2 h-10 rounded-md px-3 text-left text-sm text-gray-700 hover:bg-gray-100" data-tab="archives" data-icon="archive">Archives</button>
                         @endif
                     </div>
                 </div>
@@ -77,17 +73,12 @@
             </button>
             @endif
             
-            @if($canViewArchives)
-            <button onclick="showTab('archives')" id="tab-archives" class="tab-btn px-3 sm:px-4 py-2 text-xs sm:text-sm border-b-2 font-medium transition border-transparent text-gray-500">
-                <i class="fas fa-archive mr-2"></i>Archives
-            </button>
-            @endif
         </nav>
     </div>
     @endif
 
     <!-- No Permission Message -->
-    @if(!$canViewFamilies && !$canViewUsers && !$canViewTasks && !$canViewActionPlans && !$canViewArchives)
+    @if(!$canViewFamilies && !$canViewUsers && !$canViewTasks && !$canViewActionPlans)
     <div class="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
         <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-lock text-gray-400 text-3xl"></i>
@@ -135,15 +126,6 @@
     <div id="actionPlans-tab" class="tab-content hidden">
         @include('modules.social-fellowship.partials.action-plans-list', [
             'families' => $families ?? []
-        ])
-    </div>
-    @endif
-    
-    <!-- Archives Tab -->
-    @if($canViewArchives)
-    <div id="archives-tab" class="tab-content hidden">
-        @include('modules.social-fellowship.partials.archives-list', [
-            'archiveSections' => $archiveSections ?? []
         ])
     </div>
     @endif
@@ -241,8 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
     @if($canViewUsers) validTabs.push('users'); @endif
     @if($canViewTasks) validTabs.push('tasks'); @endif
     @if($canViewActionPlans) validTabs.push('actionPlans'); @endif
-    @if($canViewArchives) validTabs.push('archives'); @endif
-    
     if (savedTab && validTabs.includes(savedTab)) {
         const tabButton = document.getElementById(`tab-${savedTab}`);
         if (tabButton) {
