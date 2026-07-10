@@ -1,29 +1,45 @@
-FROM php:8.2-apache
-
-# Install PostgreSQL driver
-RUN apt-get update && apt-get install -y libpq-dev \
-    && docker-php-ext-install pdo_pgsql
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Copy application
-COPY . /var/www/html/
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Enable mod_rewrite
-RUN a2enmod rewrite
-
-# Configure Apache
-RUN echo '<Directory /var/www/html/public>' >> /etc/apache2/apache2.conf && \
-    echo '    Options Indexes FollowSymLinks' >> /etc/apache2/apache2.conf && \
-    echo '    AllowOverride All' >> /etc/apache2/apache2.conf && \
-    echo '    Require all granted' >> /etc/apache2/apache2.conf && \
-    echo '</Directory>' >> /etc/apache2/apache2.conf
+FROM php:8.3-cli
 
 WORKDIR /var/www/html
+
+RUN apt-get update && apt-get install -y \
+    bash \
+    curl \
+    git \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libpq-dev \
+    libzip-dev \
+    unzip \
+    zip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" gd pdo_pgsql pgsql zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:22-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+RUN composer dump-autoload --optimize \
+    && npm run build \
+    && rm -rf node_modules \
+    && mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 10000
+
+CMD php artisan config:clear \
+    && php artisan route:clear \
+    && php artisan view:clear \
+    && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
