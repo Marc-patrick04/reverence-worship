@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     git \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
+    libonig-dev \
     libpng-dev \
     libpq-dev \
     libxml2-dev \
@@ -15,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" dom gd pdo_pgsql pgsql simplexml xml xmlwriter zip \
+    && docker-php-ext-install -j"$(nproc)" bcmath dom gd intl mbstring opcache pdo_pgsql pgsql simplexml xml xmlwriter zip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
