@@ -10,11 +10,12 @@ RUN apt-get update && apt-get install -y \
     libjpeg62-turbo-dev \
     libpng-dev \
     libpq-dev \
+    libxml2-dev \
     libzip-dev \
     unzip \
     zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" gd pdo_pgsql pgsql zip \
+    && docker-php-ext-install -j"$(nproc)" dom gd pdo_pgsql pgsql simplexml xml xmlwriter zip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
