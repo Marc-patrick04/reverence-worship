@@ -64,6 +64,8 @@ model User {
   familyMembership FamilyMember?
   parentFamily Family? @relation("FamilyParent")
   assignedFamilyTasks FamilyTask[] @relation("AssignedFamilyTasks")
+  createdActionPlans ActionPlan[] @relation("CreatedActionPlans")
+  assignedActionPlanTasks ActionPlanTask[] @relation("AssignedActionPlanTasks")
   createdPlaylists Playlist[] @relation("CreatedPlaylists")
   createdSongs Song[] @relation("CreatedSongs")
   createdGallery PhotoGallery[] @relation("CreatedGallery")
@@ -100,6 +102,7 @@ model Family {
   parent  User?          @relation("FamilyParent", fields: [parentId], references: [id], onDelete: SetNull)
   members FamilyMember[]
   tasks   FamilyTask[]
+  actionPlans ActionPlan[]
 
   @@map("families")
 }
@@ -158,6 +161,60 @@ model TaskSubtask {
 
   @@index([taskId])
   @@map("task_subtasks")
+}
+
+model ActionPlan {
+  id          Int      @id @default(autoincrement())
+  familyId    Int?     @map("family_id")
+  title       String
+  description String?
+  startDate   DateTime @map("start_date") @db.Date
+  dueDate     DateTime @map("due_date") @db.Date
+  status      String   @default("pending")
+  priority    String   @default("medium")
+  department  String   @default("social-fellowship")
+  year        Int      @default(2026)
+  progress    Int      @default(0)
+  createdBy   Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  family  Family?          @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  creator User?            @relation("CreatedActionPlans", fields: [createdBy], references: [id], onDelete: SetNull)
+  tasks   ActionPlanTask[]
+
+  @@index([familyId])
+  @@index([department])
+  @@index([year])
+  @@index([status])
+  @@map("action_plans")
+}
+
+model ActionPlanTask {
+  id                Int       @id @default(autoincrement())
+  actionPlanId      Int       @map("action_plan_id")
+  taskName          String    @map("task_name")
+  activity          String?
+  targetMilestone   String?   @map("target_milestone")
+  estimatedBudget   Decimal   @default(0) @map("estimated_budget") @db.Decimal(15, 2)
+  startDate         DateTime? @map("start_date") @db.Date
+  deadline          DateTime? @db.Date
+  priority          String    @default("medium")
+  progress          Int       @default(0)
+  assignedTo        Int?      @map("assigned_to")
+  status            String    @default("pending")
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+  assignee   User?      @relation("AssignedActionPlanTasks", fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@index([actionPlanId])
+  @@index([assignedTo])
+  @@index([status])
+  @@map("action_plan_tasks")
 }
 
 model Playlist {
