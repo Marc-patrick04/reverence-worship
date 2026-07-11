@@ -1,0 +1,507 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import path from "path";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+function readString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumber(formData: FormData, key: string) {
+  const value = readString(formData, key);
+  if (!value) return null;
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+export async function createSong(formData: FormData) {
+  const user = await requireUser();
+  const title = readString(formData, "title");
+
+  if (!title) {
+    return { ok: false, message: "Song title is required." };
+  }
+
+  await prisma.song.create({
+    data: {
+      title,
+      artist: readString(formData, "artist"),
+      keySignature: readString(formData, "keySignature"),
+      tempo: readNumber(formData, "tempo"),
+      lyrics: readString(formData, "lyrics"),
+      youtubeLink: readString(formData, "youtubeLink"),
+      assignedSinger: readString(formData, "assignedSinger"),
+      createdBy: user.id,
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Song added successfully." };
+}
+
+export async function deleteSong(songId: number) {
+  await requireUser();
+
+  await prisma.song.delete({
+    where: { id: songId },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Song deleted." };
+}
+
+export async function updateSong(songId: number, formData: FormData) {
+  await requireUser();
+  const title = readString(formData, "title");
+
+  if (!title) {
+    return { ok: false, message: "Song title is required." };
+  }
+
+  await prisma.song.update({
+    where: { id: songId },
+    data: {
+      title,
+      artist: readString(formData, "artist"),
+      keySignature: readString(formData, "keySignature"),
+      tempo: readNumber(formData, "tempo"),
+      lyrics: readString(formData, "lyrics"),
+      youtubeLink: readString(formData, "youtubeLink"),
+      assignedSinger: readString(formData, "assignedSinger"),
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Song updated successfully." };
+}
+
+export async function createPlaylist(formData: FormData) {
+  const user = await requireUser();
+  const title = readString(formData, "title");
+
+  if (!title) {
+    return { ok: false, message: "Playlist title is required." };
+  }
+
+  const songIds = formData
+    .getAll("songs")
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+
+  await prisma.playlist.create({
+    data: {
+      title,
+      description: readString(formData, "description"),
+      createdBy: user.id,
+      songs: {
+        create: songIds.map((songId, index) => ({
+          songId,
+          displayOrder: index + 1,
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: `Playlist created with ${songIds.length} songs.` };
+}
+
+export async function deletePlaylist(playlistId: number) {
+  await requireUser();
+
+  await prisma.playlist.delete({
+    where: { id: playlistId },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Playlist deleted." };
+}
+
+export async function updatePlaylist(playlistId: number, formData: FormData) {
+  await requireUser();
+  const title = readString(formData, "title");
+
+  if (!title) {
+    return { ok: false, message: "Playlist title is required." };
+  }
+
+  const songIds = formData
+    .getAll("songs")
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+
+  await prisma.$transaction([
+    prisma.playlist.update({
+      where: { id: playlistId },
+      data: {
+        title,
+        description: readString(formData, "description"),
+      },
+    }),
+    prisma.playlistSong.deleteMany({
+      where: { playlistId },
+    }),
+    ...songIds.map((songId, index) =>
+      prisma.playlistSong.create({
+        data: {
+          playlistId,
+          songId,
+          displayOrder: index + 1,
+        },
+      }),
+    ),
+  ]);
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Playlist updated successfully." };
+}
+
+export async function addSongToPlaylist(formData: FormData) {
+  await requireUser();
+
+  const playlistId = readNumber(formData, "playlistId");
+  const songId = readNumber(formData, "songId");
+
+  if (!playlistId || !songId) {
+    return { ok: false, message: "Choose a playlist and song first." };
+  }
+
+  const maxOrder = await prisma.playlistSong.aggregate({
+    where: { playlistId },
+    _max: { displayOrder: true },
+  });
+
+  await prisma.playlistSong.upsert({
+    where: {
+      playlistId_songId: {
+        playlistId,
+        songId,
+      },
+    },
+    create: {
+      playlistId,
+      songId,
+      displayOrder: (maxOrder._max.displayOrder ?? 0) + 1,
+    },
+    update: {},
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Song added to playlist." };
+}
+
+export async function uploadGalleryPhotos(formData: FormData) {
+  const user = await requireUser();
+  const files = formData
+    .getAll("images")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+  const caption = readString(formData, "caption");
+
+  if (files.length === 0) {
+    return { ok: false, message: "Select at least one photo." };
+  }
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "gallery");
+  await mkdir(uploadDir, { recursive: true });
+
+  const created = [];
+
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) {
+      return { ok: false, message: "Only image files are allowed." };
+    }
+
+    const bytes = await file.arrayBuffer();
+    const extension = path.extname(file.name) || ".jpg";
+    const baseName = path
+      .basename(file.name, extension)
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "")
+      .toLowerCase();
+    const filename = `${Date.now()}-${crypto.randomUUID()}-${baseName || "photo"}${extension}`;
+    const diskPath = path.join(uploadDir, filename);
+
+    await writeFile(diskPath, Buffer.from(bytes));
+
+    created.push({
+      title: caption || baseName || "Untitled",
+      imagePath: `/uploads/gallery/${filename}`,
+      description: caption,
+      eventDate: new Date(),
+      createdBy: user.id,
+    });
+  }
+
+  await prisma.photoGallery.createMany({
+    data: created,
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: `${created.length} photo(s) uploaded successfully.` };
+}
+
+export async function updateGalleryPhoto(photoId: number, formData: FormData) {
+  await requireUser();
+  const title = readString(formData, "title");
+
+  if (!title) {
+    return { ok: false, message: "Photo title is required." };
+  }
+
+  await prisma.photoGallery.update({
+    where: { id: photoId },
+    data: {
+      title,
+      altText: title,
+      description: readString(formData, "caption"),
+      category: readString(formData, "category"),
+      tags: readString(formData, "tags"),
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Photo updated successfully." };
+}
+
+export async function deleteGalleryPhoto(photoId: number) {
+  await requireUser();
+
+  const photo = await prisma.photoGallery.findUnique({
+    where: { id: photoId },
+    select: { imagePath: true },
+  });
+
+  if (photo?.imagePath?.startsWith("/uploads/gallery/")) {
+    const diskPath = path.join(process.cwd(), "public", photo.imagePath);
+    await unlink(diskPath).catch(() => undefined);
+  }
+
+  await prisma.photoGallery.delete({
+    where: { id: photoId },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Photo deleted successfully." };
+}
+
+export async function updateSingerSettings(formData: FormData) {
+  await requireUser();
+
+  const updates = Array.from(formData.entries())
+    .filter(([key]) => key.startsWith("singer:"))
+    .map(([key, value]) => {
+      const [, userId, field] = key.split(":");
+      return {
+        userId: Number(userId),
+        field,
+        value: typeof value === "string" && value.trim() ? value.trim() : null,
+      };
+    })
+    .filter((item) => Number.isFinite(item.userId) && ["voicePart", "singerLevel"].includes(item.field));
+
+  await prisma.$transaction(
+    updates.map((item) =>
+      prisma.user.update({
+        where: { id: item.userId },
+        data: {
+          ...(item.field === "voicePart" ? { voicePart: item.value } : {}),
+          ...(item.field === "singerLevel" ? { singerLevel: item.value } : {}),
+        },
+      }),
+    ),
+  );
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Singer settings saved." };
+}
+
+type SingerForGroups = {
+  id: number;
+  name: string;
+  email: string;
+  voicePart: string | null;
+  singerLevel: string | null;
+};
+
+function shuffle<T>(items: T[]) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function buildBalancedTeams(singers: SingerForGroups[], numberOfTeams: number) {
+  const teams = new Map<number, SingerForGroups[]>();
+  for (let teamNumber = 1; teamNumber <= numberOfTeams; teamNumber++) {
+    teams.set(teamNumber, []);
+  }
+
+  const byVoice = new Map<string, { good: SingerForGroups[]; normal: SingerForGroups[] }>();
+  for (const singer of singers) {
+    const voice = singer.voicePart || "Unknown";
+    const entry = byVoice.get(voice) ?? { good: [], normal: [] };
+    if (singer.singerLevel === "Good") entry.good.push(singer);
+    else entry.normal.push(singer);
+    byVoice.set(voice, entry);
+  }
+
+  for (const [voice, groups] of byVoice) {
+    const sortedTeams = Array.from(teams.keys()).sort(
+      (a, b) =>
+        teams.get(a)!.filter((member) => member.voicePart === voice).length -
+        teams.get(b)!.filter((member) => member.voicePart === voice).length,
+    );
+
+    [...shuffle(groups.good), ...shuffle(groups.normal)].forEach((singer, index) => {
+      const teamNumber = sortedTeams[index % sortedTeams.length];
+      teams.get(teamNumber)!.push(singer);
+    });
+  }
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const ordered = Array.from(teams.entries()).sort((a, b) => b[1].length - a[1].length);
+    const largest = ordered[0];
+    const smallest = ordered[ordered.length - 1];
+
+    if (!largest || !smallest || largest[1].length - smallest[1].length <= 1) break;
+
+    const moveIndex = largest[1].findIndex((member) => member.singerLevel !== "Good");
+    const [member] = largest[1].splice(moveIndex >= 0 ? moveIndex : largest[1].length - 1, 1);
+    smallest[1].push(member);
+  }
+
+  const voicePriority = new Map([
+    ["Soprano", 1],
+    ["Alto", 2],
+    ["Tenor", 3],
+    ["Bass", 4],
+    ["Musician", 5],
+  ]);
+
+  for (const members of teams.values()) {
+    members.sort((a, b) => (voicePriority.get(a.voicePart || "") ?? 99) - (voicePriority.get(b.voicePart || "") ?? 99));
+  }
+
+  return teams;
+}
+
+export async function generateServiceTeams(formData: FormData) {
+  const user = await requireUser();
+  const serviceName = readString(formData, "serviceName");
+  const serviceDate = readString(formData, "serviceDate");
+  const numberOfTeams = readNumber(formData, "numberOfTeams") ?? 2;
+
+  if (!serviceName || !serviceDate) {
+    return { ok: false, message: "Service name and date are required." };
+  }
+
+  const singers = await prisma.user.findMany({
+    where: {
+      membershipType: "permanent",
+      status: "active",
+      voicePart: { not: null },
+      singerLevel: { not: null },
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      voicePart: true,
+      singerLevel: true,
+    },
+  });
+
+  if (singers.length === 0) {
+    return { ok: false, message: "No permanent singers with voice part and level found." };
+  }
+
+  const teamCount = Math.min(Math.max(numberOfTeams, 1), 10);
+  const teams = buildBalancedTeams(singers, teamCount);
+
+  await prisma.serviceTeam.create({
+    data: {
+      serviceName,
+      serviceDate: new Date(serviceDate),
+      numberOfTeams: teamCount,
+      createdBy: user.id,
+      members: {
+        create: Array.from(teams.entries()).flatMap(([teamNumber, members]) =>
+          members.map((member) => ({
+            teamNumber,
+            userId: member.id,
+            voicePart: member.voicePart,
+            performanceLevel: member.singerLevel,
+          })),
+        ),
+      },
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: `Successfully distributed ${singers.length} singers into ${teamCount} teams.` };
+}
+
+export async function restoreServiceTeam(serviceTeamId: number) {
+  const user = await requireUser();
+  const oldGeneration = await prisma.serviceTeam.findUnique({
+    where: { id: serviceTeamId },
+    include: { members: true },
+  });
+
+  if (!oldGeneration) {
+    return { ok: false, message: "Generation not found." };
+  }
+
+  await prisma.serviceTeam.create({
+    data: {
+      serviceName: `${oldGeneration.serviceName} (Restored)`,
+      serviceDate: oldGeneration.serviceDate,
+      numberOfTeams: oldGeneration.numberOfTeams,
+      createdBy: user.id,
+      members: {
+        create: oldGeneration.members.map((member) => ({
+          teamNumber: member.teamNumber,
+          userId: member.userId,
+          voicePart: member.voicePart,
+          performanceLevel: member.performanceLevel,
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Generation restored successfully." };
+}
+
+export async function deleteServiceTeam(serviceTeamId: number) {
+  await requireUser();
+
+  await prisma.serviceTeam.delete({
+    where: { id: serviceTeamId },
+  });
+
+  revalidatePath("/admin/music");
+
+  return { ok: true, message: "Service team deleted successfully." };
+}

@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum UserStatus {
+  pending
+  active
+  inactive
+}
+
+enum MembershipType {
+  permanent
+  temporary
+  visitor
+}
+
+model User {
+  id              Int             @id @default(autoincrement())
+  name            String
+  email           String          @unique
+  passwordHash    String?         @map("password_hash")
+  status          UserStatus      @default(pending)
+  emailVerifiedAt DateTime?       @map("email_verified_at")
+  phone           String?
+  dateOfBirth     DateTime?       @map("date_of_birth") @db.Date
+  province        String?
+  district        String?
+  sector          String?
+  village         String?
+  gender          Gender?
+  maritalStatus   String?         @map("marital_status")
+  membershipType  MembershipType? @map("membership_type")
+  occupation      String?
+  ministryRole    String?         @map("ministry_role")
+  emergencyName   String?         @map("emergency_name")
+  emergencyPhone  String?         @map("emergency_phone")
+  skills          String?
+  notes           String?
+  isSinger        Boolean         @default(false) @map("is_singer")
+  voicePart       String?         @map("voice_part")
+  singerLevel     String?         @map("singer_level")
+  singerNotes     String?         @map("singer_notes")
+  googleId        String?         @unique @map("google_id")
+  avatarUrl       String?         @map("avatar_url")
+  createdById     Int?            @map("created_by_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  createdBy User?      @relation("CreatedUsers", fields: [createdById], references: [id], onDelete: SetNull)
+  created   User[]     @relation("CreatedUsers")
+  roles     UserRole[]
+  logs      ActivityLog[]
+  familyMembership FamilyMember?
+  parentFamily Family? @relation("FamilyParent")
+  assignedFamilyTasks FamilyTask[] @relation("AssignedFamilyTasks")
+  createdPlaylists Playlist[] @relation("CreatedPlaylists")
+  createdSongs Song[] @relation("CreatedSongs")
+  createdGallery PhotoGallery[] @relation("CreatedGallery")
+  createdServiceTeams ServiceTeam[] @relation("CreatedServiceTeams")
+  teamMemberships TeamMember[]
+
+  @@index([status])
+  @@index([membershipType])
+  @@index([isSinger])
+  @@map("users")
+}
+
+model Family {
+  id              Int       @id @default(autoincrement())
+  name            String
+  parentName      String?   @map("parent_name")
+  description     String?
+  motto           String?
+  meetingDay      String?   @map("meeting_day")
+  meetingTime     DateTime? @map("meeting_time") @db.Time
+  meetingLocation String?   @map("meeting_location")
+  createdBy       Int?      @map("created_by")
+  isActive        Boolean   @default(true) @map("is_active")
+  parentId        Int?      @unique @map("parent_id")
+  year            Int       @default(2026)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  parent  User?          @relation("FamilyParent", fields: [parentId], references: [id], onDelete: SetNull)
+  members FamilyMember[]
+  tasks   FamilyTask[]
+
+  @@map("families")
+}
+
+model FamilyMember {
+  id        Int      @id @default(autoincrement())
+  familyId  Int      @map("family_id")
+  userId    Int      @unique @map("user_id")
+  role      String   @default("member")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([familyId])
+  @@map("family_members")
+}
+
+model FamilyTask {
+  id          Int       @id @default(autoincrement())
+  familyId    Int       @map("family_id")
+  title       String
+  description String?
+  dueDate     DateTime? @map("due_date") @db.Date
+  assignedTo  Int?      @map("assigned_to")
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  createdBy   Int?      @map("created_by")
+  progress    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  family   Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  assignee User?         @relation("AssignedFamilyTasks", fields: [assignedTo], references: [id], onDelete: SetNull)
+  subtasks TaskSubtask[]
+
+  @@index([familyId])
+  @@index([assignedTo])
+  @@map("family_tasks")
+}
+
+model TaskSubtask {
+  id          BigInt    @id @default(autoincrement())
+  taskId      Int       @map("task_id")
+  title       String
+  isCompleted Boolean   @default(false) @map("is_completed")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  task FamilyTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_subtasks")
+}
+
+model Playlist {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String?
+  createdBy   Int?           @map("created_by")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  creator User?          @relation("CreatedPlaylists", fields: [createdBy], references: [id], onDelete: SetNull)
+  songs   PlaylistSong[]
+
+  @@index([createdBy])
+  @@map("playlists")
+}
+
+model Song {
+  id             Int            @id @default(autoincrement())
+  title          String
+  artist         String?
+  keySignature   String?        @map("key_signature")
+  tempo          Int?
+  lyrics         String?
+  youtubeLink    String?        @map("youtube_link")
+  assignedSinger String?        @map("assigned_singer")
+  createdBy      Int?           @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  creator   User?          @relation("CreatedSongs", fields: [createdBy], references: [id], onDelete: SetNull)
+  playlists PlaylistSong[]
+
+  @@index([createdBy])
+  @@index([title])
+  @@map("songs")
+}
+
+model PlaylistSong {
+  id           Int      @id @default(autoincrement())
+  playlistId   Int      @map("playlist_id")
+  songId       Int      @map("song_id")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, songId])
+  @@index([songId])
+  @@map("playlist_songs")
+}
+
+model PhotoGallery {
+  id          Int       @id @default(autoincrement())
+  title       String
+  imagePath   String    @map("image_path")
+  description String?
+  eventDate   DateTime? @map("event_date") @db.Date
+  createdBy   Int?      @map("created_by")
+  category    String?
+  tags        String?
+  altText     String?   @map("alt_text")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  creator User? @relation("CreatedGallery", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("photo_gallery")
+}
+
+model ServiceTeam {
+  id            Int       @id @default(autoincrement())
+  serviceName   String    @map("service_name")
+  numberOfTeams Int       @default(1) @map("number_of_teams")
+  generatedAt   DateTime  @default(now()) @map("generated_at")
+  createdBy     Int?      @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  serviceDate   DateTime? @map("service_date") @db.Date
+
+  creator User?        @relation("CreatedServiceTeams", fields: [createdBy], references: [id], onDelete: SetNull)
+  members TeamMember[]
+
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("service_teams")
+}
+
+model TeamMember {
+  id               Int      @id @default(autoincrement())
+  serviceTeamId    Int?     @map("service_team_id")
+  teamNumber       Int      @map("team_number")
+  userId           Int?     @map("user_id")
+  voicePart        String?  @map("voice_part")
+  performanceLevel String?  @map("performance_level")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  serviceTeam ServiceTeam? @relation(fields: [serviceTeamId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([serviceTeamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model Role {
+  id          Int                  @id @default(autoincrement())
+  name        String               @unique
+  displayName String               @map("display_name")
+  description String?
+  isSystem    Boolean              @default(false) @map("is_system")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  users       UserRole[]
+  permissions RolePageFeature[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId    Int      @map("user_id")
+  roleId    Int      @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("role_user")
+}
+
+model Page {
+  id          Int                 @id @default(autoincrement())
+  name        String              @unique
+  label       String
+  description String?
+  icon        String?
+  href        String?
+  sortOrder   Int                 @default(0) @map("sort_order")
+  isActive    Boolean             @default(true) @map("is_active")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  features    Feature[]
+  permissions RolePageFeature[]
+
+  @@index([isActive, sortOrder])
+  @@map("pages")
+}
+
+model Feature {
+  id          Int                 @id @default(autoincrement())
+  pageId      Int                 @map("page_id")
+  name        String
+  label       String
+  description String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  page        Page                @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  permissions RolePageFeature[]
+
+  @@unique([pageId, name])
+  @@index([name])
+  @@map("features")
+}
+
+model RolePageFeature {
+  roleId    Int      @map("role_id")
+  pageId    Int      @map("page_id")
+  featureId Int      @map("feature_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  page    Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, pageId, featureId])
+  @@index([pageId])
+  @@index([featureId])
+  @@map("role_page_features")
+}
+
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     Json?
+  group     String   @default("general")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([group])
+  @@map("system_settings")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String
+  module    String?
+  metadata  Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+  @@map("activity_logs")
+}

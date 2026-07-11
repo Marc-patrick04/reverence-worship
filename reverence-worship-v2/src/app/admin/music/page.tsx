@@ -1,0 +1,129 @@
+import { MusicClient } from "@/components/music-client";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+export default async function MusicPage() {
+  await requireUser();
+
+  const [playlists, songs, gallery, singers, serviceTeams] = await Promise.all([
+    prisma.playlist.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        songs: {
+          orderBy: { displayOrder: "asc" },
+          include: { song: true },
+        },
+      },
+    }),
+    prisma.song.findMany({
+      orderBy: { title: "asc" },
+    }),
+    prisma.photoGallery.findMany({
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.findMany({
+      where: {
+        membershipType: "permanent",
+        status: "active",
+      },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        membershipType: true,
+        voicePart: true,
+        singerLevel: true,
+      },
+    }),
+    prisma.serviceTeam.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        members: {
+          orderBy: [{ teamNumber: "asc" }, { id: "asc" }],
+          include: { user: true },
+        },
+      },
+    }),
+  ]);
+
+  return (
+    <MusicClient
+      playlists={playlists.map((playlist) => ({
+        id: playlist.id,
+        title: playlist.title,
+        description: playlist.description,
+        createdAt: formatDate(playlist.createdAt),
+        songs: playlist.songs.map(({ song }) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          keySignature: song.keySignature,
+          tempo: song.tempo,
+          lyrics: song.lyrics,
+          youtubeLink: song.youtubeLink,
+          assignedSinger: song.assignedSinger,
+        })),
+      }))}
+      songs={songs.map((song) => ({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        keySignature: song.keySignature,
+        tempo: song.tempo,
+        lyrics: song.lyrics,
+        youtubeLink: song.youtubeLink,
+        assignedSinger: song.assignedSinger,
+      }))}
+      gallery={gallery.map((photo) => ({
+        id: photo.id,
+        title: photo.title,
+        imagePath: photo.imagePath,
+        description: photo.description,
+        eventDate: photo.eventDate ? formatDate(photo.eventDate) : null,
+        category: photo.category,
+        tags: photo.tags,
+        altText: photo.altText,
+        createdAt: formatDate(photo.createdAt),
+        createdAtValue: photo.createdAt.toISOString(),
+      }))}
+      singers={singers.map((singer) => ({
+        id: singer.id,
+        name: singer.name,
+        email: singer.email,
+        membershipType: singer.membershipType,
+        voicePart: singer.voicePart,
+        singerLevel: singer.singerLevel,
+      }))}
+      serviceTeams={serviceTeams.map((team) => ({
+        id: team.id,
+        serviceName: team.serviceName,
+        serviceDate: team.serviceDate ? formatDate(team.serviceDate) : null,
+        serviceDateValue: team.serviceDate?.toISOString().slice(0, 10) ?? "",
+        numberOfTeams: team.numberOfTeams,
+        createdAt: formatDate(team.createdAt),
+        members: team.members.map((member) => ({
+          id: member.id,
+          teamNumber: member.teamNumber,
+          voicePart: member.voicePart,
+          performanceLevel: member.performanceLevel,
+          user: member.user
+            ? {
+                id: member.user.id,
+                name: member.user.name,
+                email: member.user.email,
+              }
+            : null,
+        })),
+      }))}
+    />
+  );
+}
