@@ -84,6 +84,17 @@ model User {
   createdFeaturedImages LandingFeaturedImage[] @relation("CreatedFeaturedImages")
   createdSpiritualForms SpiritualForm[] @relation("CreatedSpiritualForms")
   formSubmissions FormSubmission[]
+  contributions Contribution[] @relation("ContributionUser")
+  createdContributions Contribution[] @relation("ContributionCreator")
+  payments Payment[] @relation("PaymentUser")
+  createdPayments Payment[] @relation("PaymentCreator")
+  createdGifts Gift[] @relation("GiftCreator")
+  createdExpenses Expense[] @relation("ExpenseCreator")
+  approvedExpenses Expense[] @relation("ExpenseApprover")
+  firstApprovalExpenses Expense[] @relation("ExpenseFirstApprover")
+  secondApprovalExpenses Expense[] @relation("ExpenseSecondApprover")
+  createdSponsors Sponsor[] @relation("SponsorCreator")
+  createdSponsorPayments SponsorPayment[] @relation("SponsorPaymentCreator")
 
   @@index([status])
   @@index([membershipType])
@@ -223,6 +234,149 @@ model ActionPlanTask {
   @@index([assignedTo])
   @@index([status])
   @@map("action_plan_tasks")
+}
+
+model FinanceTermSetting {
+  id              Int      @id @default(autoincrement())
+  currentYear     Int?     @default(2026) @map("current_year")
+  numberOfTerms   Int?     @default(3) @map("number_of_terms")
+  termPercentages String?  @default("[40,30,30]") @map("term_percentages")
+  termNumbers     String?  @default("[1,2,3]") @map("term_numbers")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("finance_term_settings")
+}
+
+model Contribution {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  annualAmount Decimal? @default(0) @map("annual_amount") @db.Decimal(15, 2)
+  year         Int
+  notes        String?
+  status       String?  @default("active")
+  createdBy    Int?     @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user    User  @relation("ContributionUser", fields: [userId], references: [id], onDelete: Cascade)
+  creator User? @relation("ContributionCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([userId, year])
+  @@index([year])
+  @@map("contributions")
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  amount          Decimal  @db.Decimal(15, 2)
+  paymentDate     DateTime @default(now()) @map("payment_date") @db.Date
+  paymentMethod   String?  @map("payment_method")
+  term            Int?
+  referenceNumber String?  @map("reference_number")
+  status          String?  @default("completed")
+  notes           String?
+  createdBy       Int?     @map("created_by")
+  year            Int
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user    User? @relation("PaymentUser", fields: [userId], references: [id], onDelete: SetNull)
+  creator User? @relation("PaymentCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([year])
+  @@map("payments")
+}
+
+model Gift {
+  id               Int       @id @default(autoincrement())
+  donorName        String    @map("donor_name")
+  commitmentAmount Decimal?  @default(0) @map("commitment_amount") @db.Decimal(15, 2)
+  receivedAmount   Decimal?  @default(0) @map("received_amount") @db.Decimal(15, 2)
+  giftType         String?   @map("gift_type")
+  date             DateTime? @db.Date
+  status           String?   @default("pending")
+  notes            String?
+  createdBy        Int?      @map("created_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  creator User? @relation("GiftCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@map("gifts")
+}
+
+model Expense {
+  id          Int       @id @default(autoincrement())
+  category    String?
+  description String?
+  amount      Decimal   @db.Decimal(15, 2)
+  date        DateTime? @default(now()) @db.Date
+  status      String?   @default("pending")
+  approvedBy  Int?      @map("approved_by")
+  receiptPath String?   @map("receipt_path")
+  notes       String?
+  createdBy   Int?      @map("created_by")
+  approverId1 Int?      @map("approver_id_1")
+  approverId2 Int?      @map("approver_id_2")
+  year        Int?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  creator        User? @relation("ExpenseCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  approver       User? @relation("ExpenseApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  firstApprover  User? @relation("ExpenseFirstApprover", fields: [approverId1], references: [id], onDelete: SetNull)
+  secondApprover User? @relation("ExpenseSecondApprover", fields: [approverId2], references: [id], onDelete: SetNull)
+
+  @@index([year])
+  @@index([status])
+  @@map("expenses")
+}
+
+model Sponsor {
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String?
+  phone            String?
+  commitmentAmount Decimal? @default(0) @map("commitment_amount") @db.Decimal(15, 2)
+  receivedAmount   Decimal? @default(0) @map("received_amount") @db.Decimal(15, 2)
+  fundType         String?  @default("one_time") @map("fund_type")
+  status           String?  @default("active")
+  notes            String?
+  createdBy        Int?     @map("created_by")
+  year             Int      @default(2026)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  creator User? @relation("SponsorCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  payments SponsorPayment[]
+
+  @@index([year])
+  @@map("sponsors")
+}
+
+model SponsorPayment {
+  id            Int      @id @default(autoincrement())
+  sponsorId     Int      @map("sponsor_id")
+  amount        Decimal  @db.Decimal(15, 2)
+  paymentDate   DateTime @default(now()) @map("payment_date") @db.Date
+  paymentMethod String?  @default("cash") @map("payment_method")
+  notes         String?
+  createdBy     Int?     @map("created_by")
+  year          Int?
+  month         Int?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  creator User?   @relation("SponsorPaymentCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([sponsorId])
+  @@index([year])
+  @@index([month])
+  @@map("sponsor_payments")
 }
 
 model AttendanceRecord {

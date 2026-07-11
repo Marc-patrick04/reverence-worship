@@ -18,7 +18,16 @@ export const prisma =
   "attendanceRecord" in existingPrisma &&
   "attendanceSession" in existingPrisma &&
   "permissionRequest" in existingPrisma &&
-  "disciplineRecord" in existingPrisma
+  "disciplineRecord" in existingPrisma &&
+  "financeTermSetting" in existingPrisma &&
+  "contribution" in existingPrisma &&
+  "payment" in existingPrisma &&
+  "gift" in existingPrisma &&
+  "expense" in existingPrisma &&
+  "sponsor" in existingPrisma &&
+  "sponsorPayment" in existingPrisma &&
+  "systemSetting" in existingPrisma &&
+  "activityLog" in existingPrisma
     ? existingPrisma
     : new PrismaClient({ adapter });
 

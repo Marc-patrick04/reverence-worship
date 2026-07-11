@@ -63,6 +63,7 @@ export default async function DisciplinePage({
     permissionList,
     disciplineRecords,
     attendanceSessionStates,
+    actionPlans,
   ] = await Promise.all([
     safeRead(
       prisma.permissionRequest.count({
@@ -178,6 +179,19 @@ export default async function DisciplinePage({
       }),
       [],
     ),
+    safeRead(
+      prisma.actionPlan.findMany({
+        where: { department: "discipline" },
+        orderBy: { createdAt: "desc" },
+        include: {
+          creator: { select: { id: true, name: true, email: true } },
+          tasks: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      }),
+      [],
+    ),
   ]);
 
   const avgGoodBehavior = attendanceRecordCount ? Math.round((goodAttendanceCount / attendanceRecordCount) * 100) : 0;
@@ -262,6 +276,34 @@ export default async function DisciplinePage({
         resolvedNotes: record.resolvedNotes,
         createdAt: formatDate(record.createdAt),
         createdAtValue: dateValue(record.createdAt),
+      }))}
+      actionPlans={actionPlans.map((plan) => ({
+        id: plan.id,
+        title: plan.title,
+        description: plan.description,
+        startDate: formatDate(plan.startDate),
+        startDateValue: dateValue(plan.startDate),
+        dueDate: formatDate(plan.dueDate),
+        dueDateValue: dateValue(plan.dueDate),
+        status: plan.status,
+        priority: plan.priority,
+        progress: plan.progress,
+        createdByName: plan.creator?.name ?? "Unknown",
+        createdAt: formatDate(plan.createdAt),
+        tasks: plan.tasks.map((task) => ({
+          id: task.id,
+          taskName: task.taskName,
+          activity: task.activity,
+          targetMilestone: task.targetMilestone,
+          estimatedBudget: Number(task.estimatedBudget),
+          startDate: task.startDate ? formatDate(task.startDate) : null,
+          startDateValue: task.startDate ? dateValue(task.startDate) : "",
+          deadline: task.deadline ? formatDate(task.deadline) : null,
+          deadlineValue: task.deadline ? dateValue(task.deadline) : "",
+          priority: task.priority,
+          progress: task.progress,
+          status: task.status,
+        })),
       }))}
     />
   );

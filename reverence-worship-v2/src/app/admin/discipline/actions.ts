@@ -22,6 +22,11 @@ type DisciplineRecordInput = {
   points?: number;
 };
 
+function boundedProgress(value: FormDataEntryValue | null) {
+  const progress = Number(value ?? 0);
+  return Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
+}
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -352,4 +357,137 @@ export async function resolveDisciplineRecord(id: number, notes: string) {
   revalidatePath("/admin/discipline");
 
   return { ok: true, message: "Discipline record resolved." };
+}
+
+async function syncDisciplineActionPlanProgress(actionPlanId: number) {
+  const tasks = await prisma.actionPlanTask.findMany({
+    where: { actionPlanId },
+    select: { progress: true },
+  });
+  const progress = tasks.length ? Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length) : 0;
+  const status = progress === 100 ? "completed" : progress > 0 ? "in_progress" : "pending";
+
+  await prisma.actionPlan.update({
+    where: { id: actionPlanId },
+    data: { progress, status },
+  });
+}
+
+export async function saveDisciplineActionPlan(formData: FormData) {
+  const user = await requireUser();
+  const id = Number(readString(formData, "id"));
+  const title = readString(formData, "title");
+  const description = readString(formData, "description");
+  const startDateValue = readString(formData, "startDate");
+  const dueDateValue = readString(formData, "dueDate");
+
+  if (!title || !startDateValue || !dueDateValue) {
+    return { ok: false, message: "Action plan name, start date, and completion date are required." };
+  }
+
+  const data = {
+    title,
+    description,
+    startDate: dateOnly(startDateValue),
+    dueDate: dateOnly(dueDateValue),
+    department: "discipline",
+    year: new Date().getFullYear(),
+    createdBy: user.id,
+  };
+
+  if (Number.isFinite(id) && id > 0) {
+    await prisma.actionPlan.update({
+      where: { id },
+      data: {
+        title: data.title,
+        description: data.description,
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+      },
+    });
+  } else {
+    await prisma.actionPlan.create({ data });
+  }
+
+  revalidatePath("/admin/discipline");
+  return { ok: true, message: id ? "Action plan updated." : "Action plan created." };
+}
+
+export async function deleteDisciplineActionPlan(id: number) {
+  await requireUser();
+  await prisma.actionPlan.delete({ where: { id } });
+  revalidatePath("/admin/discipline");
+  return { ok: true, message: "Action plan deleted." };
+}
+
+export async function saveDisciplineActionPlanTask(formData: FormData) {
+  await requireUser();
+  const id = Number(readString(formData, "id"));
+  const actionPlanId = Number(readString(formData, "actionPlanId"));
+  const activity = readString(formData, "activity");
+  const targetMilestone = readString(formData, "targetMilestone");
+  const estimatedBudget = readString(formData, "estimatedBudget") ?? "0";
+  const startDateValue = readString(formData, "startDate");
+  const deadlineValue = readString(formData, "deadline");
+  const priority = readString(formData, "priority") ?? "medium";
+  const progress = boundedProgress(formData.get("progress"));
+
+  if (!actionPlanId || !activity || !targetMilestone || !deadlineValue) {
+    return { ok: false, message: "Action plan, activity, milestone, and deadline are required." };
+  }
+
+  const status = progress >= 100 ? "completed" : progress > 0 ? "in_progress" : "pending";
+  const data = {
+    actionPlanId,
+    taskName: activity,
+    activity,
+    targetMilestone,
+    estimatedBudget,
+    startDate: startDateValue ? dateOnly(startDateValue) : null,
+    deadline: dateOnly(deadlineValue),
+    priority,
+    progress,
+    status,
+    startedAt: progress > 0 ? new Date() : null,
+    completedAt: progress >= 100 ? new Date() : null,
+  };
+
+  if (Number.isFinite(id) && id > 0) {
+    await prisma.actionPlanTask.update({
+      where: { id },
+      data: {
+        taskName: data.taskName,
+        activity: data.activity,
+        targetMilestone: data.targetMilestone,
+        estimatedBudget: data.estimatedBudget,
+        startDate: data.startDate,
+        deadline: data.deadline,
+        priority: data.priority,
+        progress: data.progress,
+        status: data.status,
+        startedAt: data.startedAt,
+        completedAt: data.completedAt,
+      },
+    });
+  } else {
+    await prisma.actionPlanTask.create({ data });
+  }
+
+  await syncDisciplineActionPlanProgress(actionPlanId);
+  revalidatePath("/admin/discipline");
+  return { ok: true, message: id ? "Task updated successfully." : "Task created successfully." };
+}
+
+export async function deleteDisciplineActionPlanTask(id: number) {
+  await requireUser();
+  const task = await prisma.actionPlanTask.findUnique({
+    where: { id },
+    select: { actionPlanId: true },
+  });
+  if (!task) return { ok: false, message: "Task not found." };
+
+  await prisma.actionPlanTask.delete({ where: { id } });
+  await syncDisciplineActionPlanProgress(task.actionPlanId);
+  revalidatePath("/admin/discipline");
+  return { ok: true, message: "Task deleted successfully." };
 }

@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, BookOpen, CalendarCheck, CheckCircle2, ClipboardList, Clock, Edit, FileText, Filter, Gavel, MailOpen, Play, Plus, Save, Search, Smile, Trash2, X, XCircle } from "lucide-react";
+import { BarChart3, BookOpen, CalendarCheck, CheckCircle2, ClipboardList, Clock, Edit, FileText, Filter, Gavel, Info, MailOpen, Play, Plus, Save, Search, Smile, Trash2, TriangleAlert, X, XCircle } from "lucide-react";
 import {
   approvePermissionRequest,
   completeAttendanceSession,
+  deleteDisciplineActionPlan,
+  deleteDisciplineActionPlanTask,
   deleteAttendanceSession,
   deleteDisciplineSession,
   deletePermissionRequest,
   rejectPermissionRequest,
   resolveDisciplineRecord,
+  saveDisciplineActionPlan,
+  saveDisciplineActionPlanTask,
   saveAttendanceSession,
   saveDisciplineSession,
   savePermissionRequest,
@@ -120,6 +124,37 @@ type DisciplineRecord = {
   createdAtValue: string;
 };
 
+type DisciplineActionPlanTask = {
+  id: number;
+  taskName: string;
+  activity: string | null;
+  targetMilestone: string | null;
+  estimatedBudget: number;
+  startDate: string | null;
+  startDateValue: string;
+  deadline: string | null;
+  deadlineValue: string;
+  priority: string;
+  progress: number;
+  status: string;
+};
+
+type DisciplineActionPlan = {
+  id: number;
+  title: string;
+  description: string | null;
+  startDate: string;
+  startDateValue: string;
+  dueDate: string;
+  dueDateValue: string;
+  status: string;
+  priority: string;
+  progress: number;
+  createdByName: string;
+  createdAt: string;
+  tasks: DisciplineActionPlanTask[];
+};
+
 type DisciplineDraft = {
   userId: number;
   behaviour: "good" | "bad";
@@ -138,6 +173,7 @@ export function DisciplineClient({
   users,
   permissions,
   disciplineRecords,
+  actionPlans,
 }: {
   startDate: string;
   endDate: string;
@@ -149,6 +185,7 @@ export function DisciplineClient({
   users: AttendanceUser[];
   permissions: Permission[];
   disciplineRecords: DisciplineRecord[];
+  actionPlans: DisciplineActionPlan[];
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
@@ -158,11 +195,15 @@ export function DisciplineClient({
   const [attendanceTo, setAttendanceTo] = useState(endDate);
   const [attendanceSessionFilter, setAttendanceSessionFilter] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; confirmText: string; onConfirm: () => Promise<void> | void } | null>(null);
   const [sessionModal, setSessionModal] = useState(false);
+  const [sessionReadOnly, setSessionReadOnly] = useState(false);
   const [permissionReviewModal, setPermissionReviewModal] = useState<null | "pending" | "rejected">(null);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [sessionType, setSessionType] = useState("");
   const [attendanceDrafts, setAttendanceDrafts] = useState<AttendanceDraft[]>([]);
+  const [sessionUserSearch, setSessionUserSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [permissionSearch, setPermissionSearch] = useState("");
   const [permissionStatus, setPermissionStatus] = useState("all");
@@ -183,6 +224,11 @@ export function DisciplineClient({
   const [disciplineTitle, setDisciplineTitle] = useState("");
   const [disciplineSearch, setDisciplineSearch] = useState("");
   const [disciplineDrafts, setDisciplineDrafts] = useState<DisciplineDraft[]>([]);
+  const [actionPlanModal, setActionPlanModal] = useState(false);
+  const [taskModal, setTaskModal] = useState(false);
+  const [editingActionPlan, setEditingActionPlan] = useState<DisciplineActionPlan | null>(null);
+  const [editingActionTask, setEditingActionTask] = useState<DisciplineActionPlanTask | null>(null);
+  const [taskPlan, setTaskPlan] = useState<DisciplineActionPlan | null>(null);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -250,29 +296,94 @@ export function DisciplineClient({
   const pendingSessionPermissions = permissionsForSessionDate.filter((permission) => permission.status === "pending");
   const rejectedSessionPermissions = permissionsForSessionDate.filter((permission) => permission.status === "rejected");
 
-  function openAttendanceSession(date = new Date().toISOString().slice(0, 10), type = "") {
-    const completed = attendanceSessionStates.some((item) => item.sessionDate === date && item.sessionType === type && item.isCompleted);
-    if (completed) {
-      setMessage("This session is completed and cannot be edited.");
+  function permissionForUser(userId: number) {
+    const userPermissions = permissionsForSessionDate.filter((permission) => permission.userId === userId);
+    return (
+      userPermissions.find((permission) => permission.status === "approved") ??
+      userPermissions.find((permission) => permission.status === "pending") ??
+      userPermissions.find((permission) => permission.status === "rejected") ??
+      null
+    );
+  }
+
+  function permissionStatusClass(status: string) {
+    if (status === "approved") return "bg-green-100 text-green-700";
+    if (status === "pending") return "bg-yellow-100 text-yellow-700";
+    if (status === "rejected") return "bg-red-100 text-red-700";
+    return "bg-gray-100 text-gray-700";
+  }
+
+  function totalAttendancePoints(draft: AttendanceDraft) {
+    if (draft.hasOfficialPermission) return 3;
+    return Number(draft.present) + Number(draft.onTime) + Number(draft.communicated) + Number(draft.discipline);
+  }
+
+  const filteredSessionUsers = users.filter((user) => {
+    const query = sessionUserSearch.trim().toLowerCase();
+    if (!query) return true;
+    return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+  });
+
+  function exportSessionAttendance() {
+    if (attendanceDrafts.length === 0) {
+      setNotice({ title: "Notice", message: "No session data to export." });
       return;
     }
+
+    const headers = ["No", "Names", "Permission Status", "Points of Presence", "Timeliness", "Communication", "Discipline", "Total Points"];
+    const rows = users.map((user, index) => {
+      const draft = attendanceDrafts.find((item) => item.userId === user.id);
+      const permission = permissionForUser(user.id);
+      return [
+        index + 1,
+        user.name,
+        permission ? `${permission.status} permission ${permission.startDate} - ${permission.endDate}` : "No approved permission",
+        draft?.present ? 1 : 0,
+        draft?.onTime ? 1 : 0,
+        draft?.communicated ? 1 : 0,
+        draft?.discipline ? 1 : 0,
+        draft ? totalAttendancePoints(draft) : 0,
+      ];
+    });
+
+    const escapeCsv = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const csv = [headers.map(escapeCsv).join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `attendance_session_${sessionDate}_${sessionType.replace(/[^a-zA-Z0-9]+/g, "_") || "attendance"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function openAttendanceSession(date = new Date().toISOString().slice(0, 10), type = "") {
+    if (!date || !type.trim()) {
+      setNotice({ title: "Notice", message: "Please enter session date and name" });
+      return;
+    }
+    const completed = attendanceSessionStates.some((item) => item.sessionDate === date && item.sessionType === type && item.isCompleted);
     const existing = attendanceRecords.filter((record) => record.sessionDate === date && record.sessionType === type);
     const pendingPermissionsForDate = permissions.filter((permission) => permission.status === "pending" && permission.startDateValue <= date && permission.endDateValue >= date);
     setSessionDate(date);
     setSessionType(type);
+    setSessionReadOnly(completed);
+    setSessionUserSearch("");
     setAttendanceDrafts(
       users.map((user) => {
         const record = existing.find((item) => item.userId === user.id);
         const permission = permissions.find((item) => item.userId === user.id && item.startDateValue <= date && item.endDateValue >= date);
         const hasApprovedPermission = permission?.status === "approved";
-        const present = record ? ["present", "late"].includes(record.status) : true;
-        const discipline = record ? record.disciplinePoints > 0 : true;
+        const present = hasApprovedPermission ? false : record ? ["present", "late"].includes(record.status) : true;
+        const discipline = hasApprovedPermission ? true : record ? record.disciplinePoints > 0 : true;
         return {
           userId: user.id,
           present,
           status: present ? "present" : "absent",
-          onTime: record?.onTime ?? true,
-          communicated: record?.communicated ?? true,
+          onTime: hasApprovedPermission ? true : record?.onTime ?? true,
+          communicated: hasApprovedPermission ? true : record?.communicated ?? true,
           discipline,
           disciplinePoints: discipline ? 1 : 0,
           lateMinutes: record?.lateMinutes ?? 0,
@@ -283,10 +394,12 @@ export function DisciplineClient({
       }),
     );
     setSessionModal(true);
-    setPermissionReviewModal(pendingPermissionsForDate.length > 0 ? "pending" : null);
+    setPermissionReviewModal(!completed && pendingPermissionsForDate.length > 0 ? "pending" : null);
+    if (completed) setMessage("This session is completed. You can view it, but editing is locked.");
   }
 
   function updateDraft(userId: number, patch: Partial<AttendanceDraft>) {
+    if (sessionReadOnly) return;
     setAttendanceDrafts((current) => current.map((draft) => (draft.userId === userId ? { ...draft, ...patch } : draft)));
   }
 
@@ -308,8 +421,12 @@ export function DisciplineClient({
   }
 
   async function submitAttendanceSession(closeAfterSave = false) {
+    if (sessionReadOnly) {
+      setNotice({ title: "Notice", message: "This session is completed and cannot be edited." });
+      return;
+    }
     if (!sessionDate || !sessionType.trim()) {
-      setMessage("Session date and name are required.");
+      setNotice({ title: "Notice", message: "Please enter session date and name" });
       return;
     }
     setIsSaving(true);
@@ -323,8 +440,12 @@ export function DisciplineClient({
   }
 
   async function completeSession() {
+    if (sessionReadOnly) {
+      setNotice({ title: "Notice", message: "This session is completed and cannot be edited." });
+      return;
+    }
     if (!sessionDate || !sessionType.trim()) {
-      setMessage("Session date and name are required.");
+      setNotice({ title: "Notice", message: "Please enter session date and name" });
       return;
     }
     setIsSaving(true);
@@ -338,10 +459,16 @@ export function DisciplineClient({
   }
 
   async function removeAttendanceSession(date: string, type: string) {
-    if (!window.confirm(`Delete "${type}" on ${date}?`)) return;
-    const result = await deleteAttendanceSession(date, type);
-    setMessage(result.message);
-    if (result.ok) router.refresh();
+    setConfirmDialog({
+      title: "Delete session",
+      message: `Delete "${type}" on ${date}?`,
+      confirmText: "Delete",
+      onConfirm: async () => {
+        const result = await deleteAttendanceSession(date, type);
+        setMessage(result.message);
+        if (result.ok) router.refresh();
+      },
+    });
   }
 
   const filteredPermissions = permissions.filter((permission) => {
@@ -476,8 +603,12 @@ export function DisciplineClient({
   }
 
   async function submitDisciplineSession() {
-    if (!disciplineDate || !disciplineTitle.trim()) {
-      setMessage("Session date and title are required.");
+    if (!disciplineTitle.trim()) {
+      setNotice({ title: "Notice", message: "Please enter a session title" });
+      return;
+    }
+    if (!disciplineDate) {
+      setNotice({ title: "Notice", message: "Please select a date" });
       return;
     }
     setIsSaving(true);
@@ -495,10 +626,16 @@ export function DisciplineClient({
   }
 
   async function removeDisciplineSession(date: string, title: string) {
-    if (!window.confirm(`Delete "${title}" on ${date}?`)) return;
-    const result = await deleteDisciplineSession(date, title);
-    setMessage(result.message);
-    if (result.ok) router.refresh();
+    setConfirmDialog({
+      title: "Delete session",
+      message: `Delete "${title}" on ${date}?`,
+      confirmText: "Delete",
+      onConfirm: async () => {
+        const result = await deleteDisciplineSession(date, title);
+        setMessage(result.message);
+        if (result.ok) router.refresh();
+      },
+    });
   }
 
   async function resolveBadRecord(record: DisciplineRecord) {
@@ -506,6 +643,111 @@ export function DisciplineClient({
     const result = await resolveDisciplineRecord(record.id, notes);
     setMessage(result.message);
     if (result.ok) router.refresh();
+  }
+
+  const actionSummary = {
+    overdueTasks: actionPlans.reduce((count, plan) => count + plan.tasks.filter((task) => task.deadlineValue && task.deadlineValue < new Date().toISOString().slice(0, 10) && task.progress < 100).length, 0),
+    dueSoonTasks: actionPlans.reduce((count, plan) => {
+      const today = new Date();
+      const soon = new Date();
+      soon.setDate(today.getDate() + 7);
+      const todayValue = today.toISOString().slice(0, 10);
+      const soonValue = soon.toISOString().slice(0, 10);
+      return count + plan.tasks.filter((task) => task.deadlineValue >= todayValue && task.deadlineValue <= soonValue && task.progress < 100).length;
+    }, 0),
+    myTodoTasks: actionPlans.reduce((count, plan) => count + plan.tasks.filter((task) => task.progress < 100).length, 0),
+  };
+
+  function openActionPlan(plan?: DisciplineActionPlan) {
+    setEditingActionPlan(plan ?? null);
+    setActionPlanModal(true);
+  }
+
+  function openTaskModal(plan: DisciplineActionPlan, task?: DisciplineActionPlanTask) {
+    setTaskPlan(plan);
+    setEditingActionTask(task ?? null);
+    setTaskModal(true);
+  }
+
+  async function submitActionPlan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    const formData = new FormData(event.currentTarget);
+    if (editingActionPlan) formData.set("id", String(editingActionPlan.id));
+    const result = await saveDisciplineActionPlan(formData);
+    setIsSaving(false);
+    if (result.ok) {
+      setActionPlanModal(false);
+      setEditingActionPlan(null);
+      router.refresh();
+    }
+    setMessage(result.message);
+  }
+
+  async function submitActionPlanTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!taskPlan) return;
+    setIsSaving(true);
+    const formData = new FormData(event.currentTarget);
+    formData.set("actionPlanId", String(taskPlan.id));
+    if (editingActionTask) formData.set("id", String(editingActionTask.id));
+    const result = await saveDisciplineActionPlanTask(formData);
+    setIsSaving(false);
+    if (result.ok) {
+      setTaskModal(false);
+      setTaskPlan(null);
+      setEditingActionTask(null);
+      router.refresh();
+    }
+    setMessage(result.message);
+  }
+
+  function removeActionPlan(plan: DisciplineActionPlan) {
+    setConfirmDialog({
+      title: "Delete action plan",
+      message: `Delete "${plan.title}"?`,
+      confirmText: "Delete",
+      onConfirm: async () => {
+        const result = await deleteDisciplineActionPlan(plan.id);
+        setMessage(result.message);
+        if (result.ok) router.refresh();
+      },
+    });
+  }
+
+  function removeActionPlanTask(task: DisciplineActionPlanTask) {
+    setConfirmDialog({
+      title: "Delete task",
+      message: "Are you sure you want to delete this task?",
+      confirmText: "Delete",
+      onConfirm: async () => {
+        const result = await deleteDisciplineActionPlanTask(task.id);
+        setMessage(result.message);
+        if (result.ok) router.refresh();
+      },
+    });
+  }
+
+  function exportActionPlanTasks(plan: DisciplineActionPlan) {
+    const headers = ["No", "Activity", "Milestone", "Budget", "Deadline"];
+    const rows = plan.tasks.map((task, index) => [
+      index + 1,
+      task.activity ?? task.taskName,
+      task.targetMilestone ?? "",
+      task.estimatedBudget ? `RWF ${task.estimatedBudget.toLocaleString()}` : "",
+      task.deadline ?? "",
+    ]);
+    const escapeCsv = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const csv = [headers.map(escapeCsv).join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${plan.title.replace(/[^a-zA-Z0-9]+/g, "_")}_tasks.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -716,11 +958,8 @@ export function DisciplineClient({
                           <td className={`px-5 py-3 text-center text-sm font-semibold ${rateColor}`}>{rate}%</td>
                           <td className="px-5 py-3">
                             <div className="flex items-center justify-center gap-2">
-                              {session.isCompleted ? (
-                                <span className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-400">Locked</span>
-                              ) : (
-                                <button type="button" onClick={() => openAttendanceSession(session.date, session.session)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-blue-600 hover:bg-blue-50">View</button>
-                              )}
+                              <button type="button" onClick={() => openAttendanceSession(session.date, session.session)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-blue-600 hover:bg-blue-50">View</button>
+                              {session.isCompleted && <span className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-400">Locked</span>}
                               <button type="button" onClick={() => removeAttendanceSession(session.date, session.session)} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600 hover:bg-red-100">
                                 <Trash2 className="size-4" />
                               </button>
@@ -757,11 +996,7 @@ export function DisciplineClient({
                         <div className="rounded-lg bg-rose-50 p-2 text-rose-700"><span className="block text-xs">Absent</span><strong>{absent}</strong></div>
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        {session.isCompleted ? (
-                          <span className="rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-400">Locked</span>
-                        ) : (
-                          <button type="button" onClick={() => openAttendanceSession(session.date, session.session)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white">View</button>
-                        )}
+                        <button type="button" onClick={() => openAttendanceSession(session.date, session.session)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white">View</button>
                         <button type="button" onClick={() => removeAttendanceSession(session.date, session.session)} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">Delete</button>
                       </div>
                     </div>
@@ -846,7 +1081,18 @@ export function DisciplineClient({
                             <button onClick={() => { const reason = window.prompt("Reject reason?") ?? ""; runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100">Reject</button>
                           </>
                         )}
-                        <button onClick={() => { if (window.confirm("Delete this permission request?")) runPermissionAction(() => deletePermissionRequest(permission.id)); }} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100" title="Delete">
+                        <button
+                          onClick={() =>
+                            setConfirmDialog({
+                              title: "Delete permission",
+                              message: "Delete this permission request?",
+                              confirmText: "Delete",
+                              onConfirm: () => runPermissionAction(() => deletePermissionRequest(permission.id)),
+                            })
+                          }
+                          className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100"
+                          title="Delete"
+                        >
                           <Trash2 className="size-4" />
                         </button>
                       </div>
@@ -969,6 +1215,117 @@ export function DisciplineClient({
                 }) : <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">No discipline sessions found</div>}
               </div>
             </div>
+          ) : activeTab === "action-plans" ? (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">Action Plans</h3>
+                </div>
+                <button type="button" onClick={() => openActionPlan()} className="inline-flex w-fit items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700">
+                  <Plus className="size-4" />
+                  Create New Action Plan
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <ActionSummaryCard label="Overdue Tasks" value={actionSummary.overdueTasks} tone="rose" />
+                <ActionSummaryCard label="To-Be-Overdue Within 7 Days" value={actionSummary.dueSoonTasks} tone="amber" />
+                <ActionSummaryCard label="My TO DO" value={actionSummary.myTodoTasks} tone="sky" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {actionPlans.length ? actionPlans.map((plan) => {
+                  const totalBudget = plan.tasks.reduce((sum, task) => sum + task.estimatedBudget, 0);
+                  const statusColor = plan.status === "completed" ? "bg-green-100 text-green-800" : plan.status === "in_progress" ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800";
+                  return (
+                    <article key={plan.id} className="rounded-lg border bg-white p-4 transition hover:shadow-md">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h4 className="font-semibold text-gray-800">{plan.title}</h4>
+                            <span className={`rounded-full px-2 py-1 text-xs capitalize ${statusColor}`}>{plan.status.replace("_", " ")}</span>
+                          </div>
+                          <p className="text-sm text-gray-600">{plan.description || "No description"}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                            <span>By {plan.createdByName}</span>
+                            <span>Start: {plan.startDate}</span>
+                            <span>Completion: {plan.dueDate}</span>
+                            <span>Created: {plan.createdAt}</span>
+                            {totalBudget > 0 && <span>Budget: RWF {totalBudget.toLocaleString()}</span>}
+                          </div>
+                          <div className="mt-4">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-full max-w-sm rounded-full bg-gray-200">
+                                <div className="h-2 rounded-full bg-blue-600" style={{ width: `${plan.progress}%` }} />
+                              </div>
+                              <span className="text-xs font-medium text-gray-500">{plan.progress}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" onClick={() => openTaskModal(plan)} className="rounded-lg bg-green-50 px-3 py-2 text-green-700 hover:bg-green-100" title="Create task">
+                            <Plus className="size-4" />
+                          </button>
+                          <button type="button" onClick={() => exportActionPlanTasks(plan)} className="rounded-lg bg-indigo-50 px-3 py-2 text-indigo-700 hover:bg-indigo-100" title="Export tasks">
+                            <FileText className="size-4" />
+                          </button>
+                          <button type="button" onClick={() => openActionPlan(plan)} className="rounded-lg border border-gray-200 px-3 py-2 text-blue-600 hover:bg-blue-50" title="Edit">
+                            <Edit className="size-4" />
+                          </button>
+                          <button type="button" onClick={() => removeActionPlan(plan)} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100" title="Delete">
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 overflow-x-auto rounded-lg border border-gray-100">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                            <tr>
+                              <th className="px-3 py-2">Activity</th>
+                              <th className="px-3 py-2">Milestone</th>
+                              <th className="px-3 py-2">Budget</th>
+                              <th className="px-3 py-2">Deadline</th>
+                              <th className="px-3 py-2">Progress</th>
+                              <th className="px-3 py-2 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {plan.tasks.length ? plan.tasks.map((task) => (
+                              <tr key={task.id}>
+                                <td className="px-3 py-2 font-medium text-gray-800">{task.activity || task.taskName}</td>
+                                <td className="px-3 py-2 text-gray-600">{task.targetMilestone || "-"}</td>
+                                <td className="px-3 py-2 text-gray-600">{task.estimatedBudget ? `RWF ${task.estimatedBudget.toLocaleString()}` : "-"}</td>
+                                <td className="px-3 py-2 text-gray-600">{task.deadline || "-"}</td>
+                                <td className="px-3 py-2 text-gray-600">{task.progress}%</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex justify-end gap-2">
+                                    <button type="button" onClick={() => openTaskModal(plan, task)} className="text-blue-600 hover:text-blue-700">Edit</button>
+                                    <button type="button" onClick={() => removeActionPlanTask(task)} className="text-red-600 hover:text-red-700">Delete</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )) : (
+                              <tr>
+                                <td colSpan={6} className="px-3 py-6 text-center text-gray-400">No tasks yet</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </article>
+                  );
+                }) : (
+                  <div className="rounded-lg bg-gray-50 py-12 text-center">
+                    <ClipboardList className="mx-auto mb-3 size-10 text-gray-300" />
+                    <p className="text-gray-500">No action plans found</p>
+                    <button type="button" onClick={() => openActionPlan()} className="mt-3 text-sm text-blue-600 hover:text-blue-700">
+                      Create your first action plan
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : (
             <div className="rounded-xl border border-gray-100 bg-white p-10 text-center">
               <ClipboardList className="mx-auto mb-3 size-10 text-gray-300" aria-hidden="true" />
@@ -979,12 +1336,80 @@ export function DisciplineClient({
         </div>
       </div>
 
+      {notice && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white shadow-[0_35px_100px_rgba(15,23,42,0.25)] ring-1 ring-slate-200/80">
+            <div className="border-b border-slate-100 px-8 pb-5 pt-8 text-center">
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+                <Info className="size-8" />
+              </div>
+              <h3 className="text-2xl font-semibold tracking-tight text-slate-900">{notice.title}</h3>
+            </div>
+            <div className="px-8 py-6">
+              <p className="text-center text-sm leading-6 text-slate-600">{notice.message}</p>
+            </div>
+            <div className="border-t border-slate-100 px-8 py-6">
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  className="rounded-2xl bg-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-600/25 transition hover:bg-sky-700"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white shadow-[0_35px_100px_rgba(15,23,42,0.25)] ring-1 ring-slate-200/80">
+            <div className="border-b border-slate-100 px-8 pb-5 pt-8 text-center">
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <TriangleAlert className="size-8" />
+              </div>
+              <h3 className="text-2xl font-semibold tracking-tight text-slate-900">{confirmDialog.title}</h3>
+            </div>
+            <div className="px-8 py-6">
+              <p className="text-center text-sm leading-6 text-slate-600">{confirmDialog.message}</p>
+            </div>
+            <div className="border-t border-slate-100 px-8 py-6">
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDialog(null)}
+                  className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const action = confirmDialog.onConfirm;
+                    setConfirmDialog(null);
+                    await action();
+                  }}
+                  className="rounded-2xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-600/25 transition hover:bg-rose-700"
+                >
+                  {confirmDialog.confirmText}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {sessionModal && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-xl border bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Mark Attendance</h2>
+                <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                  Mark Attendance
+                  {sessionReadOnly && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Completed</span>}
+                </h2>
                 <p className="text-sm text-gray-500">{sessionType || "New Session"} • {sessionDate}</p>
               </div>
               <button type="button" onClick={() => setSessionModal(false)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
@@ -992,38 +1417,41 @@ export function DisciplineClient({
               </button>
             </div>
 
-            <div className="space-y-4 p-4 sm:p-5">
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Date</label>
-                  <input value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} type="date" className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+            <div className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+              {sessionReadOnly && (
+                <div className="rounded-lg bg-yellow-100 px-3 py-2 text-sm font-medium text-yellow-700">
+                  This session is completed and cannot be edited.
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</label>
-                  <input value={sessionType} onChange={(event) => setSessionType(event.target.value)} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-blue-50 p-3">
+                  <p className="text-xs text-gray-600">Total Users</p>
+                  <p className="text-xl font-bold text-blue-600">{users.length}</p>
+                </div>
+                <div className="rounded-xl bg-green-50 p-3">
+                  <p className="text-xs text-gray-600">Approved Permissions</p>
+                  <p className="text-xl font-bold text-green-600">{sessionPermissionStats.approved}</p>
                 </div>
               </div>
 
-              {(sessionPermissionStats.approved > 0 || sessionPermissionStats.pending > 0 || sessionPermissionStats.rejected > 0) && (
-                <div className="mb-6">
-                  <h4 className="mb-3 text-sm font-semibold text-gray-700">Permission Status for This Date</h4>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {sessionPermissionStats.approved > 0 && (
-                      <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-green-700">{sessionPermissionStats.approved}</p>
-                            <p className="text-xs text-green-600">Approved</p>
-                          </div>
-                          <div className="flex size-8 items-center justify-center rounded-full bg-green-100">
-                            <CheckCircle2 className="size-4 text-green-600" />
-                          </div>
-                        </div>
-                        <p className="mt-1 text-xs text-green-600">Auto-marked as On Time</p>
-                      </div>
-                    )}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Date</label>
+                  <input value={sessionDate} disabled={sessionReadOnly} onChange={(event) => setSessionDate(event.target.value)} type="date" className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</label>
+                  <input value={sessionType} disabled={sessionReadOnly} onChange={(event) => setSessionType(event.target.value)} className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500" />
+                </div>
+              </div>
+
+              {(sessionPermissionStats.pending > 0 || sessionPermissionStats.rejected > 0) && (
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-gray-700">Permission Status for This Date</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {sessionPermissionStats.pending > 0 && (
-                      <button type="button" onClick={() => setPermissionReviewModal("pending")} className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-left transition hover:shadow-md">
+                      <button type="button" onClick={() => setPermissionReviewModal("pending")} className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-left transition hover:shadow-md">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-2xl font-bold text-yellow-700">{sessionPermissionStats.pending}</p>
@@ -1037,7 +1465,7 @@ export function DisciplineClient({
                       </button>
                     )}
                     {sessionPermissionStats.rejected > 0 && (
-                      <button type="button" onClick={() => setPermissionReviewModal("rejected")} className="rounded-lg border border-red-200 bg-red-50 p-3 text-left transition hover:shadow-md">
+                      <button type="button" onClick={() => setPermissionReviewModal("rejected")} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left transition hover:shadow-md">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-2xl font-bold text-red-700">{sessionPermissionStats.rejected}</p>
@@ -1054,73 +1482,114 @@ export function DisciplineClient({
                 </div>
               )}
 
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="relative w-full sm:max-w-sm">
+                  <label htmlFor="session_user_search" className="sr-only">Search users</label>
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    id="session_user_search"
+                    type="search"
+                    value={sessionUserSearch}
+                    onChange={(event) => setSessionUserSearch(event.target.value)}
+                    placeholder="Search user..."
+                    className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <button type="button" onClick={exportSessionAttendance} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto">
+                  <FileText className="size-4" />
+                  Export
+                </button>
+              </div>
+
               <div className="overflow-hidden rounded-xl border border-gray-100">
                 <div className="border-b bg-gray-50 px-4 py-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">Members Attendance</span>
                   </div>
                 </div>
-                <div className="hidden overflow-x-auto md:block">
+                <div className="hidden max-h-[42vh] overflow-auto md:block">
                   <table className="min-w-full divide-y divide-gray-200 rounded-xl">
-                    <thead className="bg-gray-50">
+                    <thead className="sticky top-0 z-10 bg-gray-50">
                       <tr>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-500">User</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-500">Permission</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-500">Present</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-500">On Time</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-500">Communicated</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-500">Discipline</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-500">Total Points</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">User</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Permission</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">Present</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">On Time</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">Communicated</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">Discipline</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-gray-500">Total Points</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {users.map((user) => {
+                      {filteredSessionUsers.map((user) => {
                         const draft = attendanceDrafts.find((item) => item.userId === user.id);
                         if (!draft) return null;
-                        const permission = permissionsForSessionDate.find((item) => item.userId === user.id && item.status === "approved");
-                        const totalPoints = Number(draft.present) + Number(draft.onTime) + Number(draft.communicated) + Number(draft.discipline);
+                        const permission = permissionForUser(user.id);
+                        const totalPoints = totalAttendancePoints(draft);
                         return (
                           <tr key={user.id} className={draft.hasOfficialPermission ? "bg-green-50" : ""}>
-                            <td className="px-5 py-4 text-sm text-gray-800">{user.name}</td>
-                            <td className="px-5 py-4 text-sm text-gray-400">
+                            <td className="px-4 py-3 text-sm text-gray-800">{user.name}</td>
+                            <td className="px-4 py-3 text-sm">
                               {permission ? (
-                                <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Approved permission</span>
+                                <div className="space-y-1">
+                                  <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize ${permissionStatusClass(permission.status)}`}>
+                                    {permission.status} permission
+                                  </span>
+                                  <p className="text-xs font-medium text-gray-700">{permission.startDate} - {permission.endDate}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {permission.approvedByName ? `Approved by ${permission.approvedByName}` : "Not approved yet"}
+                                  </p>
+                                </div>
                               ) : (
-                                "No approved permission"
+                                <span className="text-gray-400">No permission</span>
                               )}
                             </td>
-                            <td className="px-5 py-4 text-center">
-                              <YesNoButton
-                                value={draft.present}
-                                disabled={draft.disabled}
-                                onToggle={() => updateDraft(user.id, { present: !draft.present, status: !draft.present ? "present" : "absent" })}
-                              />
+                            <td className="px-4 py-3 text-center">
+                              {sessionReadOnly ? (
+                                <ReadonlyYesNo value={draft.present} />
+                              ) : (
+                                <YesNoButton
+                                  value={draft.present}
+                                  disabled={draft.disabled}
+                                  onToggle={() => updateDraft(user.id, { present: !draft.present, status: !draft.present ? "present" : "absent" })}
+                                />
+                              )}
                             </td>
-                            <td className="px-5 py-4 text-center">
-                              <YesNoButton value={draft.onTime} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { onTime: !draft.onTime })} />
+                            <td className="px-4 py-3 text-center">
+                              {sessionReadOnly ? <ReadonlyYesNo value={draft.onTime} /> : <YesNoButton value={draft.onTime} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { onTime: !draft.onTime })} />}
                             </td>
-                            <td className="px-5 py-4 text-center">
-                              <YesNoButton value={draft.communicated} onToggle={() => updateDraft(user.id, { communicated: !draft.communicated })} />
+                            <td className="px-4 py-3 text-center">
+                              {sessionReadOnly ? <ReadonlyYesNo value={draft.communicated} /> : <YesNoButton value={draft.communicated} onToggle={() => updateDraft(user.id, { communicated: !draft.communicated })} />}
                             </td>
-                            <td className="px-5 py-4 text-center">
-                              <YesNoButton
-                                value={draft.discipline}
-                                disabled={draft.disabled}
-                                onToggle={() => updateDraft(user.id, { discipline: !draft.discipline, disciplinePoints: !draft.discipline ? 1 : 0 })}
-                              />
+                            <td className="px-4 py-3 text-center">
+                              {sessionReadOnly ? (
+                                <ReadonlyYesNo value={draft.discipline} />
+                              ) : (
+                                <YesNoButton
+                                  value={draft.discipline}
+                                  disabled={draft.disabled}
+                                  onToggle={() => updateDraft(user.id, { discipline: !draft.discipline, disciplinePoints: !draft.discipline ? 1 : 0 })}
+                                />
+                              )}
                             </td>
-                            <td className="px-5 py-4 text-center text-base font-bold text-black">{totalPoints}</td>
+                            <td className="px-4 py-3 text-center text-base font-bold text-black">{totalPoints}</td>
                           </tr>
                         );
                       })}
+                      {filteredSessionUsers.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-sm text-gray-500">No users match your search.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="space-y-3 p-3 md:hidden">
-                  {users.map((user) => {
+                <div className="max-h-[45vh] space-y-3 overflow-y-auto p-3 md:hidden">
+                  {filteredSessionUsers.map((user) => {
                     const draft = attendanceDrafts.find((item) => item.userId === user.id);
                     if (!draft) return null;
+                    const permission = permissionForUser(user.id);
                     return (
                       <div key={user.id} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
                         <div className="mb-3">
@@ -1129,33 +1598,47 @@ export function DisciplineClient({
                             {draft.hasOfficialPermission && <span className="ml-2 rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700">Permission</span>}
                           </p>
                           <p className="text-xs text-gray-500">{user.email}</p>
+                          {permission && (
+                            <div className="mt-2 rounded-lg bg-gray-50 p-2 text-xs">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 font-medium capitalize ${permissionStatusClass(permission.status)}`}>
+                                {permission.status} permission
+                              </span>
+                              <p className="mt-1 font-medium text-gray-700">{permission.startDate} - {permission.endDate}</p>
+                              <p className="text-gray-500">{permission.approvedByName ? `Approved by ${permission.approvedByName}` : "Not approved yet"}</p>
+                            </div>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <ToggleField label="Present" value={draft.present} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { present: !draft.present, status: !draft.present ? "present" : "absent" })} />
-                          <ToggleField label="On Time" value={draft.onTime} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { onTime: !draft.onTime })} />
-                          <ToggleField label="Communicated" value={draft.communicated} onToggle={() => updateDraft(user.id, { communicated: !draft.communicated })} />
-                          <ToggleField label="Discipline" value={draft.discipline} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { discipline: !draft.discipline, disciplinePoints: !draft.discipline ? 1 : 0 })} />
-                          <div className="col-span-2 rounded-lg bg-gray-50 p-2 text-center font-bold">Total Points: {Number(draft.present) + Number(draft.onTime) + Number(draft.communicated) + Number(draft.discipline)}</div>
+                          <ToggleField label="Present" value={draft.present} readOnly={sessionReadOnly} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { present: !draft.present, status: !draft.present ? "present" : "absent" })} />
+                          <ToggleField label="On Time" value={draft.onTime} readOnly={sessionReadOnly} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { onTime: !draft.onTime })} />
+                          <ToggleField label="Communicated" value={draft.communicated} readOnly={sessionReadOnly} onToggle={() => updateDraft(user.id, { communicated: !draft.communicated })} />
+                          <ToggleField label="Discipline" value={draft.discipline} readOnly={sessionReadOnly} disabled={draft.disabled} onToggle={() => updateDraft(user.id, { discipline: !draft.discipline, disciplinePoints: !draft.discipline ? 1 : 0 })} />
+                          <div className="col-span-2 rounded-lg bg-gray-50 p-2 text-center font-bold">Total Points: {totalAttendancePoints(draft)}</div>
                         </div>
                       </div>
                     );
                   })}
+                  {filteredSessionUsers.length === 0 && <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">No users match your search.</div>}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col-reverse gap-3 border-t px-5 py-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-3 border-t bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
               <button type="button" onClick={() => setSessionModal(false)} className="rounded-lg border px-4 py-2 text-sm text-gray-700">
                 Close
               </button>
-              <button type="button" disabled={isSaving} onClick={completeSession} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-                <CheckCircle2 className="size-4" />
-                {isSaving ? "Saving..." : "Complete Session"}
-              </button>
-              <button type="button" disabled={isSaving} onClick={() => submitAttendanceSession(false)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
-                <Save className="size-4" />
-                {isSaving ? "Saving..." : "Save Changes"}
-              </button>
+              {!sessionReadOnly && (
+                <>
+                  <button type="button" disabled={isSaving} onClick={completeSession} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                    <CheckCircle2 className="size-4" />
+                    {isSaving ? "Saving..." : "Complete Session"}
+                  </button>
+                  <button type="button" disabled={isSaving} onClick={() => submitAttendanceSession(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
+                    <Save className="size-4" />
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1322,17 +1805,118 @@ export function DisciplineClient({
         </div>
       )}
 
+      {actionPlanModal && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-gray-600/50 p-3 sm:p-6">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-4 shadow-lg sm:p-5">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-lg font-bold text-gray-800">{editingActionPlan ? "Edit Action Plan" : "Create Action Plan"}</h3>
+              <button type="button" onClick={() => { setActionPlanModal(false); setEditingActionPlan(null); }} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+                <X className="size-5" />
+              </button>
+            </div>
+            <form onSubmit={submitActionPlan} className="mt-4 space-y-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Action Plan Name *</label>
+                  <input name="title" defaultValue={editingActionPlan?.title ?? ""} required placeholder="Enter action plan name" className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Start Date *</label>
+                  <input name="startDate" type="date" defaultValue={editingActionPlan?.startDateValue ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Completion Date *</label>
+                  <input name="dueDate" type="date" defaultValue={editingActionPlan?.dueDateValue ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                <textarea name="description" rows={3} defaultValue={editingActionPlan?.description ?? ""} placeholder="Optional description" className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setActionPlanModal(false); setEditingActionPlan(null); }} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={isSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60">{isSaving ? "Saving..." : "Save Plan"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {taskModal && taskPlan && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-gray-600/50 p-3 sm:p-6">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-4 shadow-lg sm:p-5">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-lg font-bold text-gray-800">{editingActionTask ? `Edit Task for ${taskPlan.title}` : `Create Task for ${taskPlan.title}`}</h3>
+              <button type="button" onClick={() => { setTaskModal(false); setTaskPlan(null); setEditingActionTask(null); }} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+                <X className="size-5" />
+              </button>
+            </div>
+            <form onSubmit={submitActionPlanTask} className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Action Plan</label>
+                <input value={taskPlan.title} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-gray-700" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Activity *</label>
+                <input name="activity" defaultValue={editingActionTask?.activity ?? editingActionTask?.taskName ?? ""} required placeholder="Enter activity" className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Targeted Milestone *</label>
+                <input name="targetMilestone" defaultValue={editingActionTask?.targetMilestone ?? ""} required placeholder="Enter targeted milestone" className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Start Date</label>
+                  <input name="startDate" type="date" defaultValue={editingActionTask?.startDateValue ?? ""} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Estimated Budget *</label>
+                  <input name="estimatedBudget" type="number" step="0.01" min="0" defaultValue={editingActionTask?.estimatedBudget ?? ""} required placeholder="0.00" className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Deadline *</label>
+                  <input name="deadline" type="date" defaultValue={editingActionTask?.deadlineValue ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Priority *</label>
+                  <select name="priority" defaultValue={editingActionTask?.priority ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    <option value="">Select priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Progress *</label>
+                  <input name="progress" type="number" min="0" max="100" defaultValue={editingActionTask?.progress ?? 0} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </div>
+              </div>
+              <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setTaskModal(false); setTaskPlan(null); setEditingActionTask(null); }} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={isSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60">{isSaving ? "Saving..." : editingActionTask ? "Update Task" : "Save Task"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {disciplineModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3 sm:p-6">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-xl border bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="fixed inset-0 bg-gray-900/50" onClick={() => setDisciplineModal(false)} />
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b px-4 py-3">
               <h3 className="text-lg font-semibold text-gray-800">Record Discipline</h3>
               <button onClick={() => setDisciplineModal(false)} className="text-gray-400 hover:text-gray-600" aria-label="Close">
                 <X className="size-5" />
               </button>
             </div>
-            <div className="max-h-[calc(92vh-140px)] overflow-y-auto p-6">
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="max-h-[calc(90vh-108px)] overflow-y-auto p-4">
+              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Session Date *</label>
                   <input value={disciplineDate} onChange={(event) => setDisciplineDate(event.target.value)} type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
@@ -1344,7 +1928,7 @@ export function DisciplineClient({
               </div>
 
               <div className="overflow-hidden rounded-lg border">
-                <div className="border-b bg-gray-50 px-4 py-2">
+                <div className="border-b bg-gray-50 px-3 py-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">Members Discipline</span>
                     <div className="flex gap-2">
@@ -1362,10 +1946,10 @@ export function DisciplineClient({
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 border-b bg-white">
                       <tr>
-                        <th className="px-4 py-2 text-left">Member</th>
-                        <th className="w-28 px-4 py-2 text-center">Behaviour</th>
-                        <th className="px-4 py-2 text-left">Description</th>
-                        <th className="w-20 px-4 py-2 text-center">Points</th>
+                        <th className="px-2 py-2 text-left">Member</th>
+                        <th className="w-24 px-2 py-2 text-center">Behaviour</th>
+                        <th className="px-2 py-2 text-left">Description</th>
+                        <th className="w-14 px-2 py-2 text-center">Points</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1374,11 +1958,8 @@ export function DisciplineClient({
                         if (!draft) return null;
                         return (
                           <tr key={user.id} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-2">
-                              <p className="font-medium text-gray-800">{user.name}</p>
-                              <p className="text-xs text-gray-500">{user.email}</p>
-                            </td>
-                            <td className="px-4 py-2 text-center">
+                            <td className="px-2 py-2 font-medium text-gray-800">{user.name}</td>
+                            <td className="px-2 py-2 text-center">
                               <select
                                 value={draft.behaviour}
                                 onChange={(event) => {
@@ -1389,13 +1970,13 @@ export function DisciplineClient({
                                     points: behaviour === "good" ? 1 : 0,
                                   });
                                 }}
-                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                                className="w-full rounded border border-gray-300 px-1.5 py-1 text-sm"
                               >
                                 <option value="good">Good</option>
                                 <option value="bad">Bad</option>
                               </select>
                             </td>
-                            <td className="px-4 py-2">
+                            <td className="px-2 py-2">
                               <input
                                 value={draft.description}
                                 onChange={(event) => updateDisciplineDraft(user.id, { description: event.target.value })}
@@ -1404,13 +1985,8 @@ export function DisciplineClient({
                                 className={`w-full rounded border border-gray-300 px-2 py-1 text-sm ${draft.behaviour === "good" ? "bg-gray-100" : ""}`}
                               />
                             </td>
-                            <td className="px-4 py-2 text-center">
-                              <input
-                                value={draft.points}
-                                onChange={(event) => updateDisciplineDraft(user.id, { points: Number(event.target.value) })}
-                                type="number"
-                                className={`w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm font-semibold ${draft.behaviour === "good" ? "text-green-600" : "text-red-600"}`}
-                              />
+                            <td className="px-2 py-2 text-center">
+                              <span className={`font-semibold ${draft.behaviour === "good" ? "text-green-600" : "text-red-600"}`}>{draft.points}</span>
                             </td>
                           </tr>
                         );
@@ -1424,13 +2000,14 @@ export function DisciplineClient({
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t bg-gray-50 px-6 py-4">
+            <div className="flex justify-end gap-3 border-t bg-gray-50 px-4 py-3">
               <button onClick={() => setDisciplineModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100">Cancel</button>
               <button disabled={isSaving} onClick={submitDisciplineSession} className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
                 <Save className="mr-1 inline size-4" />
                 {isSaving ? "Saving..." : "Save Records"}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -1454,6 +2031,27 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
         </div>
         <div className={`flex size-10 items-center justify-center rounded-lg ${colors[color]}`}>
           <Icon className="size-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionSummaryCard({ label, value, tone }: { label: string; value: number; tone: "rose" | "amber" | "sky" }) {
+  const colors = {
+    rose: "border-rose-100 from-white via-rose-50 to-red-50/40 text-rose-600 bg-rose-100 ring-rose-200",
+    amber: "border-amber-100 from-white via-amber-50 to-yellow-50/50 text-amber-600 bg-amber-100 ring-amber-200",
+    sky: "border-sky-100 from-white via-sky-50 to-blue-50/40 text-sky-600 bg-sky-100 ring-sky-200",
+  };
+  return (
+    <div className={`rounded-xl border bg-gradient-to-br p-4 shadow-sm ${colors[tone]}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+          <p className="mt-1 text-2xl font-bold">{value}</p>
+        </div>
+        <div className={`flex size-10 items-center justify-center rounded-lg ring-1 ${colors[tone]}`}>
+          <ClipboardList className="size-5" />
         </div>
       </div>
     </div>
@@ -1497,11 +2095,15 @@ function YesNoButton({ value, disabled = false, onToggle }: { value: boolean; di
   );
 }
 
-function ToggleField({ label, value, disabled = false, onToggle }: { label: string; value: boolean; disabled?: boolean; onToggle: () => void }) {
+function ReadonlyYesNo({ value }: { value: boolean }) {
+  return <span className="text-sm font-medium text-gray-700">{value ? "Yes" : "No"}</span>;
+}
+
+function ToggleField({ label, value, disabled = false, readOnly = false, onToggle }: { label: string; value: boolean; disabled?: boolean; readOnly?: boolean; onToggle: () => void }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
       <span className="text-gray-600">{label}</span>
-      <YesNoButton value={value} disabled={disabled} onToggle={onToggle} />
+      {readOnly ? <ReadonlyYesNo value={value} /> : <YesNoButton value={value} disabled={disabled} onToggle={onToggle} />}
     </div>
   );
 }
