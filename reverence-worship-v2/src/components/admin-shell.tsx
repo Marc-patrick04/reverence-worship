@@ -37,11 +37,13 @@ type AdminUser = {
   name: string;
   email: string;
   roles: string[];
+  permissions: string[];
 };
 
 type NavItem = {
   label: string;
   href: string;
+  page: string;
   icon: LucideIcon;
   active?: boolean;
 };
@@ -50,74 +52,45 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "",
     items: [
-      { label: "Dashboard", href: "/admin/dashboard", icon: Gauge },
-      { label: "User Management", href: "/admin/users", icon: Users },
-      { label: "My Family", href: "/admin/family", icon: Home },
-      { label: "Parent Dashboard", href: "/admin/parent", icon: Home },
-      { label: "My Contributions", href: "/admin/contributions", icon: HandCoins },
-      { label: "My Profile", href: "/admin/profile", icon: User },
-      { label: "My Performance", href: "/admin/performance", icon: BarChart3 },
-      { label: "Music and Evangelism DPT", href: "/admin/music", icon: Music },
-      { label: "Intercession & spiritual DPT", href: "/admin/intercession", icon: HandHeart },
-      { label: "Social Fellowship DPT", href: "/admin/social-fellowship", icon: HandHeart },
-      { label: "Discipline  DPT", href: "/admin/discipline", icon: Gavel },
-      { label: "Financial  DPT", href: "/admin/finance", icon: ChartLine },
-      { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
-      { label: "Permission Manager", href: "/admin/permissions", icon: Lock },
-      { label: "Settings", href: "/admin/settings", icon: Settings },
+      { label: "Dashboard", href: "/admin/dashboard", page: "dashboard", icon: Gauge },
+      { label: "User Management", href: "/admin/users", page: "users", icon: Users },
+      { label: "My Family", href: "/admin/family", page: "family", icon: Home },
+      { label: "Parent Dashboard", href: "/admin/parent", page: "parent", icon: Home },
+      { label: "My Contributions", href: "/admin/contributions", page: "contributions", icon: HandCoins },
+      { label: "My Profile", href: "/admin/profile", page: "profile", icon: User },
+      { label: "My Performance", href: "/admin/performance", page: "performance", icon: BarChart3 },
+      { label: "Music and Evangelism DPT", href: "/admin/music", page: "music-ministry", icon: Music },
+      { label: "Intercession & spiritual DPT", href: "/admin/intercession", page: "intercession", icon: HandHeart },
+      { label: "Social Fellowship DPT", href: "/admin/social-fellowship", page: "social-fellowship", icon: HandHeart },
+      { label: "Discipline  DPT", href: "/admin/discipline", page: "discipline", icon: Gavel },
+      { label: "Financial  DPT", href: "/admin/finance", page: "finance", icon: ChartLine },
+      { label: "Announcements", href: "/admin/announcements", page: "announcements", icon: Megaphone },
+      { label: "Permission Manager", href: "/admin/permissions", page: "permissions", icon: Lock },
+      { label: "Settings", href: "/admin/settings", page: "settings", icon: Settings },
     ],
   },
 ];
 
 const mobileNavItems = [
-  { label: "Home", href: "/admin/dashboard", icon: Gauge },
-  { label: "Users", href: "/admin/users", icon: Users },
-  { label: "Music", href: "/admin/music", icon: Music },
-  { label: "Growth", href: "/admin/intercession", icon: HandHeart },
-  { label: "Giving", href: "/admin/contributions", icon: HandCoins },
-  { label: "Profile", href: "/admin/profile", icon: User },
-  { label: "Progress", href: "/admin/performance", icon: BarChart3 },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
+  { label: "Home", href: "/admin/dashboard", page: "dashboard", icon: Gauge },
+  { label: "Users", href: "/admin/users", page: "users", icon: Users },
+  { label: "Music", href: "/admin/music", page: "music-ministry", icon: Music },
+  { label: "Growth", href: "/admin/intercession", page: "intercession", icon: HandHeart },
+  { label: "Giving", href: "/admin/contributions", page: "contributions", icon: HandCoins },
+  { label: "Profile", href: "/admin/profile", page: "profile", icon: User },
+  { label: "Progress", href: "/admin/performance", page: "performance", icon: BarChart3 },
+  { label: "Settings", href: "/admin/settings", page: "settings", icon: Settings },
 ];
 
-const memberNavItems = new Set([
-  "/admin/dashboard",
-  "/admin/family",
-  "/admin/contributions",
-  "/admin/profile",
-  "/admin/performance",
-  "/admin/intercession",
-]);
+function hasPagePermission(permissions: string[], page: string) {
+  return permissions.includes("*") || permissions.some((permission) => permission.startsWith(`${page}.`));
+}
 
-const roleNavItems: Record<string, string[]> = {
-  admin: [
-    "/admin/dashboard",
-    "/admin/users",
-    "/admin/music",
-    "/admin/intercession",
-    "/admin/social-fellowship",
-    "/admin/discipline",
-    "/admin/finance",
-    "/admin/announcements",
-  ],
-  "music-dpt": ["/admin/dashboard", "/admin/music", "/admin/announcements"],
-  "social-dpt": ["/admin/dashboard", "/admin/social-fellowship", "/admin/announcements"],
-  "discipline-dpt": ["/admin/dashboard", "/admin/discipline", "/admin/announcements"],
-  "intercession-dpt": ["/admin/dashboard", "/admin/intercession", "/admin/announcements"],
-};
-
-function navGroupsForRoles(roles: string[]) {
-  if (roles.includes("super-admin")) return navGroups;
-
-  const allowedItems = new Set(memberNavItems);
-  roles.forEach((role) => {
-    roleNavItems[role]?.forEach((href) => allowedItems.add(href));
-  });
-
+function navGroupsForPermissions(permissions: string[]) {
   return navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => allowedItems.has(item.href)),
+      items: group.items.filter((item) => hasPagePermission(permissions, item.page)),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -140,13 +113,11 @@ export function AdminShell({
   const [pending, startTransition] = useTransition();
   const pathname = usePathname();
   const router = useRouter();
-  const visibleNavGroups = navGroupsForRoles(user.roles);
+  const visibleNavGroups = navGroupsForPermissions(user.permissions);
   const visibleMobileNavItems = mobileNavItems.filter((item) =>
-    visibleNavGroups.some((group) => group.items.some((navItem) => navItem.href === item.href)),
-  ).slice(0, 5);
-  const canViewAnnouncementsPage = user.roles.some((role) =>
-    ["super-admin", "admin", "music-dpt", "social-dpt", "discipline-dpt", "intercession-dpt"].includes(role),
-  );
+    hasPagePermission(user.permissions, item.page) && visibleNavGroups.some((group) => group.items.some((navItem) => navItem.href === item.href)),
+  ).slice(0, 4);
+  const canViewAnnouncementsPage = hasPagePermission(user.permissions, "announcements");
   const currentPageTitle =
     visibleNavGroups
       .flatMap((group) => group.items)
@@ -211,15 +182,6 @@ export function AdminShell({
           }}
         />
       )}
-
-      <button
-        className="admin-mobile-menu-btn"
-        type="button"
-        aria-label="Open menu"
-        onClick={() => setMobileOpen(true)}
-      >
-        <Menu className="size-5" aria-hidden="true" />
-      </button>
 
       <button
         className={`admin-overlay ${mobileOpen ? "active" : ""}`}
@@ -439,6 +401,10 @@ export function AdminShell({
       </div>
 
       <nav className="admin-mobile-footer">
+        <button type="button" className="admin-mobile-footer-item admin-mobile-footer-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+          <Menu className="size-5" aria-hidden="true" />
+          <span>Menu</span>
+        </button>
         {visibleMobileNavItems.map((item) => (
           <Link key={item.href} href={item.href} className="admin-mobile-footer-item">
             <item.icon className="size-5" aria-hidden="true" />

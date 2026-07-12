@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FinanceClient } from "@/components/finance-client";
 
@@ -61,7 +61,7 @@ async function safeRead<T>(promise: Promise<T>, fallback: T) {
 }
 
 export default async function FinancePage() {
-  await requireUser();
+  await requirePageAccess("finance");
   const year = new Date().getFullYear();
 
   const [users, families, contributions, payments, gifts, expenses, sponsors, actionPlans, termSettings] = await Promise.all([

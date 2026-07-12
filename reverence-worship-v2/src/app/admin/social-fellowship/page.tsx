@@ -1,5 +1,5 @@
 import { SocialFellowshipClient } from "@/components/social-fellowship-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date) {
@@ -19,7 +19,7 @@ export default async function SocialFellowshipPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
-  await requireUser();
+  await requirePageAccess("social-fellowship");
   const params = await searchParams;
   const selectedYear = Number(params.year) || new Date().getFullYear();
 

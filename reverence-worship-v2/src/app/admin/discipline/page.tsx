@@ -1,5 +1,5 @@
 import { DisciplineClient } from "@/components/discipline-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date) {
@@ -45,7 +45,7 @@ export default async function DisciplinePage({
 }: {
   searchParams: Promise<{ start_date?: string; end_date?: string }>;
 }) {
-  await requireUser();
+  await requirePageAccess("discipline");
   const params = await searchParams;
   const startDate = params.start_date ? new Date(`${params.start_date}T00:00:00`) : monthStart();
   const endDate = params.end_date ? new Date(`${params.end_date}T23:59:59`) : monthEnd();

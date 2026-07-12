@@ -1,5 +1,5 @@
 import { FamilyClient } from "@/components/family-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDueDate(date: Date | null) {
@@ -32,7 +32,7 @@ function normalizeTaskStatus(task: {
 }
 
 export default async function FamilyPage() {
-  const user = await requireUser();
+  const user = await requirePageAccess("family");
 
   const membership = await prisma.familyMember.findUnique({
     where: { userId: user.id },

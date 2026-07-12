@@ -1,5 +1,5 @@
 import { UserManagementClient } from "@/components/user-management-client";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type UsersPageProps = {
@@ -19,7 +19,7 @@ function formatDate(date: Date) {
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  await requireAdminUser();
+  await requirePageAccess("users");
 
   const params = await searchParams;
   const search = params.search?.trim();

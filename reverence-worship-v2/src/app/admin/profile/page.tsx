@@ -12,7 +12,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 
 function display(value: string | null | undefined) {
   return value && value.trim() ? value : "-";
@@ -71,7 +71,7 @@ function InfoRow({
 }
 
 export default async function ProfilePage() {
-  const user = await requireUser();
+  const user = await requirePageAccess("profile");
   const roleLabels = user.roles.map((userRole) => userRole.role.displayName);
 
   return (

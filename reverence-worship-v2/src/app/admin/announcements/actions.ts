@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function readString(formData: FormData, key: string) {
@@ -57,8 +57,8 @@ function normalizeTarget(formData: FormData) {
 }
 
 export async function saveAnnouncement(formData: FormData) {
-  const user = await requireAdminUser();
   const id = Number(readString(formData, "id"));
+  const user = await requirePermission("announcements", id ? "edit" : "create", "/admin/announcements");
   const title = readString(formData, "title");
   const content = readString(formData, "content");
   const statusValue = readString(formData, "status") || "active";
@@ -120,7 +120,7 @@ export async function saveAnnouncement(formData: FormData) {
 }
 
 export async function deleteAnnouncement(id: number) {
-  await requireAdminUser();
+  await requirePermission("announcements", "delete", "/admin/announcements");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Announcement not found." };
@@ -132,7 +132,7 @@ export async function deleteAnnouncement(id: number) {
 }
 
 export async function toggleAnnouncementStatus(id: number) {
-  const user = await requireAdminUser();
+  const user = await requirePermission("announcements", "publish", "/admin/announcements");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Announcement not found." };
@@ -162,7 +162,7 @@ export async function toggleAnnouncementStatus(id: number) {
 }
 
 export async function markAnnouncementSent(id: number) {
-  const user = await requireAdminUser();
+  const user = await requirePermission("announcements", "publish", "/admin/announcements");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Announcement not found." };

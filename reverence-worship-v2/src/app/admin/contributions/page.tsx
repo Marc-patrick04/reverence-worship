@@ -1,5 +1,5 @@
 import { MyContributionsClient } from "@/components/my-contributions-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type ContributionsPageProps = {
@@ -60,7 +60,7 @@ function defaultPercentages(termNumbers: number[]) {
 }
 
 export default async function MyContributionsPage({ searchParams }: ContributionsPageProps) {
-  const user = await requireUser();
+  const user = await requirePageAccess("contributions");
   const params = await searchParams;
   const currentYear = new Date().getFullYear();
 

@@ -1,5 +1,5 @@
 import { SettingsClient, type SettingsValues } from "@/components/settings-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function textValue(value: unknown, fallback: string) {
@@ -21,7 +21,7 @@ function numberValue(value: unknown, fallback: number) {
 }
 
 export default async function SettingsPage() {
-  await requireUser();
+  await requirePageAccess("settings");
 
   const rows = await prisma.systemSetting.findMany({
     orderBy: [{ group: "asc" }, { key: "asc" }],

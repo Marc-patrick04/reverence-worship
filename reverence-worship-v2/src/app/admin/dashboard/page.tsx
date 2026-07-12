@@ -22,7 +22,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const systemCountLabels = [
@@ -65,7 +65,7 @@ function money(value: unknown) {
 }
 
 export default async function AdminDashboardPage() {
-  const user = await requireUser();
+  const user = await requirePageAccess("dashboard");
   const roles = user.roles.map((userRole) => userRole.role.name);
 
   if (hasRole(roles, "super-admin")) {

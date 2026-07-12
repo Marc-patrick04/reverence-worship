@@ -1,9 +1,9 @@
 import { PermissionManagerClient } from "@/components/permission-manager-client";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function PermissionManagerPage() {
-  await requireAdminUser();
+  await requirePageAccess("permissions");
 
   const [roles, pages, assignments] = await Promise.all([
     prisma.role.findMany({

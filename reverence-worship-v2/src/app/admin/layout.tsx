@@ -1,5 +1,5 @@
 import { AdminShell } from "@/components/admin-shell";
-import { requireUser } from "@/lib/auth";
+import { getUserPermissionSet, requireUser } from "@/lib/auth";
 
 export default async function AdminLayout({
   children,
@@ -8,9 +8,10 @@ export default async function AdminLayout({
 }>) {
   const user = await requireUser();
   const roles = user.roles.map((userRole) => userRole.role.name);
+  const permissions = Array.from(await getUserPermissionSet(user));
 
   return (
-    <AdminShell user={{ name: user.name, email: user.email, roles }}>
+    <AdminShell user={{ name: user.name, email: user.email, roles, permissions }}>
       {children}
     </AdminShell>
   );

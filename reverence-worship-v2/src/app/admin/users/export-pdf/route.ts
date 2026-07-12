@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSimplePdf, pdfCell, type PdfTextLine } from "@/lib/simple-pdf";
 import { getUserExportRows } from "@/lib/user-export-data";
 
 export async function GET(request: NextRequest) {
-  await requireAdminUser();
+  await requirePermission("users", "export", "/admin/users");
 
   const rows = await getUserExportRows({
     search: request.nextUrl.searchParams.get("search"),

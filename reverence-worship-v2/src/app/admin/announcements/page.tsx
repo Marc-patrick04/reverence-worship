@@ -1,5 +1,5 @@
 import { AnnouncementsClient } from "@/components/announcements-client";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date | null) {
@@ -22,7 +22,7 @@ function parseIdList(value: string | null) {
 }
 
 export default async function AnnouncementsPage() {
-  await requireAdminUser();
+  await requirePageAccess("announcements");
 
   const [announcements, roles, users, stats] = await Promise.all([
     prisma.announcement.findMany({

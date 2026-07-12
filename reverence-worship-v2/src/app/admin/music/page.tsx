@@ -1,5 +1,5 @@
 import { MusicClient } from "@/components/music-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date) {
@@ -25,7 +25,7 @@ function formatDateValue(date: Date | null) {
 }
 
 export default async function MusicPage() {
-  await requireUser();
+  await requirePageAccess("music-ministry");
 
   const [playlists, songs, gallery, singers, serviceTeams, boardItems, youtubeVideos, featuredImages, actionPlans] = await Promise.all([
     prisma.playlist.findMany({

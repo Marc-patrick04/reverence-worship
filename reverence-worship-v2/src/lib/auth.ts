@@ -129,6 +129,21 @@ export function permissionSetHas(permissions: Set<PermissionKey>, page: string, 
   return permissions.has("*") || permissions.has(`${page}.${feature}` as PermissionKey);
 }
 
+export function permissionSetHasPage(permissions: Set<PermissionKey>, page: string) {
+  return permissions.has("*") || Array.from(permissions).some((permission) => permission.startsWith(`${page}.`));
+}
+
+export async function requirePageAccess(page: string, redirectTo = "/admin/dashboard") {
+  const user = await requireUser();
+  const permissions = await getUserPermissionSet(user);
+
+  if (!permissionSetHasPage(permissions, page)) {
+    redirect(redirectTo);
+  }
+
+  return user;
+}
+
 export async function requirePermission(page: string, feature: string, redirectTo = "/admin/dashboard") {
   const user = await requireUser();
   const permissions = await getUserPermissionSet(user);

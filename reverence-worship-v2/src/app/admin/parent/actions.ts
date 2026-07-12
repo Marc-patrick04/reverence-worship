@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 async function getParentFamilyId() {
-  const user = await requireAdminUser();
+  const user = await requirePageAccess("parent");
   const membership = await prisma.familyMember.findFirst({
     where: {
       userId: user.id,

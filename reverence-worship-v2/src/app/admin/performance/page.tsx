@@ -1,5 +1,5 @@
 import { PerformanceClient } from "@/components/performance-client";
-import { requireUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function money(value: unknown) {
@@ -29,7 +29,7 @@ function formatPeriod(records: Array<{ sessionDate: Date }>) {
 }
 
 export default async function PerformancePage() {
-  const user = await requireUser();
+  const user = await requirePageAccess("performance");
   const year = new Date().getFullYear();
   const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
   const yearEnd = new Date(`${year}-12-31T23:59:59.999Z`);

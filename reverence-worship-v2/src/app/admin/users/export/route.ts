@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getUserExportRows } from "@/lib/user-export-data";
 
 const headers = [
@@ -23,7 +23,7 @@ function csvCell(value: string | number) {
 }
 
 export async function GET(request: NextRequest) {
-  await requireAdminUser();
+  await requirePermission("users", "export", "/admin/users");
 
   const rows = await getUserExportRows({
     search: request.nextUrl.searchParams.get("search"),

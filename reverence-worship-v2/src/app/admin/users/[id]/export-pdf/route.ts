@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSimplePdf, type PdfTextLine } from "@/lib/simple-pdf";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +8,7 @@ type RouteContext = {
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
-  await requireAdminUser();
+  await requirePermission("users", "export", "/admin/users");
 
   const { id } = await context.params;
   const user = await prisma.user.findUnique({

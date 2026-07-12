@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type AssignmentInput = {
@@ -41,8 +41,8 @@ function parseAssignments(value: string) {
 }
 
 export async function saveRole(formData: FormData) {
-  await requireAdminUser();
   const id = Number(readString(formData, "id"));
+  await requirePermission("permissions", id ? "edit-roles" : "create-roles", "/admin/permissions");
   const displayName = readString(formData, "displayName");
   const description = readString(formData, "description") || null;
   const name = slugify(readString(formData, "name") || displayName);
@@ -74,7 +74,7 @@ export async function saveRole(formData: FormData) {
 }
 
 export async function deleteRole(id: number) {
-  await requireAdminUser();
+  await requirePermission("permissions", "delete-roles", "/admin/permissions");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Role not found." };
@@ -90,7 +90,7 @@ export async function deleteRole(id: number) {
 }
 
 export async function saveRolePermissions(formData: FormData) {
-  await requireAdminUser();
+  await requirePermission("permissions", "assign-permissions", "/admin/permissions");
   const roleId = Number(readString(formData, "roleId"));
   const assignments = parseAssignments(readString(formData, "assignments"));
 
@@ -132,7 +132,7 @@ export async function saveRolePermissions(formData: FormData) {
 }
 
 export async function importRolePermissions(formData: FormData) {
-  await requireAdminUser();
+  await requirePermission("permissions", "import-export", "/admin/permissions");
   const payload = readString(formData, "payload");
 
   try {

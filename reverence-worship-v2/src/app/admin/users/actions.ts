@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const createUserSchema = z.object({
@@ -113,7 +113,7 @@ export async function createUserAction(
   _previousState: UserActionState,
   formData: FormData,
 ): Promise<UserActionState> {
-  const admin = await requireAdminUser();
+  const admin = await requirePermission("users", "create", "/admin/users");
   const parsed = createUserSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
@@ -170,10 +170,9 @@ export async function createUserAction(
 }
 
 export async function runUserTableAction(formData: FormData) {
-  await requireAdminUser();
-
   const userId = Number(formData.get("userId"));
   const action = String(formData.get("action") || "");
+  await requirePermission("users", action === "delete" || action === "reject" ? "delete" : "change-status", "/admin/users");
 
   if (!Number.isFinite(userId)) {
     return { ok: false, message: "Invalid user." };
@@ -209,7 +208,7 @@ export async function runUserTableAction(formData: FormData) {
 }
 
 export async function updateUserRoleAction(formData: FormData) {
-  await requireAdminUser();
+  await requirePermission("users", "assign-roles", "/admin/users");
 
   const userId = Number(formData.get("userId"));
   const roleId = Number(formData.get("roleId"));
@@ -239,7 +238,7 @@ export async function updateUserAction(
   _previousState: UserActionState,
   formData: FormData,
 ): Promise<UserActionState> {
-  await requireAdminUser();
+  await requirePermission("users", "edit", "/admin/users");
 
   const parsed = updateUserSchema.safeParse(Object.fromEntries(formData));
 
@@ -293,7 +292,7 @@ export async function updateUserRolesAction(
   _previousState: UserActionState,
   formData: FormData,
 ): Promise<UserActionState> {
-  await requireAdminUser();
+  await requirePermission("users", "assign-roles", "/admin/users");
 
   const userId = Number(formData.get("userId"));
   const roleIds = await roleIdsWithMemberBase(

@@ -1,5 +1,5 @@
 import { ParentDashboardClient } from "@/components/parent-dashboard-client";
-import { requireAdminUser } from "@/lib/auth";
+import { requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date | null) {
@@ -12,7 +12,7 @@ function money(value: unknown) {
 }
 
 export default async function ParentDashboardPage() {
-  const user = await requireAdminUser();
+  const user = await requirePageAccess("parent");
   const currentYear = new Date().getFullYear();
 
   const parentMembership = await prisma.familyMember.findFirst({
