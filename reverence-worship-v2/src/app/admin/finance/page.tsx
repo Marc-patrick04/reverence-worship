@@ -130,7 +130,13 @@ export default async function FinancePage() {
       prisma.actionPlan.findMany({
         where: { department: "finance", year },
         orderBy: { createdAt: "desc" },
-        include: { tasks: true, creator: { select: { id: true, name: true } } },
+        include: {
+          tasks: {
+            orderBy: { createdAt: "desc" },
+            include: { assignee: { select: { id: true, name: true } } },
+          },
+          creator: { select: { id: true, name: true } },
+        },
       }),
       [],
     ),
@@ -231,10 +237,29 @@ export default async function FinancePage() {
         id: plan.id,
         title: plan.title,
         description: plan.description,
+        startDate: formatDate(plan.startDate),
+        startDateRaw: plan.startDate.toISOString().slice(0, 10),
+        dueDate: formatDate(plan.dueDate),
+        dueDateRaw: plan.dueDate.toISOString().slice(0, 10),
         status: plan.status,
         progress: plan.progress,
         createdByName: plan.creator?.name ?? "Unknown",
-        tasksCount: plan.tasks.length,
+        createdAt: formatDate(plan.createdAt),
+        tasks: plan.tasks.map((task) => ({
+          id: task.id,
+          actionPlanId: task.actionPlanId,
+          taskName: task.taskName,
+          activity: task.activity,
+          targetMilestone: task.targetMilestone,
+          estimatedBudget: money(task.estimatedBudget),
+          startDate: formatDate(task.startDate),
+          startDateRaw: task.startDate ? task.startDate.toISOString().slice(0, 10) : "",
+          deadline: formatDate(task.deadline),
+          deadlineRaw: task.deadline ? task.deadline.toISOString().slice(0, 10) : "",
+          progress: task.progress,
+          status: task.status,
+          assigneeName: task.assignee?.name ?? null,
+        })),
       }))}
       termSettings={termSettings
         .filter((setting) => setting.currentYear)

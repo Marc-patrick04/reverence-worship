@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart3,
@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import {
   approveExpense,
+  deleteFinanceActionPlan,
+  deleteFinanceActionPlanTask,
   deleteSponsor,
   deleteExpense,
   deleteFinancePayment,
@@ -34,6 +36,8 @@ import {
   recordSponsorPayment,
   saveAnnualContribution,
   saveExpense,
+  saveFinanceActionPlan,
+  saveFinanceActionPlanTask,
   saveFinanceTermSettings,
   saveSponsor,
   updateFinancePayment,
@@ -139,10 +143,31 @@ type ActionPlan = {
   id: number;
   title: string;
   description: string | null;
+  startDate: string;
+  startDateRaw: string;
+  dueDate: string;
+  dueDateRaw: string;
   status: string;
   progress: number;
   createdByName: string;
-  tasksCount: number;
+  createdAt: string;
+  tasks: ActionPlanTask[];
+};
+
+type ActionPlanTask = {
+  id: number;
+  actionPlanId: number;
+  taskName: string;
+  activity: string | null;
+  targetMilestone: string | null;
+  estimatedBudget: number;
+  startDate: string;
+  startDateRaw: string;
+  deadline: string;
+  deadlineRaw: string;
+  progress: number;
+  status: string;
+  assigneeName: string | null;
 };
 
 type FinanceTermSetting = {
@@ -289,19 +314,7 @@ export function FinanceClient({
           ) : activeTab === "expenses" ? (
             <FinanceExpensesTab currentYear={year} expenses={expenses} users={users} />
           ) : activeTab === "action-plans" ? (
-            <SimpleTable title="Action Plans" headers={["Plan", "Owner", "Tasks", "Progress"]} empty="No action plans found">
-              {actionPlans.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-800">{item.title}</p>
-                    <p className="text-xs text-gray-500">{item.description || "No description"}</p>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{item.createdByName}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.tasksCount}</td>
-                  <td className="px-4 py-3 font-semibold text-blue-600">{item.progress}%</td>
-                </tr>
-              ))}
-            </SimpleTable>
+            <FinanceActionPlansTab currentYear={year} actionPlans={actionPlans} />
           ) : (
             <FinanceSettingsTab currentYear={year} settings={termSettings} />
           )}
@@ -309,6 +322,400 @@ export function FinanceClient({
       </div>
     </div>
   );
+}
+
+function FinanceActionPlansTab({ currentYear, actionPlans }: { currentYear: number; actionPlans: ActionPlan[] }) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [planModal, setPlanModal] = useState<ActionPlan | "new" | null>(null);
+  const [taskModal, setTaskModal] = useState<{ plan: ActionPlan; task?: ActionPlanTask } | null>(null);
+  const [viewPlan, setViewPlan] = useState<ActionPlan | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; message: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const filteredPlans = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return actionPlans.filter((plan) => {
+      const matchesSearch = !needle || `${plan.title} ${plan.description ?? ""} ${plan.createdByName}`.toLowerCase().includes(needle);
+      const matchesStatus = statusFilter === "all" || plan.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [actionPlans, query, statusFilter]);
+
+  const summary = useMemo(() => {
+    const tasks = actionPlans.flatMap((plan) => plan.tasks);
+    const completed = actionPlans.filter((plan) => plan.status === "completed").length;
+    const inProgress = actionPlans.filter((plan) => plan.status === "in_progress").length;
+    const totalBudget = tasks.reduce((sum, task) => sum + task.estimatedBudget, 0);
+    return {
+      totalPlans: actionPlans.length,
+      completed,
+      inProgress,
+      totalTasks: tasks.length,
+      totalBudget,
+    };
+  }, [actionPlans]);
+
+  function closePlanModal() {
+    setPlanModal(null);
+  }
+
+  function closeTaskModal() {
+    setTaskModal(null);
+  }
+
+  function submitPlan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    formData.set("year", String(currentYear));
+    if (planModal && planModal !== "new") formData.set("id", String(planModal.id));
+
+    startTransition(async () => {
+      const result = await saveFinanceActionPlan(formData);
+      setMessage(result);
+      if (result.ok) {
+        closePlanModal();
+        router.refresh();
+      }
+    });
+  }
+
+  function submitTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!taskModal) return;
+    const formData = new FormData(event.currentTarget);
+    formData.set("actionPlanId", String(taskModal.plan.id));
+    if (taskModal.task) formData.set("id", String(taskModal.task.id));
+
+    startTransition(async () => {
+      const result = await saveFinanceActionPlanTask(formData);
+      setMessage(result);
+      if (result.ok) {
+        closeTaskModal();
+        router.refresh();
+      }
+    });
+  }
+
+  function removePlan(plan: ActionPlan) {
+    if (!window.confirm(`Delete "${plan.title}"?`)) return;
+    startTransition(async () => {
+      const result = await deleteFinanceActionPlan(plan.id);
+      setMessage(result);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  function removeTask(task: ActionPlanTask) {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    startTransition(async () => {
+      const result = await deleteFinanceActionPlanTask(task.id);
+      setMessage(result);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  function exportTasks(plan: ActionPlan) {
+    const rows = [
+      ["No", "Activity", "Milestone", "Budget", "Start Date", "Deadline", "Progress", "Status"],
+      ...plan.tasks.map((task, index) => [
+        index + 1,
+        task.activity ?? task.taskName,
+        task.targetMilestone ?? "",
+        task.estimatedBudget,
+        task.startDate,
+        task.deadline,
+        `${task.progress}%`,
+        task.status.replace("_", " "),
+      ]),
+    ];
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${plan.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-tasks.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const editingPlan = planModal && planModal !== "new" ? planModal : null;
+  const editingTask = taskModal?.task ?? null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Financial Management Action Plans</h2>
+          <p className="text-sm text-gray-500">Track finance department plans, tasks, budgets, and progress.</p>
+        </div>
+        <button type="button" onClick={() => setPlanModal("new")} className="inline-flex w-fit items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <Plus className="size-4" />
+          Create New Action Plan
+        </button>
+      </div>
+
+      {message && (
+        <div className={`rounded-lg border px-4 py-3 text-sm ${message.ok ? "border-green-100 bg-green-50 text-green-700" : "border-red-100 bg-red-50 text-red-700"}`}>
+          {message.message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <ActionPlanStat label="Plans" value={summary.totalPlans} />
+        <ActionPlanStat label="Completed" value={summary.completed} tone="green" />
+        <ActionPlanStat label="In Progress" value={summary.inProgress} tone="blue" />
+        <ActionPlanStat label="Tasks" value={summary.totalTasks} tone="purple" />
+        <ActionPlanStat label="Budget" value={formatCurrency(summary.totalBudget)} tone="amber" />
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 md:flex-row md:items-center">
+        <label className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search action plans..." className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+        </label>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      <div className="space-y-4">
+        {filteredPlans.length ? filteredPlans.map((plan) => {
+          const totalBudget = plan.tasks.reduce((sum, task) => sum + task.estimatedBudget, 0);
+          return (
+            <article key={plan.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-semibold text-gray-900">{plan.title}</h3>
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium capitalize ${actionPlanStatusBadge(plan.status)}`}>{plan.status.replace("_", " ")}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">{plan.description || "No description"}</p>
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span>By {plan.createdByName}</span>
+                    <span>Start: {plan.startDate}</span>
+                    <span>Completion: {plan.dueDate}</span>
+                    <span>Tasks: {plan.tasks.length}</span>
+                    {totalBudget > 0 && <span>Budget: {formatCurrency(totalBudget)}</span>}
+                  </div>
+                  <div className="mt-4 flex max-w-md items-center gap-2">
+                    <div className="h-2 flex-1 rounded-full bg-gray-100">
+                      <div className="h-2 rounded-full bg-blue-600" style={{ width: `${Math.min(plan.progress, 100)}%` }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">{plan.progress}%</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setTaskModal({ plan })} className="rounded-lg bg-green-50 px-3 py-2 text-green-700 hover:bg-green-100" title="Create task">
+                    <Plus className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => exportTasks(plan)} className="rounded-lg bg-indigo-50 px-3 py-2 text-indigo-700 hover:bg-indigo-100" title="Export tasks">
+                    <FileSpreadsheet className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => setViewPlan(plan)} className="rounded-lg border border-gray-200 px-3 py-2 text-gray-600 hover:bg-gray-50" title="View">
+                    <Eye className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => setPlanModal(plan)} className="rounded-lg border border-gray-200 px-3 py-2 text-blue-600 hover:bg-blue-50" title="Edit">
+                    <Pencil className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => removePlan(plan)} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100" title="Delete">
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-x-auto rounded-lg border border-gray-100">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">Activity</th>
+                      <th className="px-3 py-2">Milestone</th>
+                      <th className="px-3 py-2">Budget</th>
+                      <th className="px-3 py-2">Deadline</th>
+                      <th className="px-3 py-2">Progress</th>
+                      <th className="px-3 py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {plan.tasks.length ? plan.tasks.map((task) => (
+                      <tr key={task.id}>
+                        <td className="px-3 py-2 font-medium text-gray-800">{task.activity || task.taskName}</td>
+                        <td className="px-3 py-2 text-gray-600">{task.targetMilestone || "-"}</td>
+                        <td className="px-3 py-2 text-gray-600">{task.estimatedBudget ? formatCurrency(task.estimatedBudget) : "-"}</td>
+                        <td className="px-3 py-2 text-gray-600">{task.deadline}</td>
+                        <td className="px-3 py-2 text-gray-600">{task.progress}%</td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-3">
+                            <button type="button" onClick={() => setTaskModal({ plan, task })} className="text-blue-600 hover:text-blue-700">Edit</button>
+                            <button type="button" onClick={() => removeTask(task)} className="text-red-600 hover:text-red-700">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-8 text-center text-gray-400">No tasks yet</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          );
+        }) : (
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 py-12 text-center">
+            <ClipboardList className="mx-auto mb-3 size-10 text-gray-300" />
+            <p className="text-sm text-gray-500">No action plans found</p>
+            <button type="button" onClick={() => setPlanModal("new")} className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700">Create your first action plan</button>
+          </div>
+        )}
+      </div>
+
+      {planModal && (
+        <Modal title={editingPlan ? "Edit Action Plan" : "Create Action Plan"} onClose={closePlanModal} width="max-w-2xl">
+          <form onSubmit={submitPlan} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Action Plan Name *</label>
+              <input name="title" defaultValue={editingPlan?.title ?? ""} required placeholder="Enter action plan name" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Start Date *</label>
+                <input name="startDate" type="date" defaultValue={editingPlan?.startDateRaw ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Completion Date *</label>
+                <input name="dueDate" type="date" defaultValue={editingPlan?.dueDateRaw ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+              <textarea name="description" rows={3} defaultValue={editingPlan?.description ?? ""} placeholder="Optional description" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </div>
+            <ModalFooter pending={pending} submitLabel={editingPlan ? "Update Action Plan" : "Create Action Plan"} onClose={closePlanModal} />
+          </form>
+        </Modal>
+      )}
+
+      {taskModal && (
+        <Modal title={editingTask ? `Edit Task for ${taskModal.plan.title}` : `Create Task for ${taskModal.plan.title}`} onClose={closeTaskModal} width="max-w-2xl">
+          <form onSubmit={submitTask} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Action Plan</label>
+              <input value={taskModal.plan.title} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Activity *</label>
+              <input name="activity" defaultValue={editingTask?.activity ?? editingTask?.taskName ?? ""} required placeholder="Enter activity" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Targeted Milestone *</label>
+              <input name="targetMilestone" defaultValue={editingTask?.targetMilestone ?? ""} required placeholder="Enter targeted milestone" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Start Date</label>
+                <input name="startDate" type="date" defaultValue={editingTask?.startDateRaw ?? ""} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Estimated Budget *</label>
+                <input name="estimatedBudget" type="number" min="0" step="0.01" defaultValue={editingTask?.estimatedBudget ?? ""} required placeholder="0.00" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Deadline *</label>
+                <input name="deadline" type="date" defaultValue={editingTask?.deadlineRaw ?? ""} required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Progress *</label>
+                <input name="progress" type="number" min="0" max="100" defaultValue={editingTask?.progress ?? 0} required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </div>
+            </div>
+            <ModalFooter pending={pending} submitLabel={editingTask ? "Update Task" : "Save Task"} onClose={closeTaskModal} />
+          </form>
+        </Modal>
+      )}
+
+      {viewPlan && (
+        <Modal title={viewPlan.title} onClose={() => setViewPlan(null)} width="max-w-3xl">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <PlanDetail label="Status" value={viewPlan.status.replace("_", " ")} />
+              <PlanDetail label="Progress" value={`${viewPlan.progress}%`} />
+              <PlanDetail label="Tasks" value={viewPlan.tasks.length} />
+              <PlanDetail label="Budget" value={formatCurrency(viewPlan.tasks.reduce((sum, task) => sum + task.estimatedBudget, 0))} />
+            </div>
+            {viewPlan.description && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">{viewPlan.description}</p>}
+            <div className="overflow-x-auto rounded-lg border border-gray-100">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">Activity</th>
+                    <th className="px-3 py-2">Milestone</th>
+                    <th className="px-3 py-2">Budget</th>
+                    <th className="px-3 py-2">Deadline</th>
+                    <th className="px-3 py-2">Progress</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {viewPlan.tasks.length ? viewPlan.tasks.map((task) => (
+                    <tr key={task.id}>
+                      <td className="px-3 py-2 font-medium text-gray-800">{task.activity || task.taskName}</td>
+                      <td className="px-3 py-2 text-gray-600">{task.targetMilestone || "-"}</td>
+                      <td className="px-3 py-2 text-gray-600">{task.estimatedBudget ? formatCurrency(task.estimatedBudget) : "-"}</td>
+                      <td className="px-3 py-2 text-gray-600">{task.deadline}</td>
+                      <td className="px-3 py-2 text-gray-600">{task.progress}%</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No tasks yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <button type="button" onClick={() => { setViewPlan(null); setPlanModal(viewPlan); }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">Edit Plan</button>
+              <button type="button" onClick={() => setViewPlan(null)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ActionPlanStat({ label, value, tone = "gray" }: { label: string; value: number | string; tone?: "gray" | "green" | "blue" | "purple" | "amber" }) {
+  const colors = {
+    gray: "bg-gray-50 text-gray-800",
+    green: "bg-green-50 text-green-700",
+    blue: "bg-blue-50 text-blue-700",
+    purple: "bg-purple-50 text-purple-700",
+    amber: "bg-amber-50 text-amber-700",
+  };
+  return (
+    <div className={`rounded-lg border border-gray-100 p-3 ${colors[tone]}`}>
+      <p className="text-xs font-semibold uppercase text-gray-500">{label}</p>
+      <p className="mt-1 text-lg font-bold">{value}</p>
+    </div>
+  );
+}
+
+function PlanDetail({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+      <p className="text-xs font-semibold uppercase text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold capitalize text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function actionPlanStatusBadge(status: string) {
+  if (status === "completed") return "bg-green-100 text-green-700";
+  if (status === "in_progress") return "bg-blue-100 text-blue-700";
+  return "bg-yellow-100 text-yellow-700";
 }
 
 function FinanceSettingsTab({ currentYear, settings }: { currentYear: number; settings: FinanceTermSetting[] }) {

@@ -95,6 +95,9 @@ model User {
   secondApprovalExpenses Expense[] @relation("ExpenseSecondApprover")
   createdSponsors Sponsor[] @relation("SponsorCreator")
   createdSponsorPayments SponsorPayment[] @relation("SponsorPaymentCreator")
+  createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
+  publishedAnnouncements Announcement[] @relation("PublishedAnnouncements")
+  announcementReads AnnouncementUserRead[]
 
   @@index([status])
   @@index([membershipType])
@@ -681,6 +684,52 @@ model FormSubmission {
   @@index([formId])
   @@index([userId])
   @@map("form_submissions")
+}
+
+model Announcement {
+  id             Int      @id @default(autoincrement())
+  title          String
+  content        String
+  type           String   @default("general")
+  priority       String   @default("normal")
+  status         String   @default("active")
+  scheduledDate  DateTime? @map("scheduled_date") @db.Date
+  expiryDate     DateTime? @map("expiry_date") @db.Date
+  targetAudience String?  @map("target_audience")
+  targetType     String   @default("all") @map("target_type")
+  targetRoles    String?  @map("target_roles")
+  targetUsers    String?  @map("target_users")
+  imagePath      String?  @map("image_path")
+  emailSent      Boolean  @default(false) @map("email_sent")
+  createdBy      Int?     @map("created_by")
+  publishedBy    Int?     @map("published_by")
+  publishedAt    DateTime? @map("published_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  creator   User? @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: SetNull)
+  publisher User? @relation("PublishedAnnouncements", fields: [publishedBy], references: [id], onDelete: SetNull)
+  reads     AnnouncementUserRead[]
+
+  @@index([status])
+  @@index([targetType])
+  @@index([createdBy])
+  @@index([publishedBy])
+  @@map("announcements")
+}
+
+model AnnouncementUserRead {
+  id             Int      @id @default(autoincrement())
+  announcementId Int      @map("announcement_id")
+  userId         Int      @map("user_id")
+  readAt         DateTime @default(now()) @map("read_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_user_reads")
 }
 
 model Role {

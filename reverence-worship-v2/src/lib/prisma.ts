@@ -26,6 +26,8 @@ export const prisma =
   "expense" in existingPrisma &&
   "sponsor" in existingPrisma &&
   "sponsorPayment" in existingPrisma &&
+  "announcement" in existingPrisma &&
+  "announcementUserRead" in existingPrisma &&
   "systemSetting" in existingPrisma &&
   "activityLog" in existingPrisma
     ? existingPrisma
