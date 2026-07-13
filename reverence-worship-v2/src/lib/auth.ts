@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 
-const SESSION_COOKIE = "reverence_session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_COOKIE = "reverence_session";
+export const SESSION_IDLE_MAX_AGE_SECONDS = 60 * 15;
 
 type SessionPayload = {
   userId: number;
@@ -28,7 +28,7 @@ function authSecret() {
 
 export async function createSession(userId: number) {
   const token = jwt.sign({ userId } satisfies SessionPayload, authSecret(), {
-    expiresIn: SESSION_MAX_AGE_SECONDS,
+    expiresIn: SESSION_IDLE_MAX_AGE_SECONDS,
   });
 
   const cookieStore = await cookies();
@@ -36,7 +36,7 @@ export async function createSession(userId: number) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: SESSION_MAX_AGE_SECONDS,
+    maxAge: SESSION_IDLE_MAX_AGE_SECONDS,
     path: "/",
   });
 }
@@ -44,6 +44,14 @@ export async function createSession(userId: number) {
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+}
+
+export function verifySessionToken(token: string) {
+  try {
+    return jwt.verify(token, authSecret()) as SessionPayload;
+  } catch {
+    return null;
+  }
 }
 
 export async function getCurrentUser() {
@@ -54,22 +62,21 @@ export async function getCurrentUser() {
     return null;
   }
 
-  try {
-    const payload = jwt.verify(token, authSecret()) as SessionPayload;
-
-    return prisma.user.findUnique({
-      where: { id: payload.userId },
-      include: {
-        roles: {
-          include: {
-            role: true,
-          },
-        },
-      },
-    });
-  } catch {
+  const payload = verifySessionToken(token);
+  if (!payload) {
     return null;
   }
+
+  return prisma.user.findUnique({
+    where: { id: payload.userId },
+    include: {
+      roles: {
+        include: {
+          role: true,
+        },
+      },
+    },
+  });
 }
 
 export async function requireUser() {
