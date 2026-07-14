@@ -907,7 +907,7 @@ export function DisciplineClient({
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-4">
-                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[180px_minmax(220px,1fr)_auto] md:items-end">
+                <div className="grid grid-cols-2 gap-2.5 md:grid-cols-[180px_minmax(220px,1fr)_auto] md:items-end">
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Date</label>
                     <input value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} type="date" className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-11 sm:rounded-xl" />
@@ -916,7 +916,7 @@ export function DisciplineClient({
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Session Name</label>
                     <input value={sessionType} onChange={(event) => setSessionType(event.target.value)} placeholder="Sunday Service" className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-11 sm:rounded-xl" />
                   </div>
-                  <button type="button" onClick={() => openAttendanceSession(sessionDate, sessionType)} className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 sm:h-11 sm:rounded-xl md:w-auto">
+                  <button type="button" onClick={() => openAttendanceSession(sessionDate, sessionType)} className="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 sm:h-11 sm:rounded-xl md:col-span-1 md:w-auto">
                     <Play className="mr-2 size-4" />
                     Start Session
                   </button>
@@ -1426,7 +1426,7 @@ export function DisciplineClient({
       )}
 
       {sessionModal && (
-        <div className="fixed inset-0 z-50 grid place-items-stretch bg-black/40 p-0 sm:place-items-center sm:p-6">
+        <div className="fixed inset-0 z-[80] grid place-items-stretch bg-black/40 p-0 sm:place-items-center sm:p-6">
           <div className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:border">
             <div className="flex items-center justify-between border-b px-3 py-2.5 sm:px-5 sm:py-3">
               <div className="min-w-0">
@@ -1672,7 +1672,7 @@ export function DisciplineClient({
               </div>
             </div>
 
-            <div className={`${sessionReadOnly ? "grid-cols-1" : "grid-cols-3"} grid gap-1.5 border-t bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:flex sm:justify-end sm:gap-3 sm:px-5 sm:py-3 sm:shadow-none`}>
+            <div className={`${sessionReadOnly ? "grid-cols-1" : "grid-cols-[0.7fr_1.2fr_1fr]"} sticky bottom-0 z-20 grid gap-1.5 border-t bg-white px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:flex sm:justify-end sm:gap-3 sm:px-5 sm:py-3 sm:shadow-none`}>
               <button type="button" onClick={() => setSessionModal(false)} className="rounded-lg border px-2 py-2 text-xs text-gray-700 sm:px-4 sm:text-sm">
                 Close
               </button>
@@ -2166,15 +2166,6 @@ function MobileAttendanceToggle({ label, value, disabled = false, readOnly = fal
           {value ? "Yes" : "No"}
         </button>
       )}
-    </div>
-  );
-}
-
-function ToggleField({ label, value, disabled = false, readOnly = false, onToggle }: { label: string; value: boolean; disabled?: boolean; readOnly?: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex min-h-10 items-center justify-between gap-2 rounded-lg border border-gray-100 px-2 py-1.5 sm:min-h-12 sm:gap-3 sm:px-3 sm:py-2">
-      <span className="text-xs font-medium text-gray-700 sm:text-sm">{label}</span>
-      {readOnly ? <ReadonlyYesNo value={value} /> : <YesNoButton value={value} disabled={disabled} onToggle={onToggle} />}
     </div>
   );
 }
