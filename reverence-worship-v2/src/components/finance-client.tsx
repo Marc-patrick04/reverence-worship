@@ -37,7 +37,6 @@ import {
   deleteFinanceActionPlanTask,
   deleteSponsor,
   rejectExpense,
-  setTransactionReconciliation,
   voidExpense,
   deleteFinancePayment,
   recordContributionPayment,
@@ -137,8 +136,6 @@ type FinancePermissions = {
   viewReports: boolean;
 };
 
-type Reconciliation = { sourceType: string; sourceId: number; reference: string | null };
-
 type Sponsor = {
   id: number;
   name: string;
@@ -231,7 +228,6 @@ export function FinanceClient({
   actionPlans,
   termSettings,
   permissions,
-  reconciliations,
 }: {
   year: number;
   currentUserId: number;
@@ -245,7 +241,6 @@ export function FinanceClient({
   actionPlans: ActionPlan[];
   termSettings: FinanceTermSetting[];
   permissions: FinancePermissions;
-  reconciliations: Reconciliation[];
 }) {
   const currentYearPayments = payments.filter((item) => item.year === year);
   const [activeTab, setActiveTab] = useState("overview");
@@ -361,12 +356,12 @@ export function FinanceClient({
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <RecentList title="Recent Payments" empty="No payments yet">
-                  {currentYearPayments.slice(0, 6).map((payment) => (
+                  {currentYearPayments.slice(0, 5).map((payment) => (
                     <RecentRow key={payment.id} title={payment.userName} subtitle={`${payment.paymentDate} • ${payment.paymentMethod}`} amount={payment.amount} />
                   ))}
                 </RecentList>
                 <RecentList title="Recent Expenses" empty="No expenses yet">
-                  {expenses.slice(0, 6).map((expense) => (
+                  {expenses.slice(0, 5).map((expense) => (
                     <RecentRow key={expense.id} title={expense.category || "Expense"} subtitle={`${expense.date} • ${expenseStatusLabel(expense.status)}`} amount={expense.amount} danger />
                   ))}
                 </RecentList>
@@ -417,7 +412,6 @@ export function FinanceClient({
               gifts={gifts}
               sponsors={sponsors}
               expenses={expenses}
-              reconciliations={reconciliations}
               permissions={permissions}
               startDate={startDate}
               endDate={endDate}
@@ -435,23 +429,17 @@ export function FinanceClient({
   );
 }
 
-function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, reconciliations, permissions, startDate, endDate, onStartDateChange, onEndDateChange }: {
+function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, permissions, startDate, endDate, onStartDateChange, onEndDateChange }: {
   payments: Payment[];
   gifts: GiftItem[];
   sponsors: Sponsor[];
   expenses: Expense[];
-  reconciliations: Reconciliation[];
   permissions: FinancePermissions;
   startDate: string;
   endDate: string;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
 }) {
-  const router = useRouter();
-  const { prompt } = useAppDialog();
-  const [result, setResult] = useState<FinanceNotice | null>(null);
-  const [pending, startTransition] = useTransition();
-  const reconciledKeys = useMemo(() => new Set(reconciliations.map((item) => `${item.sourceType}:${item.sourceId}`)), [reconciliations]);
   const entries = useMemo(() => {
     const rows = [
       ...payments.filter((item) => item.status !== "voided").map((item) => ({ sourceType: "payment", sourceId: item.id, date: item.paymentDateRaw, description: `Member payment - ${item.userName}`, income: item.amount, expense: 0, status: item.status })),
@@ -469,7 +457,7 @@ function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, reconcil
   const reserved = expenses.filter((item) => item.status === "pending" && (!startDate || item.dateRaw >= startDate) && (!endDate || item.dateRaw <= endDate)).reduce((sum, item) => sum + item.amount, 0);
 
   function exportReport() {
-    const rows = [["Date", "Description", "Type", "Income", "Expense", "Running Balance", "Status", "Reconciled"], ...entries.map((item) => [item.date, item.description, item.sourceType, item.income, item.expense, item.balance, item.status, reconciledKeys.has(`${item.sourceType}:${item.sourceId}`) ? "Yes" : "No"])];
+    const rows = [["Date", "Description", "Type", "Income", "Expense", "Running Balance", "Status"], ...entries.map((item) => [item.date, item.description, item.sourceType, item.income, item.expense, item.balance, item.status])];
     const blob = new Blob([`\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -479,19 +467,9 @@ function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, reconcil
     URL.revokeObjectURL(url);
   }
 
-  async function toggleReconciled(sourceType: string, sourceId: number, reconciled: boolean) {
-    const reference = !reconciled ? await prompt({ title: "Reconcile Transaction", message: "Add an optional bank statement or receipt reference for this transaction.", inputLabel: "Reference", inputPlaceholder: "Statement, receipt, or transaction reference", confirmLabel: "Mark Reconciled" }) : "";
-    if (reference === null) return;
-    startTransition(async () => {
-      const response = await setTransactionReconciliation(sourceType, sourceId, !reconciled, reference);
-      setResult(response);
-      if (response.ok) router.refresh();
-    });
-  }
-
   return <div className="space-y-4">
     <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
-      <div><h2 className="text-base font-semibold text-gray-800">Unified Ledger & Reports</h2><p className="text-xs text-gray-500">Income, approved outgoing money, running balance, and reconciliation in one place.</p></div>
+   
       <div className="flex flex-wrap items-end gap-2">
         <FieldLabel label="From"><input type="date" value={startDate} onChange={(event) => onStartDateChange(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
         <FieldLabel label="To"><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
@@ -505,13 +483,11 @@ function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, reconcil
       <ExpenseStat label="Closing balance" value={Math.max(income - spent, 0)} tone="green" icon={Calculator} />
     </div>
     {income - spent - reserved < income * 0.1 && income > 0 ? <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="size-4" />Available funds after pending approvals are below 10% of income.</div> : null}
-    {result ? <FinanceNoticeBanner notice={result} onClose={() => setResult(null)} /> : null}
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{["Date", "Description", "Income", "Expense", "Balance", "Reconciled"].map((label) => <th key={label} className="px-3 py-2 text-left text-xs uppercase text-gray-500">{label}</th>)}</tr></thead>
+      <table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{["Date", "Description", "Income", "Expense", "Balance"].map((label) => <th key={label} className="px-3 py-2 text-left text-xs uppercase text-gray-500">{label}</th>)}</tr></thead>
       <tbody className="divide-y divide-gray-100">{entries.length ? [...entries].reverse().map((item) => {
-        const reconciled = reconciledKeys.has(`${item.sourceType}:${item.sourceId}`);
-        return <tr key={`${item.sourceType}-${item.sourceId}`}><td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{item.date}</td><td className="px-3 py-2 text-gray-800">{item.description}</td><td className="px-3 py-2 font-medium text-emerald-600">{item.income ? formatCurrency(item.income) : "-"}</td><td className="px-3 py-2 font-medium text-red-600">{item.expense ? formatCurrency(item.expense) : "-"}</td><td className="px-3 py-2 font-semibold">{formatCurrency(item.balance)}</td><td className="px-3 py-2">{permissions.reconcile ? <button disabled={pending} onClick={() => toggleReconciled(item.sourceType, item.sourceId, reconciled)} className={`rounded-full px-2 py-1 text-xs ${reconciled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>{reconciled ? "Reconciled" : "Mark checked"}</button> : reconciled ? "Yes" : "No"}</td></tr>;
-      }) : <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">No transactions in this date range.</td></tr>}</tbody></table>
+        return <tr key={`${item.sourceType}-${item.sourceId}`}><td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{item.date}</td><td className="px-3 py-2 text-gray-800">{item.description}</td><td className="px-3 py-2 font-medium text-emerald-600">{item.income ? formatCurrency(item.income) : "-"}</td><td className="px-3 py-2 font-medium text-red-600">{item.expense ? formatCurrency(item.expense) : "-"}</td><td className="px-3 py-2 font-semibold">{formatCurrency(item.balance)}</td></tr>;
+      }) : <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-500">No transactions in this date range.</td></tr>}</tbody></table>
     </div>
   </div>;
 }

@@ -65,7 +65,7 @@ export default async function FinancePage() {
   const permissionSet = await getUserPermissionSet(currentUser);
   const year = new Date().getFullYear();
 
-  const [users, families, contributions, payments, gifts, expenses, sponsors, actionPlans, termSettings, reconciliations] = await Promise.all([
+  const [users, families, contributions, payments, gifts, expenses, sponsors, actionPlans, termSettings] = await Promise.all([
     safeRead(
       prisma.user.findMany({
         where: { status: "active" },
@@ -142,7 +142,6 @@ export default async function FinancePage() {
       [],
     ),
     safeRead(prisma.financeTermSetting.findMany({ orderBy: { currentYear: "desc" } }), []),
-    safeRead(prisma.financeReconciliation.findMany(), []),
   ]);
 
   return (
@@ -157,7 +156,6 @@ export default async function FinancePage() {
         reconcile: permissionSetHas(permissionSet, "finance", "reconcile"),
         viewReports: permissionSetHas(permissionSet, "finance", "view-reports"),
       }}
-      reconciliations={reconciliations.map((item) => ({ sourceType: item.sourceType, sourceId: item.sourceId, reference: item.reference }))}
       users={users.map((item) => ({
         id: item.id,
         name: item.name,

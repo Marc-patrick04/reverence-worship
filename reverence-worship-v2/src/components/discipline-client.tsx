@@ -66,6 +66,7 @@ type AttendanceSessionState = {
   sessionDate: string;
   sessionType: string;
   isCompleted: boolean;
+  updatedAt: string;
 };
 
 type AttendanceUser = {
@@ -385,7 +386,13 @@ export function DisciplineClient({
       setNotice({ title: "Notice", message: "Please enter session date and name" });
       return;
     }
-    const completed = attendanceSessionStates.some((item) => item.sessionDate === date && item.sessionType === type && item.isCompleted);
+    const exactSession = attendanceSessionStates.find((item) => item.sessionDate === date && item.sessionType === type);
+    const sessionOnDate = attendanceSessionStates.find((item) => item.sessionDate === date);
+    if (!exactSession && sessionOnDate) {
+      setNotice({ title: "Attendance Already Exists", message: `Only one attendance session is allowed per day. Reopen "${sessionOnDate.sessionType}" for this date.` });
+      return;
+    }
+    const completed = Boolean(exactSession?.isCompleted);
     const existing = attendanceRecords.filter((record) => record.sessionDate === date && record.sessionType === type);
     const pendingPermissionsForDate = permissions.filter((permission) => permission.status === "pending" && permission.startDateValue <= date && permission.endDateValue >= date);
     setSessionDate(date);
@@ -579,6 +586,21 @@ export function DisciplineClient({
     if (result.ok) router.refresh();
   }
 
+  async function rejectPermissionWithReason(permission: Permission) {
+    const reason = await prompt({
+      title: "Reject Permission Request",
+      message: `Explain why ${permission.userName}'s permission request is being rejected. The member will see this reason.`,
+      inputLabel: "Rejection reason",
+      confirmLabel: "Reject Request",
+      tone: "danger",
+      required: true,
+    });
+
+    if (reason?.trim()) {
+      await runPermissionAction(() => rejectPermissionRequest(permission.id, reason));
+    }
+  }
+
   const filteredDisciplineRecords = disciplineRecords.filter((record) => {
     const matchesFrom = !disciplineFrom || record.createdAtValue >= disciplineFrom;
     const matchesTo = !disciplineTo || record.createdAtValue <= disciplineTo;
@@ -607,29 +629,49 @@ export function DisciplineClient({
       .values(),
   );
 
+  function disciplineAttendanceSessionForDate(date: string) {
+    return attendanceSessionStates
+      .filter((session) => session.sessionDate === date && session.isCompleted)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  }
+
+  function disciplineDraftsForDate(date: string, title: string) {
+    const attendanceSession = disciplineAttendanceSessionForDate(date);
+    const presentUserIds = new Set(
+      attendanceRecords
+        .filter((record) => record.sessionDate === date && record.sessionType === attendanceSession?.sessionType && record.status.trim().toLowerCase() === "present")
+        .map((record) => record.userId),
+    );
+    const existing = disciplineRecords.filter((record) => record.createdAtValue === date && record.title === title);
+    return users.filter((user) => presentUserIds.has(user.id)).map((user) => {
+      const record = existing.find((item) => item.userId === user.id);
+      const isGood = !record || record.type === "positive";
+      return {
+        userId: user.id,
+        behaviour: isGood ? "good" as const : "bad" as const,
+        description: record?.description ?? (isGood ? "Good" : ""),
+        points: record?.points ?? (isGood ? 1 : 0),
+      };
+    });
+  }
+
   const filteredDisciplineUsers = users.filter((user) => {
+    if (!disciplineDrafts.some((draft) => draft.userId === user.id)) return false;
     const normalized = disciplineSearch.trim().toLowerCase();
     if (!normalized) return true;
     return [user.name, user.email].some((value) => value.toLowerCase().includes(normalized));
   });
 
   function openDisciplineSession(date = new Date().toISOString().slice(0, 10), title = "") {
-    const existing = disciplineRecords.filter((record) => record.createdAtValue === date && record.title === title);
+    if (!disciplineAttendanceSessionForDate(date)) {
+      setNotice({ title: "Attendance Required", message: "Complete the Attendance session for this date before recording Discipline." });
+      return;
+    }
+    const sessionTitle = title || `Discipline Session - ${date}`;
     setDisciplineDate(date);
-    setDisciplineTitle(title || `Discipline Session - ${date}`);
+    setDisciplineTitle(sessionTitle);
     setDisciplineSearch("");
-    setDisciplineDrafts(
-      users.map((user) => {
-        const record = existing.find((item) => item.userId === user.id);
-        const isGood = !record || record.type === "positive";
-        return {
-          userId: user.id,
-          behaviour: isGood ? "good" : "bad",
-          description: record?.description ?? (isGood ? "Good" : ""),
-          points: record?.points ?? (isGood ? 1 : 0),
-        };
-      }),
-    );
+    setDisciplineDrafts(disciplineDraftsForDate(date, sessionTitle));
     setDisciplineModal(true);
   }
 
@@ -1129,7 +1171,33 @@ export function DisciplineClient({
                           <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700">{permission.startDate}</td>
                           <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-700">{permission.endDate}</td>
                           <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">{permissionDayCount(permission)}</td>
-                          <td className="px-4 py-4"><StatusBadge status={permission.status} /></td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <StatusBadge status={permission.status} />
+                              {permission.status === "pending" && (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))}
+                                    className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    title="Approve permission request"
+                                    aria-label={`Approve permission request for ${permission.userName}`}
+                                  >
+                                    <CheckCircle2 className="size-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => rejectPermissionWithReason(permission)}
+                                    className="grid size-8 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                    title="Reject permission request"
+                                    aria-label={`Reject permission request for ${permission.userName}`}
+                                  >
+                                    <XCircle className="size-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-4 text-sm leading-6 text-gray-700">
                             <PermissionComment permission={permission} />
                           </td>
@@ -1174,8 +1242,8 @@ export function DisciplineClient({
                         </button>
                         {permission.status === "pending" && (
                           <>
-                            <button onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">Approve</button>
-                            <button onClick={async () => { const reason = await prompt({ title: "Reject Permission Request", message: "Explain why this permission request is being rejected.", inputLabel: "Rejection reason", confirmLabel: "Reject Request", tone: "danger", required: true }); if (reason) runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100">Reject</button>
+                            <button type="button" onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100" title="Approve permission request" aria-label={`Approve permission request for ${permission.userName}`}><CheckCircle2 className="size-4" /></button>
+                            <button type="button" onClick={() => rejectPermissionWithReason(permission)} className="grid size-9 place-items-center rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100" title="Reject permission request" aria-label={`Reject permission request for ${permission.userName}`}><XCircle className="size-4" /></button>
                           </>
                         )}
                         <button
@@ -1834,8 +1902,8 @@ export function DisciplineClient({
                     )}
                     {permissionReviewModal === "pending" && (
                       <div className="mt-3 flex justify-end gap-2">
-                        <button onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">Approve</button>
-                        <button onClick={async () => { const reason = await prompt({ title: "Reject Permission Request", message: "Explain why this permission request is being rejected.", inputLabel: "Rejection reason", confirmLabel: "Reject Request", tone: "danger", required: true }); if (reason) runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
+                        <button type="button" onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="grid size-9 place-items-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" title="Approve permission request" aria-label={`Approve permission request for ${permission.userName}`}><CheckCircle2 className="size-4" /></button>
+                        <button type="button" onClick={() => rejectPermissionWithReason(permission)} className="grid size-9 place-items-center rounded-lg bg-rose-600 text-white hover:bg-rose-700" title="Reject permission request" aria-label={`Reject permission request for ${permission.userName}`}><XCircle className="size-4" /></button>
                       </div>
                     )}
                   </div>
@@ -2079,7 +2147,7 @@ export function DisciplineClient({
               <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Session Date *</label>
-                  <input value={disciplineDate} onChange={(event) => setDisciplineDate(event.target.value)} type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+                  <input value={disciplineDate} onChange={(event) => { const date = event.target.value; setDisciplineDate(date); setDisciplineDrafts(disciplineDraftsForDate(date, disciplineTitle)); }} type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Session Title *</label>
@@ -2152,7 +2220,7 @@ export function DisciplineClient({
                         );
                       }) : (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-gray-400">No members found matching your search</td>
+                          <td colSpan={4} className="py-8 text-center text-gray-400">No members marked Present in Attendance for this date</td>
                         </tr>
                       )}
                     </tbody>
@@ -2327,7 +2395,7 @@ function PermissionComment({ permission }: { permission: Permission }) {
     <>
       {permission.approvedByName && <span className="block">Approver: {permission.approvedByName}</span>}
       {permission.status === "approved" && <span className="block">Comment: Approved</span>}
-      {permission.status === "rejected" && <span className="block">Comment: {permission.rejectionReason || "Rejected"}</span>}
+      {permission.status === "rejected" && <span className="block">Reason: {permission.rejectionReason || "No rejection reason recorded"}</span>}
     </>
   );
 }

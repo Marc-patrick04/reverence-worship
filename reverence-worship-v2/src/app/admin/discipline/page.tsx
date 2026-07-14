@@ -240,6 +240,7 @@ export default async function DisciplinePage({
         sessionDate: dateValue(session.sessionDate),
         sessionType: session.sessionType,
         isCompleted: session.isCompleted,
+        updatedAt: session.updatedAt.toISOString(),
       }))}
       users={activeUsers}
       permissions={permissionList.map((permission) => ({
