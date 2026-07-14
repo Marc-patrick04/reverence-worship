@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export type AdminNotification = {
   id: string;
   sourceId: number;
-  type: "announcement" | "form" | "pending_user" | "task" | "permission" | "expense_approval";
+  type: "announcement" | "form" | "pending_user" | "task" | "permission" | "expense_approval" | "expense_status";
   title: string;
   message: string;
   createdAt: string;
@@ -72,7 +72,7 @@ export async function getAdminNotifications() {
   const workspaceUser = hasWorkspaceRole(roleNames);
   const notifications: AdminNotification[] = [];
 
-  const [announcements, activeForms, userFormSubmissions, assignedTasks, expenses] = await Promise.all([
+  const [announcements, activeForms, userFormSubmissions, assignedTasks, expenses, expenseDecisions] = await Promise.all([
     prisma.announcement.findMany({
       where: { status: "active" },
       include: { reads: { where: { userId: user.id }, take: 1 } },
@@ -95,11 +95,17 @@ export async function getAdminNotifications() {
     }),
     prisma.expense.findMany({
       where: {
-        status: "pending",
+        status: { in: ["pending", "void_pending"] },
         OR: [{ approverId1: user.id }, { approverId2: user.id }],
       },
       include: { creator: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.expense.findMany({
+      where: { OR: [{ createdBy: user.id }, { voidRequestedBy: user.id }], status: { in: ["approved", "rejected", "voided"] }, updatedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
+      include: { approver: { select: { name: true } } },
+      orderBy: { updatedAt: "desc" },
       take: 10,
     }),
   ]);
@@ -198,9 +204,26 @@ export async function getAdminNotifications() {
       id: `expense_approval-${expense.id}`,
       sourceId: expense.id,
       type: "expense_approval",
-      title: "Expense Approval Required",
-      message: `${expense.creator?.name ?? "A member"} submitted an expense of RWF ${expense.amount.toString()}`,
+      title: expense.status === "void_pending" ? "Expense Void Approval Required" : "Expense Approval Required",
+      message: expense.status === "void_pending"
+        ? `A void request for RWF ${expense.amount.toString()} needs your approval`
+        : `${expense.creator?.name ?? "A member"} submitted an expense of RWF ${expense.amount.toString()}`,
       createdAt: expense.createdAt.toISOString(),
+      readAt: null,
+      link: "/admin/finance/approvals",
+    });
+  }
+
+  for (const expense of expenseDecisions) {
+    const voidRejected = expense.status === "approved" && expense.rejectionReason?.startsWith("Void request rejected:");
+    const decisionTitle = expense.status === "voided" ? "Expense Void Approved" : voidRejected ? "Expense Void Rejected" : expense.status === "approved" ? "Expense Approved" : "Expense Rejected";
+    notifications.push({
+      id: `expense_status-${expense.id}-${expense.status}`,
+      sourceId: expense.id,
+      type: "expense_status",
+      title: decisionTitle,
+      message: `${expense.approver?.name ?? "The approver"} ${expense.status === "voided" ? "approved voiding" : voidRejected ? "rejected voiding" : expense.status} the expense of RWF ${expense.amount.toString()}${expense.rejectionReason ? `: ${expense.rejectionReason}` : "."}`,
+      createdAt: expense.updatedAt.toISOString(),
       readAt: null,
       link: "/admin/finance?tab=expenses",
     });

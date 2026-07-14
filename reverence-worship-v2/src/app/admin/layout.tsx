@@ -1,4 +1,5 @@
 import { AdminShell } from "@/components/admin-shell";
+import { AppDialogProvider } from "@/components/app-dialog-provider";
 import { getUserPermissionSet, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -17,8 +18,10 @@ export default async function AdminLayout({
   const isParent = Boolean(parentMember || parentByFamily);
 
   return (
-    <AdminShell user={{ name: user.name, email: user.email, roles, permissions, isParent }}>
-      {children}
-    </AdminShell>
+    <AppDialogProvider>
+      <AdminShell user={{ name: user.name, email: user.email, roles, permissions, isParent }}>
+        {children}
+      </AdminShell>
+    </AppDialogProvider>
   );
 }

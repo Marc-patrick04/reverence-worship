@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useAppDialog } from "@/components/app-dialog-provider";
 import { CheckCircle2, Eye, MailCheck, Megaphone, Pencil, Plus, RefreshCw, Search, Send, Trash2, X } from "lucide-react";
 import {
   deleteAnnouncement,
@@ -61,6 +62,7 @@ export function AnnouncementsClient({
   users: UserOption[];
 }) {
   const router = useRouter();
+  const { confirm } = useAppDialog();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [modal, setModal] = useState<"compose" | "edit" | "view" | null>(null);
@@ -144,8 +146,8 @@ export function AnnouncementsClient({
     });
   }
 
-  function removeAnnouncement(announcement: Announcement) {
-    if (!window.confirm(`Delete "${announcement.title}"?`)) return;
+  async function removeAnnouncement(announcement: Announcement) {
+    if (!await confirm({ title: "Delete Announcement", message: `Delete "${announcement.title}"? This action cannot be undone.`, confirmLabel: "Delete Announcement", tone: "danger" })) return;
     runAction(() => deleteAnnouncement(announcement.id));
   }
 

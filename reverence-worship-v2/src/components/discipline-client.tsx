@@ -20,6 +20,7 @@ import {
   savePermissionRequest,
 } from "@/app/admin/discipline/actions";
 import { MobileTabScroller } from "@/components/mobile-tab-scroller";
+import { useAppDialog } from "@/components/app-dialog-provider";
 
 type DisciplineStats = {
   permissionRequests: number;
@@ -189,6 +190,7 @@ export function DisciplineClient({
   actionPlans: DisciplineActionPlan[];
 }) {
   const router = useRouter();
+  const { prompt } = useAppDialog();
   const [activeTab, setActiveTab] = useState("overview");
   const [from, setFrom] = useState(startDate);
   const [to, setTo] = useState(endDate);
@@ -683,7 +685,8 @@ export function DisciplineClient({
   }
 
   async function resolveBadRecord(record: DisciplineRecord) {
-    const notes = window.prompt("Resolution notes?") ?? "";
+    const notes = await prompt({ title: "Resolve Discipline Record", message: "Add notes explaining how this record was resolved.", inputLabel: "Resolution notes", inputPlaceholder: "Enter resolution details", confirmLabel: "Resolve Record", required: true });
+    if (notes === null) return;
     const result = await resolveDisciplineRecord(record.id, notes);
     setMessage(result.message);
     if (result.ok) router.refresh();
@@ -1172,7 +1175,7 @@ export function DisciplineClient({
                         {permission.status === "pending" && (
                           <>
                             <button onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">Approve</button>
-                            <button onClick={() => { const reason = window.prompt("Reject reason?") ?? ""; runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100">Reject</button>
+                            <button onClick={async () => { const reason = await prompt({ title: "Reject Permission Request", message: "Explain why this permission request is being rejected.", inputLabel: "Rejection reason", confirmLabel: "Reject Request", tone: "danger", required: true }); if (reason) runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100">Reject</button>
                           </>
                         )}
                         <button
@@ -1832,7 +1835,7 @@ export function DisciplineClient({
                     {permissionReviewModal === "pending" && (
                       <div className="mt-3 flex justify-end gap-2">
                         <button onClick={() => runPermissionAction(() => approvePermissionRequest(permission.id))} className="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">Approve</button>
-                        <button onClick={() => { const reason = window.prompt("Reject reason?") ?? ""; runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
+                        <button onClick={async () => { const reason = await prompt({ title: "Reject Permission Request", message: "Explain why this permission request is being rejected.", inputLabel: "Rejection reason", confirmLabel: "Reject Request", tone: "danger", required: true }); if (reason) runPermissionAction(() => rejectPermissionRequest(permission.id, reason)); }} className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
                       </div>
                     )}
                   </div>

@@ -165,6 +165,9 @@ const featureDefinitionsByPage: Record<string, FeatureDefinition[]> = {
     { name: "manage-expenses", label: "Manage Expenses", description: "Create and update expense requests." },
     { name: "approve-expenses", label: "Approve Expenses", description: "Approve or reject expenses." },
     { name: "delete-expenses", label: "Delete Expenses", description: "Remove expense records." },
+    { name: "export", label: "Export Finance Data", description: "Export finance ledgers and reports." },
+    { name: "reconcile", label: "Reconcile Transactions", description: "Mark financial transactions as checked against external records." },
+    { name: "view-reports", label: "View Finance Reports", description: "Open finance ledgers and management reports." },
     { name: "manage-action-plans", label: "Manage Finance Action Plans", description: "Create and update Finance DPT action plans." },
   ],
   family: [
