@@ -1,5 +1,6 @@
 import { MyContributionsClient } from "@/components/my-contributions-client";
 import { requirePageAccess } from "@/lib/auth";
+import { calculateContributionTermTarget } from "@/lib/finance-rules";
 import { prisma } from "@/lib/prisma";
 
 type ContributionsPageProps = {
@@ -88,25 +89,28 @@ export default async function MyContributionsPage({ searchParams }: Contribution
   const selectedYear = params.year && years.includes(Number(params.year)) ? Number(params.year) : years[0] ?? currentYear;
   const contribution = contributions.find((item) => item.year === selectedYear);
   const payments = allPayments.filter((item) => item.year === selectedYear);
-  const setting = termSettings.find((item) => item.currentYear === selectedYear) ?? termSettings[0];
+  const setting = termSettings.find((item) => item.currentYear === selectedYear);
   const settingTerms = setting?.numberOfTerms ?? 3;
   const fallbackTerms = Array.from({ length: settingTerms }, (_, index) => index + 1);
   const termNumbers = parseNumberArray(setting?.termNumbers, fallbackTerms);
   const percentages = parsePercentageMap(setting?.termPercentages, termNumbers);
   const finalPercentages = Object.values(percentages).some((value) => value > 0) ? percentages : defaultPercentages(termNumbers);
   const annualAmount = money(contribution?.annualAmount);
+  const termPercentages = termNumbers.map((term) => Number(finalPercentages[String(term)] ?? 0));
 
-  const terms = termNumbers.map((term) => {
-    const percentage = Number(finalPercentages[String(term)] ?? 0);
-    const target = (annualAmount * percentage) / 100;
-    const paid = payments.filter((payment) => payment.term === term).reduce((sum, payment) => sum + money(payment.amount), 0);
+  const terms = termNumbers.map((term, index) => {
+    const percentage = termPercentages[index];
+    const target = calculateContributionTermTarget(annualAmount, percentage);
+    const termPayments = payments.filter((payment) => payment.term === term);
+    const paid = termPayments.reduce((sum, payment) => sum + money(payment.amount), 0);
     const remaining = Math.max(target - paid, 0);
     const progress = target > 0 ? Math.min(100, Math.round((paid / target) * 100)) : 0;
     const status = target > 0 && paid >= target ? "completed" : paid > 0 ? "partial" : "pending";
-    return { term, percentage, target, paid, remaining, progress, status };
+    const latestPayment = termPayments[0];
+    return { term, percentage, target, paid, remaining, progress, status, lastPaymentDate: latestPayment ? formatDate(latestPayment.paymentDate) : null };
   });
 
-  const totalRequired = terms.reduce((sum, term) => sum + term.target, 0);
+  const totalRequired = annualAmount;
   const totalPaid = payments.reduce((sum, payment) => sum + money(payment.amount), 0);
   const remainingAmount = Math.max(totalRequired - totalPaid, 0);
   const progressPercent = totalRequired > 0 ? Math.min(100, Math.round((totalPaid / totalRequired) * 100)) : 0;

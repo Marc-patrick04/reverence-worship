@@ -1,29 +1,24 @@
 import Link from "next/link";
 import {
-  BarChart3,
   BookOpen,
-  CalendarCheck,
-  CheckCircle2,
-  ClipboardList,
   Clock,
   FileText,
-  Gavel,
   HandCoins,
-  HandHeart,
-  Home,
   Megaphone,
   Music,
-  Settings,
   Shield,
   UserCheck,
   UserCog,
   UserPlus,
   UserX,
   Users,
-  Wallet,
 } from "lucide-react";
 import { requirePageAccess } from "@/lib/auth";
+import { withDatabaseRetry } from "@/lib/database-retry";
 import { prisma } from "@/lib/prisma";
+import { PerformanceSummaryCards } from "@/components/performance-client";
+import { getPerformanceDateRange } from "@/lib/performance-date-range";
+import { getUserPerformanceData, type PerformanceMetrics } from "@/lib/user-performance";
 
 const systemCountLabels = [
   "Forms",
@@ -35,6 +30,14 @@ const systemCountLabels = [
   "Expenses",
   "Discipline",
 ] as const;
+
+const personalQuickActions = [
+  { label: "Read Bible", href: "/admin/intercession?tab=bible", icon: BookOpen, color: "text-blue-700 bg-blue-50" },
+  { label: "My Contribution", href: "/admin/contributions", icon: HandCoins, color: "text-emerald-700 bg-emerald-50" },
+  { label: "Forms", href: "/admin/intercession?tab=forms", icon: FileText, color: "text-violet-700 bg-violet-50" },
+  { label: "Playlist", href: "/admin/music", icon: Music, color: "text-orange-700 bg-orange-50" },
+  { label: "Announcements", href: "/admin/announcements", icon: Megaphone, color: "text-sky-700 bg-sky-50" },
+];
 
 type RoleName =
   | "super-admin"
@@ -60,20 +63,20 @@ function hasRole(roles: string[], role: RoleName) {
   return roles.includes(role);
 }
 
-function money(value: unknown) {
-  return Number(value ?? 0);
-}
-
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const user = await requirePageAccess("dashboard");
+  const params = await searchParams;
   const roles = user.roles.map((userRole) => userRole.role.name);
+  const year = new Date().getFullYear();
+  const range = getPerformanceDateRange(year, params.from, params.to);
+  const { metrics } = await getUserPerformanceData(user.id, year, { from: range.fromDate, to: range.toDate, label: range.label });
 
   if (hasRole(roles, "super-admin")) {
-    return <SuperAdminDashboard userName={user.name} />;
+    return <SuperAdminDashboard userName={user.name} metrics={metrics} fromDate={range.from} toDate={range.to} />;
   }
 
   if (hasRole(roles, "admin")) {
-    return <AdminOperationsDashboard userName={user.name} />;
+    return <AdminOperationsDashboard userName={user.name} metrics={metrics} fromDate={range.from} toDate={range.to} />;
   }
 
   const departmentRole = roles.find((role) =>
@@ -81,19 +84,16 @@ export default async function AdminDashboardPage() {
   ) as DepartmentRole | undefined;
 
   if (departmentRole) {
-    return <DepartmentDashboard userName={user.name} role={departmentRole} />;
+    return <DepartmentDashboard userName={user.name} role={departmentRole} metrics={metrics} fromDate={range.from} toDate={range.to} />;
   }
 
-  return <MemberDashboard userId={user.id} userName={user.name} />;
+  return <MemberDashboard userName={user.name} metrics={metrics} fromDate={range.from} toDate={range.to} />;
 }
 
-async function SuperAdminDashboard({ userName }: { userName: string }) {
+async function SuperAdminDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   const [
-    totalUsers,
-    activeUsers,
     pendingUsers,
     inactiveUsers,
-    permanentUsers,
     totalRoles,
     totalFeatures,
     forms,
@@ -104,12 +104,9 @@ async function SuperAdminDashboard({ userName }: { userName: string }) {
     payments,
     expenses,
     discipline,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { status: "active" } }),
+  ] = await withDatabaseRetry(() => Promise.all([
     prisma.user.count({ where: { status: "pending" } }),
     prisma.user.count({ where: { status: "inactive" } }),
-    prisma.user.count({ where: { membershipType: "permanent" } }),
     prisma.role.count({ where: { name: { not: "super-admin" } } }),
     prisma.feature.count(),
     prisma.spiritualForm.count(),
@@ -120,9 +117,8 @@ async function SuperAdminDashboard({ userName }: { userName: string }) {
     prisma.payment.count(),
     prisma.expense.count(),
     prisma.disciplineRecord.count(),
-  ]);
+  ]));
 
-  const activeRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0;
   const attentionItems: DashboardCard[] = [
     ...(pendingUsers > 0
       ? [{
@@ -160,12 +156,6 @@ async function SuperAdminDashboard({ userName }: { userName: string }) {
     },
   ];
 
-  const quickActions = [
-    { label: "Users", href: "/admin/users", icon: Users, color: "text-blue-700 bg-blue-50" },
-    { label: "Permissions", href: "/admin/permissions", icon: Shield, color: "text-blue-700 bg-blue-50" },
-    { label: "Settings", href: "/admin/settings", icon: Settings, color: "text-slate-700 bg-slate-100" },
-  ];
-
   const systemCounts = {
     Forms: forms,
     Songs: songs,
@@ -190,21 +180,14 @@ async function SuperAdminDashboard({ userName }: { userName: string }) {
         ]}
       />
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Users" value={totalUsers} note="All registered accounts" icon={Users} />
-        <KpiCard label="Active Users" value={activeUsers} note={`${activeRate}% of all users`} icon={UserCheck} />
-        <KpiCard label="Families" value={0} note="Family groups" icon={Home} />
-        <KpiCard label="Permanent Members" value={permanentUsers} note="Default account type" icon={Users} />
-      </div>
+      <DashboardPerformance metrics={metrics} fromDate={fromDate} toDate={toDate} />
 
-      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <Panel>
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 2xl:grid-cols-4">
-            {attentionItems.map((item) => <AttentionItem key={item.label} item={item} />)}
-          </div>
-        </Panel>
-        <QuickActions actions={quickActions} />
-      </div>
+      <Panel className="mb-4">
+        <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 2xl:grid-cols-4">
+          {attentionItems.map((item) => <AttentionItem key={item.label} item={item} />)}
+        </div>
+      </Panel>
+      <QuickActions actions={personalQuickActions} />
 
       <Panel className="mt-4">
         <PanelHeader title="System Counts" />
@@ -221,167 +204,60 @@ async function SuperAdminDashboard({ userName }: { userName: string }) {
   );
 }
 
-async function AdminOperationsDashboard({ userName }: { userName: string }) {
-  const [totalUsers, activeUsers, pendingUsers, families, permissions, expenses] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { status: "active" } }),
-    prisma.user.count({ where: { status: "pending" } }),
-    prisma.family.count(),
-    prisma.permissionRequest.count({ where: { status: "pending" } }),
-    prisma.expense.count({ where: { status: "pending" } }),
-  ]);
-
-  const cards: DashboardCard[] = [
-    { label: "Pending Users", value: pendingUsers, note: "Approve new accounts", href: "/admin/users?status=pending", icon: UserCog },
-    { label: "Permission Requests", value: permissions, note: "Waiting for decision", href: "/admin/discipline", icon: FileText },
-    { label: "Pending Expenses", value: expenses, note: "Financial approvals", href: "/admin/finance", icon: Wallet },
-    { label: "Families", value: families, note: "Social fellowship groups", href: "/admin/social-fellowship", icon: Home },
-  ];
-
+function AdminOperationsDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
     <RoleDashboard
       eyebrow="Operations"
       title="Admin Dashboard"
       message={`Welcome back, ${userName}.`}
-      kpis={[
-        { label: "Total Users", value: totalUsers, note: "Registered accounts", href: "/admin/users", icon: Users },
-        { label: "Active Users", value: activeUsers, note: "Currently active", href: "/admin/users?status=active", icon: UserCheck },
-        ...cards.slice(0, 2),
-      ]}
-      actions={[
-        { label: "User Management", href: "/admin/users", icon: Users },
-        { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
-        { label: "Finance", href: "/admin/finance", icon: Wallet },
-        { label: "Discipline", href: "/admin/discipline", icon: Gavel },
-      ]}
-      attention={cards}
+      performanceMetrics={metrics}
+      fromDate={fromDate}
+      toDate={toDate}
     />
   );
 }
 
-async function DepartmentDashboard({ userName, role }: { userName: string; role: DepartmentRole }) {
+function DepartmentDashboard({ userName, role, metrics, fromDate, toDate }: { userName: string; role: DepartmentRole; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   const configs = {
     "music-dpt": {
       eyebrow: "Music and Evangelism",
       title: "Music DPT Dashboard",
-      href: "/admin/music",
-      icon: Music,
-      department: "music",
-      queries: [
-        prisma.song.count(),
-        prisma.playlist.count(),
-        prisma.serviceTeam.count(),
-        prisma.actionPlan.count({ where: { department: "music" } }),
-      ],
-      labels: ["Songs", "Playlists", "Service Teams", "Action Plans"],
     },
     "social-dpt": {
       eyebrow: "Social Fellowship",
       title: "Social DPT Dashboard",
-      href: "/admin/social-fellowship",
-      icon: HandHeart,
-      department: "social-fellowship",
-      queries: [
-        prisma.family.count(),
-        prisma.familyTask.count({ where: { status: "pending" } }),
-        prisma.actionPlan.count({ where: { department: "social-fellowship" } }),
-        prisma.user.count({ where: { status: "active" } }),
-      ],
-      labels: ["Families", "Pending Tasks", "Action Plans", "Active Members"],
     },
     "discipline-dpt": {
       eyebrow: "Discipline Management",
       title: "Discipline DPT Dashboard",
-      href: "/admin/discipline",
-      icon: Gavel,
-      department: "discipline",
-      queries: [
-        prisma.permissionRequest.count({ where: { status: "pending" } }),
-        prisma.attendanceSession.count(),
-        prisma.disciplineRecord.count({ where: { status: "active" } }),
-        prisma.actionPlan.count({ where: { department: "discipline" } }),
-      ],
-      labels: ["Pending Permissions", "Attendance Sessions", "Active Records", "Action Plans"],
     },
     "intercession-dpt": {
       eyebrow: "Intercession and Spiritual Growth",
       title: "Intercession DPT Dashboard",
-      href: "/admin/intercession",
-      icon: BookOpen,
-      department: "intercession",
-      queries: [
-        prisma.spiritualForm.count({ where: { isActive: true } }),
-        prisma.formSubmission.count(),
-        prisma.actionPlan.count({ where: { department: "intercession" } }),
-        prisma.user.count({ where: { status: "active" } }),
-      ],
-      labels: ["Active Forms", "Submissions", "Action Plans", "Active Members"],
     },
   }[role];
-
-  const values = await Promise.all(configs.queries);
-  const cards = configs.labels.map((label, index) => ({
-    label,
-    value: values[index] ?? 0,
-    note: index === 0 ? "Main department workload" : "Current department activity",
-    href: configs.href,
-    icon: configs.icon,
-  }));
 
   return (
     <RoleDashboard
       eyebrow={configs.eyebrow}
       title={configs.title}
       message={`Welcome back, ${userName}.`}
-      kpis={cards}
-      actions={[
-        { label: "Open Department", href: configs.href, icon: configs.icon },
-        { label: "Action Plans", href: configs.href, icon: ClipboardList },
-        { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
-        { label: "My Performance", href: "/admin/performance", icon: BarChart3 },
-      ]}
-      attention={cards}
+      performanceMetrics={metrics}
+      fromDate={fromDate}
+      toDate={toDate}
     />
   );
 }
 
-async function MemberDashboard({ userId, userName }: { userId: number; userName: string }) {
-  const year = new Date().getFullYear();
-  const [forms, submissions, contribution, payments, attendance, discipline, announcements] = await Promise.all([
-    prisma.spiritualForm.count({ where: { isActive: true } }),
-    prisma.formSubmission.count({ where: { userId } }),
-    prisma.contribution.findUnique({ where: { userId_year: { userId, year } } }),
-    prisma.payment.findMany({ where: { userId, year }, select: { amount: true } }),
-    prisma.attendanceRecord.count({ where: { userId } }),
-    prisma.disciplineRecord.count({ where: { userId, status: "active" } }),
-    prisma.announcement.count({ where: { status: "active" } }),
-  ]);
-
-  const paid = payments.reduce((sum, payment) => sum + money(payment.amount), 0);
-  const expected = money(contribution?.annualAmount);
-  const progress = expected > 0 ? `${Math.min(100, Math.round((paid / expected) * 100))}%` : "0%";
-
+function MemberDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
     <RoleDashboard
       eyebrow="Member area"
       title="Member Dashboard"
       message={`Welcome back, ${userName}.`}
-      kpis={[
-        { label: "Forms Available", value: forms, note: "Spiritual forms to submit", href: "/admin/intercession", icon: BookOpen },
-        { label: "My Submissions", value: submissions, note: "Forms you submitted", href: "/admin/intercession", icon: CheckCircle2 },
-        { label: "Contribution", value: progress, note: `${paid.toLocaleString()} paid this year`, href: "/admin/contributions", icon: HandCoins },
-        { label: "Attendance Records", value: attendance, note: "Your saved attendance history", href: "/admin/performance", icon: CalendarCheck },
-      ]}
-      actions={[
-        { label: "Take Forms", href: "/admin/intercession", icon: BookOpen },
-        { label: "My Contributions", href: "/admin/contributions", icon: HandCoins },
-        { label: "My Performance", href: "/admin/performance", icon: BarChart3 },
-        { label: "My Profile", href: "/admin/profile", icon: UserCheck },
-      ]}
-      attention={[
-        { label: "Active Announcements", value: announcements, note: "Messages from the team", href: "/admin/announcements", icon: Megaphone },
-        { label: "Discipline Records", value: discipline, note: "Your active records", href: "/admin/performance", icon: Gavel },
-      ]}
+      performanceMetrics={metrics}
+      fromDate={fromDate}
+      toDate={toDate}
     />
   );
 }
@@ -424,16 +300,16 @@ function RoleDashboard({
   eyebrow,
   title,
   message,
-  kpis,
-  actions,
-  attention,
+  performanceMetrics,
+  fromDate,
+  toDate,
 }: {
   eyebrow: string;
   title: string;
   message: string;
-  kpis: DashboardCard[];
-  actions: Array<{ label: string; href: string; icon: typeof Users }>;
-  attention: DashboardCard[];
+  performanceMetrics: PerformanceMetrics;
+  fromDate: string;
+  toDate: string;
 }) {
   return (
     <div className="super-admin-dashboard mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
@@ -444,46 +320,38 @@ function RoleDashboard({
         actions={[{ label: "My Profile", href: "/admin/profile", icon: UserCheck, variant: "secondary" }]}
       />
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((item) => (
-          <Link key={item.label} href={item.href} className="admin-kpi transition hover:-translate-y-0.5 hover:shadow-md">
-            <div>
-              <p className="admin-kpi-label">{item.label}</p>
-              <p className="admin-kpi-value">{typeof item.value === "number" ? item.value.toLocaleString() : item.value}</p>
-              <p className="admin-kpi-note">{item.note}</p>
-            </div>
-            <span className="admin-kpi-icon">
-              <item.icon className="size-4" aria-hidden="true" />
-            </span>
-          </Link>
-        ))}
-      </div>
+      <DashboardPerformance metrics={performanceMetrics} fromDate={fromDate} toDate={toDate} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel>
-          <PanelHeader title="For Your Role" />
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-            {attention.map((item) => <AttentionItem key={item.label} item={item} />)}
-          </div>
-        </Panel>
-        <QuickActions actions={actions.map((action) => ({ ...action, color: "text-blue-700 bg-blue-50" }))} />
-      </div>
+      <QuickActions actions={personalQuickActions} />
     </div>
   );
 }
 
-function KpiCard({ label, value, note, icon: Icon }: { label: string; value: number; note: string; icon: typeof Users }) {
+function DashboardPerformance({ metrics, fromDate, toDate }: { metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
-    <div className="admin-kpi">
-      <div>
-        <p className="admin-kpi-label">{label}</p>
-        <p className="admin-kpi-value">{value.toLocaleString()}</p>
-        <p className="admin-kpi-note">{note}</p>
+    <section className="mb-4">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">My Performance</h2>
+          <p className="text-xs text-gray-500">Your personal results for the selected date range.</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <form method="get" className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">From</span>
+              <input name="from" type="date" min={`${metrics.discipline.year}-01-01`} max={`${metrics.discipline.year}-12-31`} defaultValue={fromDate} className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">To</span>
+              <input name="to" type="date" min={`${metrics.discipline.year}-01-01`} max={`${metrics.discipline.year}-12-31`} defaultValue={toDate} className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            </label>
+            <button type="submit" className="h-9 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700">Apply</button>
+          </form>
+          <Link href={`/admin/performance?from=${fromDate}&to=${toDate}`} className="inline-flex h-9 items-center text-sm font-semibold text-blue-600 hover:text-blue-700">View details</Link>
+        </div>
       </div>
-      <span className="admin-kpi-icon">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
-    </div>
+      <PerformanceSummaryCards metrics={metrics} detailsHref={`/admin/performance?from=${fromDate}&to=${toDate}`} />
+    </section>
   );
 }
 
@@ -510,7 +378,7 @@ function QuickActions({
   return (
     <Panel>
       <PanelHeader title="Quick Actions" />
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-5">
         {actions.map((action) => (
           <Link key={action.label} href={action.href} className="quick-action">
             <span className={`quick-action-icon ${action.color}`}>

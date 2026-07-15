@@ -35,12 +35,13 @@ import {
   approveExpense,
   deleteFinanceActionPlan,
   deleteFinanceActionPlanTask,
-  deleteSponsor,
+  deactivateSponsor,
   rejectExpense,
   voidExpense,
   deleteFinancePayment,
   recordContributionPayment,
   recordSponsorPayment,
+  reactivateSponsor,
   saveAnnualContribution,
   saveExpense,
   saveFinanceActionPlan,
@@ -2384,7 +2385,25 @@ function FinanceSponsorsTab({ currentYear, sponsors, fromDate, toDate, setFromDa
       confirmLabel: "Deactivate Sponsor",
       action: async () => {
         setResult(null);
-        const response = await deleteSponsor(sponsor.id);
+        const response = await deactivateSponsor(sponsor.id);
+        setResult(response);
+        if (response.ok) {
+          setConfirmAction(null);
+          router.refresh();
+        }
+      },
+    });
+  }
+
+  function restoreSponsor(sponsor: Sponsor) {
+    setConfirmAction({
+      title: "Reactivate Sponsor",
+      message: `Reactivate "${sponsor.name}"? They will be able to make new payments again.`,
+      confirmLabel: "Reactivate Sponsor",
+      tone: "primary",
+      action: async () => {
+        setResult(null);
+        const response = await reactivateSponsor(sponsor.id);
         setResult(response);
         if (response.ok) {
           setConfirmAction(null);
@@ -2410,7 +2429,7 @@ function FinanceSponsorsTab({ currentYear, sponsors, fromDate, toDate, setFromDa
         sponsor.rangeReceived,
         Math.max(sponsor.commitmentAmount - sponsor.rangeReceived, 0),
         sponsor.fundType,
-        sponsorStatus(sponsor.commitmentAmount, sponsor.rangeReceived).label,
+        sponsorStatus(sponsor.status, sponsor.commitmentAmount, sponsor.rangeReceived).label,
         sponsor.notes ?? "",
       ]),
     ];
@@ -2475,7 +2494,7 @@ function FinanceSponsorsTab({ currentYear, sponsors, fromDate, toDate, setFromDa
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {filteredSponsors.length ? paginatedSponsors.map((sponsor) => {
-              const status = sponsorStatus(sponsor.commitmentAmount, sponsor.rangeReceived);
+              const status = sponsorStatus(sponsor.status, sponsor.commitmentAmount, sponsor.rangeReceived);
               const remaining = Math.max(sponsor.commitmentAmount - sponsor.rangeReceived, 0);
               return (
                 <tr key={sponsor.id} className="transition hover:bg-gray-50">
@@ -2491,10 +2510,11 @@ function FinanceSponsorsTab({ currentYear, sponsors, fromDate, toDate, setFromDa
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1">
-                      <IconButton label="Record Payment" icon={PlusCircle} onClick={() => setPaymentSponsor(sponsor)} />
+                      {sponsor.status !== "inactive" ? <IconButton label="Record Payment" icon={PlusCircle} onClick={() => setPaymentSponsor(sponsor)} /> : null}
                       <IconButton label="View History" icon={Eye} onClick={() => setHistorySponsor(sponsor)} />
                       <IconButton label="Edit Sponsor" icon={Pencil} onClick={() => setEditingSponsor(sponsor)} />
-                      <IconButton label="Delete Sponsor" icon={Trash2} onClick={() => removeSponsor(sponsor)} danger />
+                      {sponsor.status === "inactive" ? <IconButton label="Reactivate Sponsor" icon={UserCheck} onClick={() => restoreSponsor(sponsor)} /> : null}
+                      {sponsor.status !== "inactive" ? <IconButton label="Deactivate Sponsor" icon={Trash2} onClick={() => removeSponsor(sponsor)} danger /> : null}
                     </div>
                   </td>
                 </tr>
@@ -3051,7 +3071,6 @@ function SponsorModal({
               <option value="one_time">One Time</option>
               <option value="monthly">Monthly</option>
               <option value="annual">Annual</option>
-              <option value="pledge">Pledge</option>
             </select>
           </FieldLabel>
         </div>
@@ -3431,7 +3450,10 @@ function methodBadge(method: string) {
   return badges[method] ?? "bg-gray-100 text-gray-700";
 }
 
-function sponsorStatus(commitment: number, received: number) {
+function sponsorStatus(status: string, commitment: number, received: number) {
+  if (status === "inactive") {
+    return { label: "Inactive", className: "bg-gray-200 text-gray-700" };
+  }
   if (commitment === 0 && received === 0) {
     return { label: "No Commitment", className: "bg-gray-100 text-gray-600" };
   }

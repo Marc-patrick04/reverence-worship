@@ -1,5 +1,10 @@
 export const ACTIVE_EXPENSE_STATUSES = new Set(["pending", "approved", "void_pending"]);
 
+export function calculateContributionTermTarget(annualAmount: number, percentage: number) {
+  if (!Number.isFinite(annualAmount) || annualAmount <= 0 || !Number.isFinite(percentage) || percentage <= 0) return 0;
+  return (annualAmount * percentage) / 100;
+}
+
 export function calculateAvailableBalance(input: {
   memberIncome: number;
   giftIncome: number;

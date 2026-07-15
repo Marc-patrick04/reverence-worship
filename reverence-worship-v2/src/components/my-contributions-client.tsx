@@ -1,9 +1,7 @@
 "use client";
 
-import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, HandCoins, Receipt, X } from "lucide-react";
-import { submitMyContributionPayment } from "@/app/admin/contributions/actions";
+import { Check, ChevronDown, Receipt } from "lucide-react";
 
 type TermRow = {
   term: number;
@@ -13,6 +11,7 @@ type TermRow = {
   remaining: number;
   progress: number;
   status: string;
+  lastPaymentDate: string | null;
 };
 
 type PaymentRow = {
@@ -24,11 +23,6 @@ type PaymentRow = {
   notes: string | null;
   status: string;
   paymentDate: string;
-};
-
-type Result = {
-  ok: boolean;
-  message: string;
 };
 
 export function MyContributionsClient({
@@ -55,31 +49,9 @@ export function MyContributionsClient({
   payments: PaymentRow[];
 }) {
   const router = useRouter();
-  const [paymentTerm, setPaymentTerm] = useState<TermRow | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
-  const [pending, startTransition] = useTransition();
 
   function changeYear(year: string) {
     router.push(`/admin/contributions?year=${year}`);
-  }
-
-  function submitPayment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!paymentTerm) return;
-
-    const formData = new FormData(event.currentTarget);
-    formData.set("year", String(currentYear));
-    formData.set("term", String(paymentTerm.term));
-    setResult(null);
-
-    startTransition(async () => {
-      const response = await submitMyContributionPayment(formData);
-      setResult(response);
-      if (response.ok) {
-        setPaymentTerm(null);
-        router.refresh();
-      }
-    });
   }
 
   return (
@@ -102,17 +74,15 @@ export function MyContributionsClient({
         </label>
       </div>
 
-      {result && (
-        <div className={`rounded-lg border px-4 py-3 text-sm ${result.ok ? "border-green-100 bg-green-50 text-green-700" : "border-red-100 bg-red-50 text-red-700"}`}>
-          {result.message}
-        </div>
-      )}
-
       {!hasContribution && (
         <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Your annual contribution has not been set for {currentYear}. Please contact the finance team.
         </div>
       )}
+
+      <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        Payments are recorded by the Finance team. Contact Finance if a payment is missing or incorrect.
+      </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
@@ -161,7 +131,7 @@ export function MyContributionsClient({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {terms.map((term) => (
-              <TermCard key={term.term} term={term} disabled={!hasContribution || term.status === "completed"} onPay={() => setPaymentTerm(term)} />
+              <TermCard key={term.term} term={term} />
             ))}
           </div>
         </section>
@@ -238,65 +208,15 @@ export function MyContributionsClient({
               <Receipt className="size-5" />
             </div>
             <p className="mt-3 text-sm font-semibold text-gray-700">No payments recorded for {currentYear}</p>
-            <p className="mt-1 text-xs text-gray-500">Your payment history will appear here after you submit a payment.</p>
+            <p className="mt-1 text-xs text-gray-500">Your payment history will appear here after the finance team records a payment.</p>
           </div>
         )}
       </section>
-
-      {paymentTerm && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-600/50 p-3">
-          <div className="w-full max-w-md rounded-2xl border bg-white p-4 shadow-lg sm:p-5">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-lg font-bold text-gray-800">Submit Payment - Term {paymentTerm.term}</h3>
-              <button type="button" onClick={() => setPaymentTerm(null)} className="text-gray-400 hover:text-gray-600" aria-label="Close">
-                <X className="size-5" />
-              </button>
-            </div>
-            <form onSubmit={submitPayment} className="mt-4 space-y-4">
-              <div className="rounded-xl bg-gray-50 p-3 text-sm">
-                <div className="flex justify-between gap-3">
-                  <span className="text-gray-500">Term target</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(paymentTerm.target)}</span>
-                </div>
-                <div className="mt-1 flex justify-between gap-3">
-                  <span className="text-gray-500">Already paid</span>
-                  <span className="font-semibold text-green-700">{formatCurrency(paymentTerm.paid)}</span>
-                </div>
-                <div className="mt-1 flex justify-between gap-3">
-                  <span className="text-gray-500">Remaining</span>
-                  <span className="font-semibold text-blue-700">{formatCurrency(paymentTerm.remaining)}</span>
-                </div>
-              </div>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">Amount *</span>
-                <input name="amount" type="number" min="1" step="0.01" defaultValue={Math.ceil(paymentTerm.remaining || paymentTerm.target)} required className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">Payment Method</span>
-                <select name="paymentMethod" defaultValue="cash" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                  <option value="cash">Cash</option>
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="card">Card</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">Notes</span>
-                <textarea name="notes" rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-              </label>
-              <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setPaymentTerm(null)} className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-300">Cancel</button>
-                <button type="submit" disabled={pending} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{pending ? "Submitting..." : "Submit Payment"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function TermCard({ term, disabled, onPay }: { term: TermRow; disabled: boolean; onPay: () => void }) {
+function TermCard({ term }: { term: TermRow }) {
   const completed = term.status === "completed";
   const partial = term.status === "partial";
   const colors = completed
@@ -307,7 +227,7 @@ function TermCard({ term, disabled, onPay }: { term: TermRow; disabled: boolean;
   const bar = completed ? "bg-green-500" : partial ? "bg-yellow-500" : "bg-gray-300";
 
   return (
-    <div className={`rounded-2xl border p-4 transition hover:shadow-sm ${colors}`}>
+    <div className={`flex h-full flex-col rounded-2xl border p-4 transition hover:shadow-sm ${colors}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Term {term.term}</h3>
@@ -325,20 +245,26 @@ function TermCard({ term, disabled, onPay }: { term: TermRow; disabled: boolean;
       <div className="mt-3 h-1.5 w-full rounded-full bg-gray-200">
         <div className={`h-1.5 rounded-full ${bar}`} style={{ width: `${term.progress}%` }} />
       </div>
-      {completed ? (
-        <p className="mt-3 text-xs text-green-600">Fully paid</p>
-      ) : (
-        <button type="button" onClick={onPay} disabled={disabled} className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-          <HandCoins className="mr-2 size-4" />
-          {term.paid > 0 ? "Pay Remaining" : "Submit Payment"}
-        </button>
-      )}
+      <div className="mt-auto space-y-1.5 pt-3 text-xs">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-500">Remaining</span>
+          <span className={`font-semibold ${completed ? "text-green-700" : "text-gray-800"}`}>{completed ? "Fully paid" : formatCurrency(term.remaining)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-500">Last payment</span>
+          <span className="text-right font-medium text-gray-700">{term.lastPaymentDate ?? "No payment recorded"}</span>
+        </div>
+      </div>
     </div>
   );
 }
 
 function formatCurrency(value: number) {
-  return `RWF ${Math.round(value).toLocaleString()}`;
+  const amount = Math.round(value * 100) / 100;
+  return `RWF ${amount.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function formatLabel(value: string) {
@@ -346,5 +272,5 @@ function formatLabel(value: string) {
 }
 
 function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return value.toFixed(2);
 }

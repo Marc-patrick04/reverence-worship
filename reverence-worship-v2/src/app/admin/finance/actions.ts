@@ -308,6 +308,9 @@ export async function saveSponsor(formData: FormData) {
   if (!Number.isFinite(commitmentAmount) || commitmentAmount < 0) {
     return { ok: false, message: "Commitment amount must be valid." };
   }
+  if (!["one_time", "monthly", "annual"].includes(fundType)) {
+    return { ok: false, message: "Please select a valid fund type." };
+  }
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     return { ok: false, message: "Please select a valid year." };
   }
@@ -365,6 +368,17 @@ export async function recordSponsorPayment(formData: FormData) {
     return { ok: false, message: "Please select a valid year." };
   }
 
+  const sponsor = await prisma.sponsor.findUnique({
+    where: { id: sponsorId },
+    select: { status: true, commitmentAmount: true },
+  });
+  if (!sponsor) {
+    return { ok: false, message: "Sponsor not found." };
+  }
+  if (sponsor.status === "inactive") {
+    return { ok: false, message: "Payments cannot be recorded for an inactive sponsor." };
+  }
+
   await prisma.sponsorPayment.create({
     data: {
       sponsorId,
@@ -378,10 +392,6 @@ export async function recordSponsorPayment(formData: FormData) {
     },
   });
 
-  const sponsor = await prisma.sponsor.findUnique({
-    where: { id: sponsorId },
-    select: { commitmentAmount: true },
-  });
   const totalReceived = await prisma.sponsorPayment.aggregate({
     where: { sponsorId, year },
     _sum: { amount: true },
@@ -399,17 +409,52 @@ export async function recordSponsorPayment(formData: FormData) {
   return { ok: true, message: "Sponsor payment recorded successfully." };
 }
 
-export async function deleteSponsor(id: number) {
+export async function deactivateSponsor(id: number) {
   const user = await requirePermission("finance", "delete-sponsors");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Sponsor not found." };
   }
 
-  await prisma.sponsor.update({ where: { id }, data: { status: "inactive" } });
+  const result = await prisma.sponsor.updateMany({
+    where: { id, status: { not: "inactive" } },
+    data: { status: "inactive" },
+  });
+  if (result.count === 0) {
+    const sponsorExists = await prisma.sponsor.findUnique({ where: { id }, select: { id: true } });
+    return {
+      ok: false,
+      message: sponsorExists ? "Sponsor is already inactive." : "Sponsor not found.",
+    };
+  }
+
   revalidatePath("/admin/finance");
   await logFinance(user.id, "finance.sponsor.deactivated", { sponsorId: id });
   return { ok: true, message: "Sponsor deactivated successfully. Payment history was preserved." };
+}
+
+export async function reactivateSponsor(id: number) {
+  const user = await requirePermission("finance", "manage-sponsors");
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return { ok: false, message: "Sponsor not found." };
+  }
+
+  const result = await prisma.sponsor.updateMany({
+    where: { id, status: "inactive" },
+    data: { status: "active" },
+  });
+  if (result.count === 0) {
+    const sponsorExists = await prisma.sponsor.findUnique({ where: { id }, select: { id: true } });
+    return {
+      ok: false,
+      message: sponsorExists ? "Sponsor is already active." : "Sponsor not found.",
+    };
+  }
+
+  revalidatePath("/admin/finance");
+  await logFinance(user.id, "finance.sponsor.reactivated", { sponsorId: id });
+  return { ok: true, message: "Sponsor reactivated successfully. Payment history was preserved." };
 }
 
 export async function saveExpense(formData: FormData) {

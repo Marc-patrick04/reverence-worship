@@ -1,6 +1,7 @@
 import { PerformanceClient } from "@/components/performance-client";
 import { requirePageAccess } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getPerformanceDateRange } from "@/lib/performance-date-range";
+import { getUserPerformanceData } from "@/lib/user-performance";
 
 function money(value: unknown) {
   return Number(value ?? 0);
@@ -15,87 +16,21 @@ function formatDate(date: Date | null | undefined) {
   }).format(date);
 }
 
-function formatPeriod(records: Array<{ sessionDate: Date }>) {
-  if (records.length === 0) return "No attendance data";
-
-  const sorted = [...records].sort((a, b) => a.sessionDate.getTime() - b.sessionDate.getTime());
-  const start = sorted[0]?.sessionDate;
-  const end = sorted[sorted.length - 1]?.sessionDate;
-
-  if (!start || !end) return "No attendance data";
-
-  const formatter = new Intl.DateTimeFormat("en", { month: "short", year: "numeric" });
-  return `${formatter.format(start)} - ${formatter.format(end)}`;
-}
-
-export default async function PerformancePage() {
+export default async function PerformancePage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const user = await requirePageAccess("performance");
+  const params = await searchParams;
   const year = new Date().getFullYear();
-  const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
-  const yearEnd = new Date(`${year}-12-31T23:59:59.999Z`);
-
-  const [disciplineRecords, attendanceRecords, contribution, payments] = await Promise.all([
-    prisma.disciplineRecord.findMany({
-      where: {
-        userId: user.id,
-        createdAt: { gte: yearStart, lte: yearEnd },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.attendanceRecord.findMany({
-      where: {
-        userId: user.id,
-        sessionDate: { gte: yearStart, lte: yearEnd },
-      },
-      orderBy: [{ sessionDate: "desc" }, { createdAt: "desc" }],
-    }),
-    prisma.contribution.findUnique({
-      where: { userId_year: { userId: user.id, year } },
-    }),
-    prisma.payment.findMany({
-      where: { userId: user.id, year },
-      orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
-    }),
-  ]);
-
-  const goodBehavior = disciplineRecords.filter((record) => record.type === "positive").length;
-  const presentCount = attendanceRecords.filter((record) => ["present", "late"].includes(record.status)).length;
-  const communicatedCount = attendanceRecords.filter((record) => record.communicated).length;
-  const expectedContribution = money(contribution?.annualAmount);
-  const paidContribution = payments.reduce((sum, payment) => sum + money(payment.amount), 0);
-  const attendancePeriod = formatPeriod(attendanceRecords);
+  const range = getPerformanceDateRange(year, params.from, params.to);
+  const { disciplineRecords, attendanceRecords, payments, metrics } = await getUserPerformanceData(user.id, year, { from: range.fromDate, to: range.toDate, label: range.label });
 
   return (
     <PerformanceClient
+      key={range.label}
       year={year}
-      metrics={{
-        discipline: {
-          rate: disciplineRecords.length > 0 ? Math.round((goodBehavior / disciplineRecords.length) * 100) : 0,
-          good: goodBehavior,
-          total: disciplineRecords.length,
-          year,
-        },
-        attendance: {
-          rate: attendanceRecords.length > 0 ? Math.round((presentCount / attendanceRecords.length) * 100) : 0,
-          present: presentCount,
-          total: attendanceRecords.length,
-          period: attendancePeriod,
-          year,
-        },
-        communication: {
-          rate: attendanceRecords.length > 0 ? Math.round((communicatedCount / attendanceRecords.length) * 100) : 0,
-          communicated: communicatedCount,
-          total: attendanceRecords.length,
-          period: attendancePeriod,
-          year,
-        },
-        contribution: {
-          rate: expectedContribution > 0 ? Math.min(100, Math.round((paidContribution / expectedContribution) * 100)) : 0,
-          paid: paidContribution,
-          expected: expectedContribution,
-          year,
-        },
-      }}
+      fromDate={range.from}
+      toDate={range.to}
+      rangeLabel={range.label}
+      metrics={metrics}
       records={{
         discipline: disciplineRecords.map((record) => ({
           id: record.id,

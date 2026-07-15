@@ -33,8 +33,9 @@ function asQuestions(value: unknown) {
     : [];
 }
 
-export default async function IntercessionPage() {
+export default async function IntercessionPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const user = await requireUser();
+  const params = await searchParams;
   const permissions = await getUserPermissionSet(user);
   const intercessionPermissions = {
     canSubmitForms: permissionSetHas(permissions, "intercession", "submit-forms"),
@@ -118,6 +119,7 @@ export default async function IntercessionPage() {
 
   return (
     <IntercessionClient
+      initialTab={params.tab === "bible" && intercessionPermissions.canReadBible ? "bible" : "forms"}
       permissions={intercessionPermissions}
       forms={serializedForms}
       mySubmissions={mySubmissions.map((submission) => {

@@ -173,12 +173,14 @@ type BibleResult = {
 type Section = "available" | "results" | "manage" | "reports";
 
 export function IntercessionClient({
+  initialTab,
   permissions,
   forms,
   mySubmissions,
   reportRows,
   actionPlans,
 }: {
+  initialTab: "forms" | "bible";
   permissions: IntercessionPermissions;
   forms: SpiritualForm[];
   mySubmissions: FormSubmission[];
@@ -186,7 +188,7 @@ export function IntercessionClient({
   actionPlans: IntercessionActionPlan[];
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("forms");
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [section, setSection] = useState<Section>("available");
   const [query, setQuery] = useState("");
   const [reportSearch, setReportSearch] = useState("");

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateAvailableBalance, canApproveExpense, validateExpenseRequest } from "../src/lib/finance-rules";
+import { calculateAvailableBalance, calculateContributionTermTarget, canApproveExpense, validateExpenseRequest } from "../src/lib/finance-rules";
+
+test("contribution term targets follow the saved percentages", () => {
+  assert.equal(calculateContributionTermTarget(2000, 33.33), 666.6);
+  assert.equal(calculateContributionTermTarget(2000, 33.34), 666.8);
+});
 
 test("pending expenses reserve funds while rejected and voided expenses do not", () => {
   assert.equal(calculateAvailableBalance({

@@ -6,10 +6,15 @@ const globalForPrisma = globalThis as unknown as {
   prismaSchemaVersion?: string;
 };
 
-const PRISMA_SCHEMA_VERSION = "2026-07-14-expense-void-approval";
+const PRISMA_SCHEMA_VERSION = "2026-07-15-pg-pool-resilience";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
+  max: 5,
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
 });
 
 const existingPrisma = globalForPrisma.prisma;
