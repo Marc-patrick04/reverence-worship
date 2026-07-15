@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
+import { del as deleteBlob, put } from "@vercel/blob";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -52,9 +53,6 @@ async function saveUploadedImage(file: File, folder: "gallery" | "landing") {
     throw new Error("Only image files are allowed.");
   }
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
-  await mkdir(uploadDir, { recursive: true });
-
   const extension = path.extname(file.name) || ".jpg";
   const baseName = path
     .basename(file.name, extension)
@@ -62,12 +60,41 @@ async function saveUploadedImage(file: File, folder: "gallery" | "landing") {
     .replace(/^-|-$/g, "")
     .toLowerCase();
   const filename = `${Date.now()}-${crypto.randomUUID()}-${baseName || "image"}${extension}`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await put(`uploads/${folder}/${filename}`, file, {
+      access: "public",
+      contentType: file.type,
+    });
+    return blob.url;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error("Image uploads on Vercel require Vercel Blob. Add BLOB_READ_WRITE_TOKEN in Vercel Environment Variables.");
+  }
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
+  await mkdir(uploadDir, { recursive: true });
+
   const diskPath = path.join(uploadDir, filename);
   const bytes = await file.arrayBuffer();
 
   await writeFile(diskPath, Buffer.from(bytes));
 
   return `/uploads/${folder}/${filename}`;
+}
+
+async function deleteUploadedImage(imagePath: string | null | undefined, folder: "gallery" | "landing") {
+  if (!imagePath) return;
+
+  if (imagePath.startsWith("https://")) {
+    await deleteBlob(imagePath).catch(() => undefined);
+    return;
+  }
+
+  if (imagePath.startsWith(`/uploads/${folder}/`)) {
+    await unlink(path.join(process.cwd(), "public", imagePath)).catch(() => undefined);
+  }
 }
 
 export async function createSong(formData: FormData) {
@@ -420,7 +447,12 @@ export async function uploadGalleryPhotos(formData: FormData) {
       return { ok: false, message: "Only image files are allowed." };
     }
 
-    const imagePath = await saveUploadedImage(file, "gallery");
+    let imagePath: string;
+    try {
+      imagePath = await saveUploadedImage(file, "gallery");
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Photo upload failed." };
+    }
     const baseName = path.basename(file.name, path.extname(file.name));
 
     created.push({
@@ -473,10 +505,7 @@ export async function deleteGalleryPhoto(photoId: number) {
     select: { imagePath: true },
   });
 
-  if (photo?.imagePath?.startsWith("/uploads/gallery/")) {
-    const diskPath = path.join(process.cwd(), "public", photo.imagePath);
-    await unlink(diskPath).catch(() => undefined);
-  }
+  await deleteUploadedImage(photo?.imagePath, "gallery");
 
   await prisma.photoGallery.delete({
     where: { id: photoId },
@@ -814,7 +843,11 @@ export async function saveFeaturedImage(formData: FormData) {
 
   let imagePath: string | undefined;
   if (file instanceof File && file.size > 0) {
-    imagePath = await saveUploadedImage(file, "landing");
+    try {
+      imagePath = await saveUploadedImage(file, "landing");
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Image upload failed." };
+    }
   }
 
   if (id) {
@@ -828,9 +861,7 @@ export async function saveFeaturedImage(formData: FormData) {
         ...(imagePath ? { imagePath } : {}),
       },
     });
-    if (imagePath && current?.imagePath?.startsWith("/uploads/landing/")) {
-      await unlink(path.join(process.cwd(), "public", current.imagePath)).catch(() => undefined);
-    }
+    if (imagePath) await deleteUploadedImage(current?.imagePath, "landing");
   } else {
     if (!imagePath) return { ok: false, message: "Select an image to upload." };
     const maxOrder = await prisma.landingFeaturedImage.aggregate({ _max: { sortOrder: true } });
@@ -874,9 +905,7 @@ export async function toggleFeaturedImageHero(id: number) {
 export async function deleteFeaturedImage(id: number) {
   await requireUser();
   const image = await prisma.landingFeaturedImage.findUnique({ where: { id }, select: { imagePath: true } });
-  if (image?.imagePath?.startsWith("/uploads/landing/")) {
-    await unlink(path.join(process.cwd(), "public", image.imagePath)).catch(() => undefined);
-  }
+  await deleteUploadedImage(image?.imagePath, "landing");
   await prisma.landingFeaturedImage.delete({ where: { id } });
   revalidatePath("/admin/music");
   return { ok: true, message: "Featured image deleted." };
