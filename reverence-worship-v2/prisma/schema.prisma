@@ -57,55 +57,72 @@ model User {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  createdBy User?      @relation("CreatedUsers", fields: [createdById], references: [id], onDelete: SetNull)
-  created   User[]     @relation("CreatedUsers")
-  roles     UserRole[]
-  logs      ActivityLog[]
-  familyMembership FamilyMember?
-  parentFamily Family? @relation("FamilyParent")
-  assignedFamilyTasks FamilyTask[] @relation("AssignedFamilyTasks")
-  createdActionPlans ActionPlan[] @relation("CreatedActionPlans")
-  assignedActionPlanTasks ActionPlanTask[] @relation("AssignedActionPlanTasks")
-  attendanceRecords AttendanceRecord[] @relation("AttendanceUser")
-  markedAttendanceRecords AttendanceRecord[] @relation("AttendanceMarker")
-  completedAttendanceSessions AttendanceSession[] @relation("AttendanceSessionCompleter")
-  permissionRequests PermissionRequest[] @relation("PermissionRequester")
-  approvedPermissionRequests PermissionRequest[] @relation("PermissionApprover")
-  disciplineRecords DisciplineRecord[] @relation("DisciplineUser")
-  recordedDisciplineRecords DisciplineRecord[] @relation("DisciplineRecorder")
-  resolvedDisciplineRecords DisciplineRecord[] @relation("DisciplineResolver")
-  createdPlaylists Playlist[] @relation("CreatedPlaylists")
-  createdSongs Song[] @relation("CreatedSongs")
-  createdGallery PhotoGallery[] @relation("CreatedGallery")
-  createdServiceTeams ServiceTeam[] @relation("CreatedServiceTeams")
-  teamMemberships TeamMember[]
-  createdBoardItems PublicBoardItem[] @relation("CreatedBoardItems")
-  createdLandingVideos LandingYoutubeVideo[] @relation("CreatedLandingVideos")
-  createdFeaturedImages LandingFeaturedImage[] @relation("CreatedFeaturedImages")
-  createdSpiritualForms SpiritualForm[] @relation("CreatedSpiritualForms")
-  formSubmissions FormSubmission[]
-  contributions Contribution[] @relation("ContributionUser")
-  createdContributions Contribution[] @relation("ContributionCreator")
-  payments Payment[] @relation("PaymentUser")
-  createdPayments Payment[] @relation("PaymentCreator")
-  createdGifts Gift[] @relation("GiftCreator")
-  createdExpenses Expense[] @relation("ExpenseCreator")
-  approvedExpenses Expense[] @relation("ExpenseApprover")
-  firstApprovalExpenses Expense[] @relation("ExpenseFirstApprover")
-  secondApprovalExpenses Expense[] @relation("ExpenseSecondApprover")
-  voidedExpenses Expense[] @relation("ExpenseVoider")
-  requestedExpenseVoids Expense[] @relation("ExpenseVoidRequester")
-  financeReconciliations FinanceReconciliation[] @relation("FinanceReconciler")
-  createdSponsors Sponsor[] @relation("SponsorCreator")
-  createdSponsorPayments SponsorPayment[] @relation("SponsorPaymentCreator")
-  createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
-  publishedAnnouncements Announcement[] @relation("PublishedAnnouncements")
-  announcementReads AnnouncementUserRead[]
+  createdBy                   User?                   @relation("CreatedUsers", fields: [createdById], references: [id], onDelete: SetNull)
+  created                     User[]                  @relation("CreatedUsers")
+  roles                       UserRole[]
+  logs                        ActivityLog[]
+  familyMembership            FamilyMember?
+  parentFamily                Family?                 @relation("FamilyParent")
+  assignedFamilyTasks         FamilyTask[]            @relation("AssignedFamilyTasks")
+  createdActionPlans          ActionPlan[]            @relation("CreatedActionPlans")
+  assignedActionPlanTasks     ActionPlanTask[]        @relation("AssignedActionPlanTasks")
+  attendanceRecords           AttendanceRecord[]      @relation("AttendanceUser")
+  markedAttendanceRecords     AttendanceRecord[]      @relation("AttendanceMarker")
+  completedAttendanceSessions AttendanceSession[]     @relation("AttendanceSessionCompleter")
+  permissionRequests          PermissionRequest[]     @relation("PermissionRequester")
+  approvedPermissionRequests  PermissionRequest[]     @relation("PermissionApprover")
+  disciplineRecords           DisciplineRecord[]      @relation("DisciplineUser")
+  recordedDisciplineRecords   DisciplineRecord[]      @relation("DisciplineRecorder")
+  resolvedDisciplineRecords   DisciplineRecord[]      @relation("DisciplineResolver")
+  createdPlaylists            Playlist[]              @relation("CreatedPlaylists")
+  createdSongs                Song[]                  @relation("CreatedSongs")
+  createdGallery              PhotoGallery[]          @relation("CreatedGallery")
+  createdServiceTeams         ServiceTeam[]           @relation("CreatedServiceTeams")
+  teamMemberships             TeamMember[]
+  createdBoardItems           PublicBoardItem[]       @relation("CreatedBoardItems")
+  createdLandingVideos        LandingYoutubeVideo[]   @relation("CreatedLandingVideos")
+  createdFeaturedImages       LandingFeaturedImage[]  @relation("CreatedFeaturedImages")
+  createdSpiritualForms       SpiritualForm[]         @relation("CreatedSpiritualForms")
+  formSubmissions             FormSubmission[]
+  contributions               Contribution[]          @relation("ContributionUser")
+  createdContributions        Contribution[]          @relation("ContributionCreator")
+  payments                    Payment[]               @relation("PaymentUser")
+  createdPayments             Payment[]               @relation("PaymentCreator")
+  createdGifts                Gift[]                  @relation("GiftCreator")
+  createdExpenses             Expense[]               @relation("ExpenseCreator")
+  approvedExpenses            Expense[]               @relation("ExpenseApprover")
+  firstApprovalExpenses       Expense[]               @relation("ExpenseFirstApprover")
+  secondApprovalExpenses      Expense[]               @relation("ExpenseSecondApprover")
+  voidedExpenses              Expense[]               @relation("ExpenseVoider")
+  requestedExpenseVoids       Expense[]               @relation("ExpenseVoidRequester")
+  financeReconciliations      FinanceReconciliation[] @relation("FinanceReconciler")
+  createdSponsors             Sponsor[]               @relation("SponsorCreator")
+  createdSponsorPayments      SponsorPayment[]        @relation("SponsorPaymentCreator")
+  createdAnnouncements        Announcement[]          @relation("CreatedAnnouncements")
+  publishedAnnouncements      Announcement[]          @relation("PublishedAnnouncements")
+  announcementReads           AnnouncementUserRead[]
+  notifications               Notification[]
+  emailDeliveries             EmailDelivery[]
+  passwordResetTokens         PasswordResetToken[]
 
   @@index([status])
   @@index([membershipType])
   @@index([isSinger])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Family {
@@ -124,9 +141,9 @@ model Family {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  parent  User?          @relation("FamilyParent", fields: [parentId], references: [id], onDelete: SetNull)
-  members FamilyMember[]
-  tasks   FamilyTask[]
+  parent      User?          @relation("FamilyParent", fields: [parentId], references: [id], onDelete: SetNull)
+  members     FamilyMember[]
+  tasks       FamilyTask[]
   actionPlans ActionPlan[]
 
   @@map("families")
@@ -216,22 +233,22 @@ model ActionPlan {
 }
 
 model ActionPlanTask {
-  id                Int       @id @default(autoincrement())
-  actionPlanId      Int       @map("action_plan_id")
-  taskName          String    @map("task_name")
-  activity          String?
-  targetMilestone   String?   @map("target_milestone")
-  estimatedBudget   Decimal   @default(0) @map("estimated_budget") @db.Decimal(15, 2)
-  startDate         DateTime? @map("start_date") @db.Date
-  deadline          DateTime? @db.Date
-  priority          String    @default("medium")
-  progress          Int       @default(0)
-  assignedTo        Int?      @map("assigned_to")
-  status            String    @default("pending")
-  startedAt         DateTime? @map("started_at")
-  completedAt       DateTime? @map("completed_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  actionPlanId    Int       @map("action_plan_id")
+  taskName        String    @map("task_name")
+  activity        String?
+  targetMilestone String?   @map("target_milestone")
+  estimatedBudget Decimal   @default(0) @map("estimated_budget") @db.Decimal(15, 2)
+  startDate       DateTime? @map("start_date") @db.Date
+  deadline        DateTime? @db.Date
+  priority        String    @default("medium")
+  progress        Int       @default(0)
+  assignedTo      Int?      @map("assigned_to")
+  status          String    @default("pending")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
   assignee   User?      @relation("AssignedActionPlanTasks", fields: [assignedTo], references: [id], onDelete: SetNull)
@@ -315,28 +332,28 @@ model Gift {
 }
 
 model Expense {
-  id          Int       @id @default(autoincrement())
-  category    String?
-  description String?
-  amount      Decimal   @db.Decimal(15, 2)
-  date        DateTime? @default(now()) @db.Date
-  status      String?   @default("pending")
-  approvedBy  Int?      @map("approved_by")
-  receiptPath String?   @map("receipt_path")
-  referenceNumber String? @map("reference_number")
-  rejectionReason String? @map("rejection_reason")
-  voidReason  String?   @map("void_reason")
-  voidedAt    DateTime? @map("voided_at")
-  voidedBy    Int?      @map("voided_by")
+  id              Int       @id @default(autoincrement())
+  category        String?
+  description     String?
+  amount          Decimal   @db.Decimal(15, 2)
+  date            DateTime? @default(now()) @db.Date
+  status          String?   @default("pending")
+  approvedBy      Int?      @map("approved_by")
+  receiptPath     String?   @map("receipt_path")
+  referenceNumber String?   @map("reference_number")
+  rejectionReason String?   @map("rejection_reason")
+  voidReason      String?   @map("void_reason")
+  voidedAt        DateTime? @map("voided_at")
+  voidedBy        Int?      @map("voided_by")
   voidRequestedAt DateTime? @map("void_requested_at")
-  voidRequestedBy Int? @map("void_requested_by")
-  notes       String?
-  createdBy   Int?      @map("created_by")
-  approverId1 Int?      @map("approver_id_1")
-  approverId2 Int?      @map("approver_id_2")
-  year        Int?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  voidRequestedBy Int?      @map("void_requested_by")
+  notes           String?
+  createdBy       Int?      @map("created_by")
+  approverId1     Int?      @map("approver_id_1")
+  approverId2     Int?      @map("approver_id_2")
+  year            Int?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   creator        User? @relation("ExpenseCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   approver       User? @relation("ExpenseApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
@@ -351,12 +368,12 @@ model Expense {
 }
 
 model FinanceReconciliation {
-  id         Int      @id @default(autoincrement())
-  sourceType String   @map("source_type")
-  sourceId   Int      @map("source_id")
-  reference  String?
-  notes      String?
-  reconciledBy Int    @map("reconciled_by")
+  id           Int      @id @default(autoincrement())
+  sourceType   String   @map("source_type")
+  sourceId     Int      @map("source_id")
+  reference    String?
+  notes        String?
+  reconciledBy Int      @map("reconciled_by")
   reconciledAt DateTime @default(now()) @map("reconciled_at")
 
   reconciler User @relation("FinanceReconciler", fields: [reconciledBy], references: [id], onDelete: Restrict)
@@ -381,7 +398,7 @@ model Sponsor {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  creator User? @relation("SponsorCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  creator  User?            @relation("SponsorCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   payments SponsorPayment[]
 
   @@index([year])
@@ -438,13 +455,13 @@ model AttendanceRecord {
 }
 
 model AttendanceSession {
-  sessionDate DateTime @map("session_date") @db.Date
-  sessionType String   @map("session_type")
-  isCompleted Boolean  @default(false) @map("is_completed")
+  sessionDate DateTime  @map("session_date") @db.Date
+  sessionType String    @map("session_type")
+  isCompleted Boolean   @default(false) @map("is_completed")
   completedAt DateTime? @map("completed_at")
-  completedBy Int?     @map("completed_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  completedBy Int?      @map("completed_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   completer User? @relation("AttendanceSessionCompleter", fields: [completedBy], references: [id], onDelete: SetNull)
 
@@ -517,12 +534,12 @@ model DisciplineRecord {
 }
 
 model Playlist {
-  id          Int            @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String?
-  createdBy   Int?           @map("created_by")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+  createdBy   Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   creator User?          @relation("CreatedPlaylists", fields: [createdBy], references: [id], onDelete: SetNull)
   songs   PlaylistSong[]
@@ -532,17 +549,17 @@ model Playlist {
 }
 
 model Song {
-  id             Int            @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   title          String
   artist         String?
-  keySignature   String?        @map("key_signature")
+  keySignature   String?  @map("key_signature")
   tempo          Int?
   lyrics         String?
-  youtubeLink    String?        @map("youtube_link")
-  assignedSinger String?        @map("assigned_singer")
-  createdBy      Int?           @map("created_by")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  youtubeLink    String?  @map("youtube_link")
+  assignedSinger String?  @map("assigned_singer")
+  createdBy      Int?     @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   creator   User?          @relation("CreatedSongs", fields: [createdBy], references: [id], onDelete: SetNull)
   playlists PlaylistSong[]
@@ -697,17 +714,17 @@ model SpiritualForm {
 }
 
 model FormSubmission {
-  id          Int      @id @default(autoincrement())
-  formId      Int      @map("form_id")
-  userId      Int?     @map("user_id")
-  answers     Json     @default("{}")
-  manualGrades Json?   @map("manual_grades")
-  score       Float?
-  isReleased  Boolean  @default(false) @map("is_released")
-  releasedAt  DateTime? @map("released_at")
-  submittedAt DateTime @default(now()) @map("submitted_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           Int       @id @default(autoincrement())
+  formId       Int       @map("form_id")
+  userId       Int?      @map("user_id")
+  answers      Json      @default("{}")
+  manualGrades Json?     @map("manual_grades")
+  score        Float?
+  isReleased   Boolean   @default(false) @map("is_released")
+  releasedAt   DateTime? @map("released_at")
+  submittedAt  DateTime  @default(now()) @map("submitted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   form SpiritualForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -718,28 +735,28 @@ model FormSubmission {
 }
 
 model Announcement {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   title          String
   content        String
-  type           String   @default("general")
-  priority       String   @default("normal")
-  status         String   @default("active")
+  type           String    @default("general")
+  priority       String    @default("normal")
+  status         String    @default("active")
   scheduledDate  DateTime? @map("scheduled_date") @db.Date
   expiryDate     DateTime? @map("expiry_date") @db.Date
-  targetAudience String?  @map("target_audience")
-  targetType     String   @default("all") @map("target_type")
-  targetRoles    String?  @map("target_roles")
-  targetUsers    String?  @map("target_users")
-  imagePath      String?  @map("image_path")
-  emailSent      Boolean  @default(false) @map("email_sent")
-  createdBy      Int?     @map("created_by")
-  publishedBy    Int?     @map("published_by")
+  targetAudience String?   @map("target_audience")
+  targetType     String    @default("all") @map("target_type")
+  targetRoles    String?   @map("target_roles")
+  targetUsers    String?   @map("target_users")
+  imagePath      String?   @map("image_path")
+  emailSent      Boolean   @default(false) @map("email_sent")
+  createdBy      Int?      @map("created_by")
+  publishedBy    Int?      @map("published_by")
   publishedAt    DateTime? @map("published_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  creator   User? @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: SetNull)
-  publisher User? @relation("PublishedAnnouncements", fields: [publishedBy], references: [id], onDelete: SetNull)
+  creator   User?                  @relation("CreatedAnnouncements", fields: [createdBy], references: [id], onDelete: SetNull)
+  publisher User?                  @relation("PublishedAnnouncements", fields: [publishedBy], references: [id], onDelete: SetNull)
   reads     AnnouncementUserRead[]
 
   @@index([status])
@@ -764,13 +781,13 @@ model AnnouncementUserRead {
 }
 
 model Role {
-  id          Int                  @id @default(autoincrement())
-  name        String               @unique
-  displayName String               @map("display_name")
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  displayName String   @map("display_name")
   description String?
-  isSystem    Boolean              @default(false) @map("is_system")
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   users       UserRole[]
   permissions RolePageFeature[]
@@ -792,16 +809,16 @@ model UserRole {
 }
 
 model Page {
-  id          Int                 @id @default(autoincrement())
-  name        String              @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   label       String
   description String?
   icon        String?
   href        String?
-  sortOrder   Int                 @default(0) @map("sort_order")
-  isActive    Boolean             @default(true) @map("is_active")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   features    Feature[]
   permissions RolePageFeature[]
@@ -811,15 +828,15 @@ model Page {
 }
 
 model Feature {
-  id          Int                 @id @default(autoincrement())
-  pageId      Int                 @map("page_id")
+  id          Int      @id @default(autoincrement())
+  pageId      Int      @map("page_id")
   name        String
   label       String
   description String?
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  page        Page                @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page        Page              @relation(fields: [pageId], references: [id], onDelete: Cascade)
   permissions RolePageFeature[]
 
   @@unique([pageId, name])
@@ -871,4 +888,49 @@ model ActivityLog {
   @@index([module])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+model Notification {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  type       String
+  title      String
+  message    String
+  link       String?
+  sourceType String?   @map("source_type")
+  sourceId   Int?      @map("source_id")
+  dedupeKey  String?   @unique @map("dedupe_key")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email EmailDelivery?
+
+  @@index([userId, readAt, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("notifications")
+}
+
+model EmailDelivery {
+  id             Int       @id @default(autoincrement())
+  userId         Int?      @map("user_id")
+  notificationId Int?      @unique @map("notification_id")
+  recipient      String
+  subject        String
+  text           String
+  html           String?
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  lastError      String?   @map("last_error")
+  nextAttemptAt  DateTime? @map("next_attempt_at")
+  sentAt         DateTime? @map("sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([recipient])
+  @@map("email_deliveries")
 }

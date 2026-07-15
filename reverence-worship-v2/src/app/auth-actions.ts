@@ -1,15 +1,54 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSystemSetting, isRegistrationEnabled, settingToNumber } from "@/lib/system-settings";
+import { notifyUsers, userIdsWithPermission } from "@/lib/notifications";
 
 type AuthState = {
   error?: string;
+  success?: string;
 };
+
+function tokenHash(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function requestPasswordResetAction(_previousState: AuthState, formData: FormData): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!z.email().safeParse(email).success) return { error: "Enter a valid email address." };
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (user) {
+    const token = randomBytes(32).toString("hex");
+    await prisma.$transaction([
+      prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } }),
+      prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: tokenHash(token), expiresAt: new Date(Date.now() + 60 * 60 * 1000) } }),
+    ]);
+    await notifyUsers({ userIds: [user.id], type: "security", title: "Password reset requested", message: "A password reset was requested for your account. The secure link expires in one hour. If this was not you, ignore this message.", link: `/reset-password?token=${token}`, sourceType: "user", sourceId: user.id, dedupeKey: `password-reset:${user.id}:${Date.now()}` });
+  }
+  return { success: "If an account exists for that email, a reset link has been sent." };
+}
+
+export async function completePasswordResetAction(_previousState: AuthState, formData: FormData): Promise<AuthState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("passwordConfirmation") ?? "");
+  if (password.length < 6) return { error: "Password must be at least 6 characters." };
+  if (password !== confirmation) return { error: "Passwords do not match." };
+  const reset = await prisma.passwordResetToken.findUnique({ where: { tokenHash: tokenHash(token) }, select: { id: true, userId: true, expiresAt: true, usedAt: true } });
+  if (!reset || reset.usedAt || reset.expiresAt < new Date()) return { error: "This reset link is invalid or has expired." };
+  const passwordHash = await bcrypt.hash(password, 12);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+  ]);
+  await notifyUsers({ userIds: [reset.userId], type: "security", title: "Password reset completed", message: "Your password was reset successfully. Contact an administrator immediately if you did not make this change.", link: "/login", sourceType: "user", sourceId: reset.userId, dedupeKey: `password-reset:${reset.id}:completed` });
+  return { success: "Password reset successfully. You can now sign in." };
+}
 
 const loginSchema = z.object({
   email: z.email().trim().toLowerCase(),
@@ -130,6 +169,33 @@ export async function registerAction(
       },
     },
   });
+
+  await notifyUsers({
+    userIds: [user.id],
+    type: "account",
+    title: "Registration submitted",
+    message: firstUser
+      ? "Your account has been created and activated."
+      : "Your registration was received and is awaiting administrator approval.",
+    link: "/admin/dashboard",
+    sourceType: "user",
+    sourceId: user.id,
+    dedupeKey: `registration:${user.id}:submitted`,
+  });
+
+  if (!firstUser) {
+    const approverIds = await userIdsWithPermission("users", "change-status");
+    await notifyUsers({
+      userIds: approverIds,
+      type: "account",
+      title: "New account awaiting approval",
+      message: `${user.name} submitted a registration and is awaiting approval.`,
+      link: "/admin/users",
+      sourceType: "user",
+      sourceId: user.id,
+      dedupeKey: `registration:${user.id}:approval`,
+    });
+  }
 
   if (!firstUser) {
     return {

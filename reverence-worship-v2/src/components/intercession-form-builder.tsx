@@ -69,6 +69,7 @@ type BuilderSettings = {
   notify_user_on_review: boolean;
   allow_export: boolean;
   include_timestamps: boolean;
+  submission_deadline: string;
 };
 
 export type IntercessionBuilderInitialData = {
@@ -164,6 +165,7 @@ const defaultSettings: BuilderSettings = {
   notify_user_on_review: false,
   allow_export: true,
   include_timestamps: true,
+  submission_deadline: "",
 };
 
 export function IntercessionFormBuilder({ initialData }: { initialData?: IntercessionBuilderInitialData }) {
@@ -843,25 +845,8 @@ function SettingsPanel({
   activeTab,
   setActiveTab,
 }: {
-  settings: Record<string, boolean | string | number>;
-  setSettings: React.Dispatch<React.SetStateAction<{
-    is_quiz: boolean;
-    release_grade: string;
-    default_points: number;
-    allow_view_response: boolean;
-    limit_one_response: boolean;
-    require_login: boolean;
-    show_progress_bar: boolean;
-    shuffle_questions: boolean;
-    show_question_numbers: boolean;
-    default_required: boolean;
-    is_published: boolean;
-    allow_partial_points: boolean;
-    notify_on_submit: boolean;
-    notify_user_on_review: boolean;
-    allow_export: boolean;
-    include_timestamps: boolean;
-  }>>;
+  settings: BuilderSettings;
+  setSettings: React.Dispatch<React.SetStateAction<BuilderSettings>>;
   activeTab: SettingsTab;
   setActiveTab: (tab: SettingsTab) => void;
 }) {
@@ -916,6 +901,11 @@ function SettingsPanel({
             <SettingToggle title="User can view their responses" description="Allow users to see their submitted answers" checked={Boolean(settings.allow_view_response)} onChange={(value) => update("allow_view_response", value)} />
             <SettingToggle title="Limit to 1 response" description="Prevent users from submitting more than once" checked={Boolean(settings.limit_one_response)} onChange={(value) => update("limit_one_response", value)} />
             <SettingToggle title="Require login to submit" description="Only authenticated users can submit responses" checked={Boolean(settings.require_login)} onChange={(value) => update("require_login", value)} />
+            <div className="border-b border-gray-100 py-3">
+              <h3 className="mb-2 text-sm font-medium text-gray-800">Submission deadline</h3>
+              <input type="date" value={String(settings.submission_deadline ?? "")} onChange={(event) => update("submission_deadline", event.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+              <p className="mt-1 text-xs text-gray-500">Users who have not submitted will be reminded as the deadline approaches.</p>
+            </div>
           </>
         )}
         {activeTab === "presentation" && (

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyEmailAddress, notifyUsers } from "@/lib/notifications";
 
 const createUserSchema = z.object({
   name: z.string().trim().min(2),
@@ -136,7 +137,7 @@ export async function createUserAction(
       .filter(Number.isFinite),
   );
 
-  await prisma.user.create({
+  const createdUser = await prisma.user.create({
     data: {
       name: parsed.data.name,
       email: parsed.data.email,
@@ -163,6 +164,18 @@ export async function createUserAction(
     },
   });
 
+  await notifyUsers({
+    userIds: [createdUser.id],
+    type: "account",
+    title: "Account created",
+    message: `Your account was created with ${createdUser.status} status.`,
+    link: "/admin/dashboard",
+    sourceType: "user",
+    sourceId: createdUser.id,
+    dedupeKey: `account:${createdUser.id}:created`,
+  });
+  await prisma.activityLog.create({ data: { userId: admin.id, action: "users.created", module: "users", metadata: { affectedUserId: createdUser.id, status: createdUser.status } } });
+
   revalidatePath("/admin/users");
   revalidatePath("/admin/dashboard");
 
@@ -172,11 +185,14 @@ export async function createUserAction(
 export async function runUserTableAction(formData: FormData) {
   const userId = Number(formData.get("userId"));
   const action = String(formData.get("action") || "");
-  await requirePermission("users", action === "delete" || action === "reject" ? "delete" : "change-status", "/admin/users");
+  const admin = await requirePermission("users", action === "delete" || action === "reject" ? "delete" : "change-status", "/admin/users");
 
   if (!Number.isFinite(userId)) {
     return { ok: false, message: "Invalid user." };
   }
+
+  const affectedUser = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+  if (!affectedUser) return { ok: false, message: "User not found." };
 
   if (action === "approve" || action === "activate") {
     await prisma.user.update({
@@ -196,10 +212,29 @@ export async function runUserTableAction(formData: FormData) {
   }
 
   if (action === "reject" || action === "delete") {
+    if (action === "reject") {
+      await notifyEmailAddress(affectedUser.email, "Account registration rejected", "Your account registration was reviewed and rejected. Contact an administrator if you need more information.");
+    }
     await prisma.user.delete({
       where: { id: userId },
     });
   }
+
+
+  if (["approve", "activate", "deactivate"].includes(action)) {
+    const title = action === "approve" ? "Account approved" : action === "deactivate" ? "Account deactivated" : "Account reactivated";
+    await notifyUsers({
+      userIds: [userId],
+      type: "account",
+      title,
+      message: action === "deactivate" ? "Your account has been deactivated." : "Your account is active and you can sign in.",
+      link: "/admin/dashboard",
+      sourceType: "user",
+      sourceId: userId,
+      dedupeKey: `account:${userId}:${action}:${Date.now()}`,
+    });
+  }
+  await prisma.activityLog.create({ data: { userId: (action === "delete" || action === "reject") && admin.id === userId ? null : admin.id, action: `users.${action}`, module: "users", metadata: { affectedUserId: userId } } });
 
   revalidatePath("/admin/users");
   revalidatePath("/admin/dashboard");
@@ -208,7 +243,7 @@ export async function runUserTableAction(formData: FormData) {
 }
 
 export async function updateUserRoleAction(formData: FormData) {
-  await requirePermission("users", "assign-roles", "/admin/users");
+  const admin = await requirePermission("users", "assign-roles", "/admin/users");
 
   const userId = Number(formData.get("userId"));
   const roleId = Number(formData.get("roleId"));
@@ -229,6 +264,13 @@ export async function updateUserRoleAction(formData: FormData) {
     skipDuplicates: true,
   });
 
+  await notifyUsers({
+    userIds: [userId], type: "account", title: "Role changed",
+    message: "Your account role and access permissions were updated.", link: "/admin/dashboard",
+    sourceType: "user", sourceId: userId, dedupeKey: `account:${userId}:role:${Date.now()}`,
+  });
+  await prisma.activityLog.create({ data: { userId: admin.id, action: "users.role-updated", module: "users", metadata: { affectedUserId: userId, roleIds } } });
+
   revalidatePath("/admin/users");
 
   return { ok: true, message: "Role updated successfully." };
@@ -238,13 +280,16 @@ export async function updateUserAction(
   _previousState: UserActionState,
   formData: FormData,
 ): Promise<UserActionState> {
-  await requirePermission("users", "edit", "/admin/users");
+  const admin = await requirePermission("users", "edit", "/admin/users");
 
   const parsed = updateUserSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid user details." };
   }
+
+  const currentUser = await prisma.user.findUnique({ where: { id: parsed.data.userId }, select: { email: true, status: true } });
+  if (!currentUser) return { ok: false, message: "User not found." };
 
   const existingUser = await prisma.user.findFirst({
     where: {
@@ -282,6 +327,21 @@ export async function updateUserAction(
     },
   });
 
+  if (currentUser.email !== parsed.data.email) {
+    await Promise.all([
+      notifyEmailAddress(currentUser.email, "Email address changed", `The email address on your Reverence Worship account was changed to ${parsed.data.email}. Contact an administrator immediately if you did not request this.`),
+      notifyUsers({ userIds: [parsed.data.userId], type: "security", title: "Email address changed", message: `Your account email was changed from ${currentUser.email}.`, link: "/admin/profile", sourceType: "user", sourceId: parsed.data.userId, dedupeKey: `account:${parsed.data.userId}:email:${Date.now()}` }),
+    ]);
+  }
+  if (passwordHash) {
+    await notifyUsers({ userIds: [parsed.data.userId], type: "security", title: "Password changed", message: "Your account password was changed successfully. Contact an administrator if you did not request this.", link: "/admin/profile", sourceType: "user", sourceId: parsed.data.userId, dedupeKey: `account:${parsed.data.userId}:password:${Date.now()}` });
+  }
+  if (currentUser.status !== parsed.data.status) {
+    const active = parsed.data.status === "active";
+    await notifyUsers({ userIds: [parsed.data.userId], type: "account", title: active ? "Account reactivated" : "Account deactivated", message: active ? "Your account is active again." : "Your account has been deactivated.", link: "/admin/dashboard", sourceType: "user", sourceId: parsed.data.userId, dedupeKey: `account:${parsed.data.userId}:status:${Date.now()}` });
+  }
+  await prisma.activityLog.create({ data: { userId: admin.id, action: "users.updated", module: "users", metadata: { affectedUserId: parsed.data.userId, emailChanged: currentUser.email !== parsed.data.email, statusChanged: currentUser.status !== parsed.data.status, passwordChanged: Boolean(passwordHash) } } });
+
   revalidatePath("/admin/users");
   revalidatePath("/admin/dashboard");
 
@@ -292,7 +352,7 @@ export async function updateUserRolesAction(
   _previousState: UserActionState,
   formData: FormData,
 ): Promise<UserActionState> {
-  await requirePermission("users", "assign-roles", "/admin/users");
+  const admin = await requirePermission("users", "assign-roles", "/admin/users");
 
   const userId = Number(formData.get("userId"));
   const roleIds = await roleIdsWithMemberBase(
@@ -318,6 +378,13 @@ export async function updateUserRolesAction(
       skipDuplicates: true,
     });
   }
+
+  await notifyUsers({
+    userIds: [userId], type: "account", title: "Roles or permissions changed",
+    message: "Your roles and access permissions were updated.", link: "/admin/dashboard",
+    sourceType: "user", sourceId: userId, dedupeKey: `account:${userId}:roles:${Date.now()}`,
+  });
+  await prisma.activityLog.create({ data: { userId: admin.id, action: "users.roles-updated", module: "users", metadata: { affectedUserId: userId, roleIds } } });
 
   revalidatePath("/admin/users");
 

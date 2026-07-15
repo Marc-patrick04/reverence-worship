@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers } from "@/lib/notifications";
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -108,6 +109,9 @@ export async function assignUserToSocialFamily(formData: FormData) {
     },
   });
 
+  const family = await prisma.family.findUnique({ where: { id: familyId }, select: { name: true, parentId: true } });
+  await notifyUsers({ userIds: [userId, ...(family?.parentId ? [family.parentId] : [])], type: "family", title: "Family assignment updated", message: `The user was assigned to ${family?.name ?? "a family"}.`, link: "/admin/family", sourceType: "family", sourceId: familyId, dedupeKey: `family:${familyId}:assigned:${userId}` });
+
   if (role === "parent") {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
     await prisma.family.update({
@@ -133,7 +137,7 @@ export async function removeUserFromSocialFamily(userId: number, familyId: numbe
 
   const family = await prisma.family.findUnique({
     where: { id: familyId },
-    select: { parentId: true },
+    select: { parentId: true, name: true },
   });
 
   if (family?.parentId === userId) {
@@ -145,6 +149,8 @@ export async function removeUserFromSocialFamily(userId: number, familyId: numbe
       },
     });
   }
+
+  await notifyUsers({ userIds: [userId, ...(family?.parentId ? [family.parentId] : [])], type: "family", title: "Family assignment removed", message: `The user was removed from ${family?.name ?? "the family"}.`, link: "/admin/family", sourceType: "family", sourceId: familyId, dedupeKey: `family:${familyId}:removed:${userId}:${Date.now()}` });
 
   revalidatePath("/admin/social-fellowship");
 
@@ -304,6 +310,9 @@ export async function createSocialTask(formData: FormData) {
     },
   });
 
+  const familyRecipients = await prisma.familyMember.findMany({ where: { familyId, status: "active" }, select: { userId: true } });
+  await notifyUsers({ userIds: familyRecipients.map((member) => member.userId), type: "family", title: "Family task assigned", message: `${title} was assigned to your family.`, link: "/admin/family", sourceType: "family_task", sourceId: task.id, dedupeKey: `family-task:${task.id}:assigned` });
+
   await syncTaskProgress(task.id);
   revalidatePath("/admin/social-fellowship");
 
@@ -417,6 +426,11 @@ export async function createSocialActionPlan(formData: FormData) {
     },
   });
 
+  const assignedTasks = await prisma.actionPlanTask.findMany({ where: { actionPlanId: plan.id, assignedTo: { not: null } }, select: { id: true, assignedTo: true, taskName: true } });
+  for (const task of assignedTasks) {
+    if (task.assignedTo) await notifyUsers({ userIds: [task.assignedTo], type: "task", title: "Action plan task assigned", message: `${task.taskName} was assigned to you.`, link: "/admin/social-fellowship", sourceType: "action_plan_task", sourceId: task.id, dedupeKey: `action-task:${task.id}:assigned` });
+  }
+
   await syncActionPlanProgress(plan.id);
   revalidatePath("/admin/social-fellowship");
 
@@ -455,6 +469,11 @@ export async function updateSocialActionPlan(actionPlanId: number, formData: For
       data: tasks.map((task) => ({ ...task, actionPlanId })),
     });
   });
+
+  const assignedTasks = await prisma.actionPlanTask.findMany({ where: { actionPlanId, assignedTo: { not: null } }, select: { id: true, assignedTo: true, taskName: true, updatedAt: true } });
+  for (const task of assignedTasks) {
+    if (task.assignedTo) await notifyUsers({ userIds: [task.assignedTo], type: "task", title: "Action plan task assigned or updated", message: `${task.taskName} is assigned to you.`, link: "/admin/social-fellowship", sourceType: "action_plan_task", sourceId: task.id, dedupeKey: `action-task:${task.id}:updated:${task.updatedAt.getTime()}` });
+  }
 
   await syncActionPlanProgress(actionPlanId);
   revalidatePath("/admin/social-fellowship");

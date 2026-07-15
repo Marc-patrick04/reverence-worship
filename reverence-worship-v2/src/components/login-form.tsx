@@ -68,6 +68,9 @@ export function LoginForm({ registrationEnabled = true }: { registrationEnabled?
         autoComplete="current-password"
         loginSize
       />
+      <div className="text-right">
+        <Link href="/forgot-password" className="auth-link text-xs font-semibold">Forgot password?</Link>
+      </div>
 
       {state.error ? (
         <p className="rounded-[0.65rem] border border-red-200 bg-red-50 px-4 py-2.5 text-[0.82rem] text-red-700">

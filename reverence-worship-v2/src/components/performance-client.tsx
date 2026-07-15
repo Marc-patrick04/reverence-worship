@@ -13,12 +13,20 @@ type PerformanceRecords = {
   contribution: Array<{ id: number; date: string; amount: number; term: number | null; method: string | null; status: string; reference: string | null }>;
 };
 
-const cardMeta: Array<{ type: PerformanceType; title: string; accent: string; hover: string }> = [
-  { type: "discipline", title: "Discipline Performance", accent: "#10b981", hover: "hover:border-emerald-300" },
-  { type: "attendance", title: "Attendance Performance", accent: "#10b981", hover: "hover:border-emerald-300" },
-  { type: "communication", title: "Communication Performance", accent: "#3b82f6", hover: "hover:border-blue-300" },
-  { type: "contribution", title: "Contribution Progress", accent: "#f97316", hover: "hover:border-orange-300" },
+const cardMeta: Array<{ type: PerformanceType; title: string }> = [
+  { type: "attendance", title: "Attendance Performance" },
+  { type: "communication", title: "Communication Performance" },
+  { type: "discipline", title: "Discipline Performance" },
+  { type: "contribution", title: "Contribution Progress" },
 ];
+
+function performanceTone(rate: number) {
+  if (rate >= 100) return { accent: "#10b981", hover: "hover:border-emerald-300" };
+  if (rate >= 75) return { accent: "#3b82f6", hover: "hover:border-blue-300" };
+  if (rate >= 50) return { accent: "#f59e0b", hover: "hover:border-amber-300" };
+  if (rate > 0) return { accent: "#ef4444", hover: "hover:border-red-300" };
+  return { accent: "#94a3b8", hover: "hover:border-slate-300" };
+}
 
 function rwf(value: number) {
   return `RWF ${Math.round(value).toLocaleString()}`;
@@ -129,7 +137,8 @@ export function PerformanceSummaryCards({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {cardMeta.map((card) => {
-        const className = `min-h-[200px] rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md ${card.hover} ${activeType === card.type ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-200"}`;
+        const tone = performanceTone(metrics[card.type].rate);
+        const className = `min-h-[200px] rounded-xl border bg-white p-5 text-left shadow-sm transition hover:shadow-md ${tone.hover} ${activeType === card.type ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-200"}`;
         const content = (
           <>
             <div className="flex items-center justify-between">
@@ -137,7 +146,7 @@ export function PerformanceSummaryCards({
               <ChevronRight className="size-4 text-gray-300" aria-hidden />
             </div>
             <div className="mt-6 flex items-center gap-4">
-              <div className="size-20 shrink-0 rounded-full p-[6px]" style={{ background: `conic-gradient(${card.accent} ${metrics[card.type].rate}%, #e5e7eb 0)` }}>
+              <div className="size-20 shrink-0 rounded-full p-[6px]" style={{ background: `conic-gradient(${tone.accent} ${metrics[card.type].rate}%, #e5e7eb 0)` }}>
                 <div className="flex size-full items-center justify-center rounded-full bg-white text-xl font-bold">{metrics[card.type].rate}%</div>
               </div>
               <CardText type={card.type} metrics={metrics} />

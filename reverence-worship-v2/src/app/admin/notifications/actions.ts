@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export type AdminNotification = {
   id: string;
   sourceId: number;
-  type: "announcement" | "form" | "pending_user" | "task" | "permission" | "expense_approval" | "expense_status";
+  type: "notification" | "announcement" | "form" | "pending_user" | "task" | "permission" | "expense_approval" | "expense_status";
   title: string;
   message: string;
   createdAt: string;
@@ -41,13 +41,14 @@ function announcementIsForUser(
   announcement: { targetType: string; targetRoles: string | null; targetUsers: string | null },
   userId: number,
   roleNames: string[],
+  roleIds: number[],
 ) {
   if (announcement.targetType === "all") return true;
 
   if (announcement.targetType === "roles") {
     try {
-      const roles = JSON.parse(announcement.targetRoles ?? "[]") as string[];
-      return roles.some((role) => roleNames.includes(role));
+      const roles = JSON.parse(announcement.targetRoles ?? "[]") as Array<string | number>;
+      return roles.some((role) => roleIds.includes(Number(role)) || roleNames.includes(String(role)));
     } catch {
       return false;
     }
@@ -77,11 +78,17 @@ async function safeRead<T>(promise: Promise<T>, fallback: T) {
 export async function getAdminNotifications() {
   const user = await requireUser();
   const roleNames = user.roles.map((userRole) => userRole.role.name);
+  const roleIds = user.roles.map((userRole) => userRole.role.id);
   const superAdmin = isSuperAdmin(roleNames);
   const workspaceUser = hasWorkspaceRole(roleNames);
   const notifications: AdminNotification[] = [];
 
-  const [announcements, activeForms, userFormSubmissions, assignedTasks, expenses, expenseDecisions] = await Promise.all([
+  const [storedNotifications, announcements, activeForms, userFormSubmissions, assignedTasks, expenses, expenseDecisions] = await Promise.all([
+    safeRead(prisma.notification.findMany({
+      where: { userId: user.id, readAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }), []),
     safeRead(prisma.announcement.findMany({
       where: { status: "active" },
       include: { reads: { where: { userId: user.id }, take: 1 } },
@@ -119,8 +126,21 @@ export async function getAdminNotifications() {
     }), []),
   ]);
 
+  for (const notification of storedNotifications) {
+    notifications.push({
+      id: `notification-${notification.id}`,
+      sourceId: notification.id,
+      type: "notification",
+      title: notification.title,
+      message: notification.message,
+      createdAt: notification.createdAt.toISOString(),
+      readAt: notification.readAt?.toISOString() ?? null,
+      link: notification.link ?? "/admin/dashboard",
+    });
+  }
+
   for (const announcement of announcements) {
-    if (!announcementIsForUser(announcement, user.id, roleNames)) continue;
+    if (!announcementIsForUser(announcement, user.id, roleNames, roleIds)) continue;
 
     const readAt = announcement.reads[0]?.readAt ?? null;
     if (readAt) continue;
@@ -251,6 +271,10 @@ export async function getAdminNotifications() {
 export async function markAdminNotificationRead(type: AdminNotification["type"], sourceId: number) {
   const user = await requireUser();
 
+  if (type === "notification") {
+    await prisma.notification.updateMany({ where: { id: sourceId, userId: user.id }, data: { readAt: new Date() } });
+  }
+
   if (type === "announcement") {
     await prisma.announcementUserRead.upsert({
       where: { announcementId_userId: { announcementId: sourceId, userId: user.id } },
@@ -266,12 +290,14 @@ export async function markAdminNotificationRead(type: AdminNotification["type"],
 export async function markAllAdminNotificationsRead() {
   const user = await requireUser();
   const roleNames = user.roles.map((userRole) => userRole.role.name);
+  const roleIds = user.roles.map((userRole) => userRole.role.id);
+  await prisma.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } });
   const announcements = await prisma.announcement.findMany({
     where: { status: "active" },
     select: { id: true, targetType: true, targetRoles: true, targetUsers: true },
   });
   const readRows = announcements
-    .filter((announcement) => announcementIsForUser(announcement, user.id, roleNames))
+    .filter((announcement) => announcementIsForUser(announcement, user.id, roleNames, roleIds))
     .map((announcement) => ({
       announcementId: announcement.id,
       userId: user.id,

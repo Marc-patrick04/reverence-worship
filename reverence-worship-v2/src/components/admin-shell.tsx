@@ -487,6 +487,7 @@ export function AdminShell({
 
 function NotificationTypeIcon({ type }: { type: AdminNotification["type"] }) {
   const config: Record<AdminNotification["type"], { icon: LucideIcon; className: string }> = {
+    notification: { icon: Bell, className: "bg-blue-100 text-blue-600" },
     announcement: { icon: Megaphone, className: "bg-blue-100 text-blue-600" },
     form: { icon: ClipboardList, className: "bg-purple-100 text-purple-600" },
     pending_user: { icon: UserCheck, className: "bg-green-100 text-green-600" },

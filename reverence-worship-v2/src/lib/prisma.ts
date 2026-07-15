@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
   prismaSchemaVersion?: string;
 };
 
-const PRISMA_SCHEMA_VERSION = "2026-07-15-pg-pool-resilience";
+const PRISMA_SCHEMA_VERSION = "2026-07-15-password-reset-notifications";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -39,7 +39,10 @@ export const prisma =
   "announcement" in existingPrisma &&
   "announcementUserRead" in existingPrisma &&
   "systemSetting" in existingPrisma &&
-  "activityLog" in existingPrisma
+  "activityLog" in existingPrisma &&
+  "notification" in existingPrisma &&
+  "emailDelivery" in existingPrisma &&
+  "passwordResetToken" in existingPrisma
     ? existingPrisma
     : new PrismaClient({ adapter });
 

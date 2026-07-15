@@ -8,6 +8,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { requirePermission, requireUser } from "@/lib/auth";
 import { calculateAvailableBalance, canApproveExpense, validateExpenseRequest } from "@/lib/finance-rules";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers } from "@/lib/notifications";
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -157,6 +158,12 @@ export async function saveAnnualContribution(formData: FormData) {
     });
   }
 
+  await notifyUsers({
+    userIds: [userId], type: "contribution", title: existing ? "Annual contribution updated" : "Annual contribution created",
+    message: `Your ${year} annual contribution is RWF ${annualAmount.toLocaleString()}.`, link: "/admin/contributions",
+    sourceType: "contribution", sourceId: existing?.id, dedupeKey: `contribution:${userId}:${year}:${Date.now()}`,
+  });
+
   revalidatePath("/admin/finance");
   await logFinance(user.id, existing ? "finance.contribution.updated" : "finance.contribution.created", { userId, year, annualAmount });
   return { ok: true, message: "Annual contribution saved successfully." };
@@ -194,7 +201,7 @@ export async function recordContributionPayment(formData: FormData) {
     if (duplicate) return { ok: false, message: "This payment reference has already been recorded." };
   }
 
-  await prisma.payment.create({
+  const payment = await prisma.payment.create({
     data: {
       userId,
       year,
@@ -207,6 +214,12 @@ export async function recordContributionPayment(formData: FormData) {
       createdBy: user.id,
       status: "completed",
     },
+  });
+
+  await notifyUsers({
+    userIds: [userId], type: "contribution", title: "Contribution payment recorded",
+    message: `A payment of RWF ${amount.toLocaleString()} was recorded for term ${term}, ${year}.`, link: "/admin/contributions",
+    sourceType: "payment", sourceId: payment.id, dedupeKey: `payment:${payment.id}:created`,
   });
 
   revalidatePath("/admin/finance");
@@ -262,7 +275,7 @@ export async function updateFinancePayment(formData: FormData) {
     if (duplicate) return { ok: false, message: "This payment reference has already been recorded." };
   }
 
-  await prisma.payment.update({
+  const payment = await prisma.payment.update({
     where: { id: paymentId },
     data: {
       term,
@@ -273,6 +286,8 @@ export async function updateFinancePayment(formData: FormData) {
       referenceNumber,
     },
   });
+
+  if (payment.userId) await notifyUsers({ userIds: [payment.userId], type: "contribution", title: "Contribution payment updated", message: `Payment #${payment.id} was updated to RWF ${amount.toLocaleString()}.`, link: "/admin/contributions", sourceType: "payment", sourceId: payment.id, dedupeKey: `payment:${payment.id}:updated:${Date.now()}` });
 
   revalidatePath("/admin/finance");
   await logFinance(user.id, "finance.payment.updated", { paymentId, term, amount });
@@ -286,7 +301,8 @@ export async function deleteFinancePayment(id: number) {
     return { ok: false, message: "Payment not found." };
   }
 
-  await prisma.payment.update({ where: { id }, data: { status: "voided" } });
+  const payment = await prisma.payment.update({ where: { id }, data: { status: "voided" } });
+  if (payment.userId) await notifyUsers({ userIds: [payment.userId], type: "contribution", title: "Contribution payment voided", message: `Payment #${payment.id} for RWF ${Number(payment.amount).toLocaleString()} was voided.`, link: "/admin/contributions", sourceType: "payment", sourceId: payment.id, dedupeKey: `payment:${payment.id}:voided` });
   revalidatePath("/admin/finance");
   await logFinance(user.id, "finance.payment.voided", { paymentId: id });
   return { ok: true, message: "Payment voided successfully. Its audit history was preserved." };
@@ -546,10 +562,12 @@ export async function saveExpense(formData: FormData) {
 
         await tx.activityLog.create({ data: { userId: user.id, action: "finance.expense.created", module: "finance", metadata: { expenseId: expense.id, amount, approverId: firstApprover, referenceNumber } } });
 
-        return { ok: true as const, message: "Expense recorded successfully." };
+        return { ok: true as const, message: "Expense recorded successfully.", expenseId: expense.id };
       }, { isolationLevel: "Serializable" });
 
       if (!result.ok) return result;
+
+      await notifyUsers({ userIds: [firstApprover!], type: "expense", title: "Expense awaiting approval", message: `An expense of RWF ${amount.toLocaleString()} requires your approval: ${description}`, link: "/admin/finance", sourceType: "expense", sourceId: result.expenseId, dedupeKey: `expense:${result.expenseId}:submitted` });
 
       revalidatePath("/admin/finance");
       return result;
@@ -573,7 +591,7 @@ export async function approveExpense(id: number) {
 
   const expense = await prisma.expense.findUnique({
     where: { id },
-    select: { approverId1: true, status: true },
+    select: { approverId1: true, status: true, createdBy: true, voidRequestedBy: true },
   });
 
   if (!expense) {
@@ -599,6 +617,8 @@ export async function approveExpense(id: number) {
 
   revalidatePath("/admin/finance");
   await logFinance(user.id, approvingVoid ? "finance.expense-void.approved" : "finance.expense.approved", { expenseId: id });
+  const recipientId = approvingVoid ? expense.voidRequestedBy : expense.createdBy;
+  if (recipientId) await notifyUsers({ userIds: [recipientId], type: "expense", title: approvingVoid ? "Expense void approved" : "Expense approved", message: approvingVoid ? `Your request to void expense #${id} was approved.` : `Expense #${id} was approved.`, link: "/admin/finance", sourceType: "expense", sourceId: id, dedupeKey: `expense:${id}:${approvingVoid ? "void-approved" : "approved"}` });
   return { ok: true, message: approvingVoid ? "Expense void approved successfully." : "Expense approved successfully." };
 }
 
@@ -607,7 +627,7 @@ export async function rejectExpense(id: number, reason: string) {
   const cleanReason = reason.trim();
   if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Expense not found." };
   if (cleanReason.length < 3) return { ok: false, message: "A rejection reason is required." };
-  const expense = await prisma.expense.findFirst({ where: { id, approverId1: user.id, status: { in: ["pending", "void_pending"] } }, select: { status: true } });
+  const expense = await prisma.expense.findFirst({ where: { id, approverId1: user.id, status: { in: ["pending", "void_pending"] } }, select: { status: true, createdBy: true, voidRequestedBy: true } });
   if (!expense) return { ok: false, message: "Only the selected approver can reject this pending request." };
   const rejectingVoid = expense.status === "void_pending";
   const result = await prisma.expense.updateMany({
@@ -618,6 +638,8 @@ export async function rejectExpense(id: number, reason: string) {
   });
   if (result.count !== 1) return { ok: false, message: "This request changed. Refresh and try again." };
   await logFinance(user.id, rejectingVoid ? "finance.expense-void.rejected" : "finance.expense.rejected", { expenseId: id, reason: cleanReason });
+  const recipientId = rejectingVoid ? expense.voidRequestedBy : expense.createdBy;
+  if (recipientId) await notifyUsers({ userIds: [recipientId], type: "expense", title: rejectingVoid ? "Expense void rejected" : "Expense rejected", message: `${rejectingVoid ? "The void request for" : "Expense"} #${id} was rejected: ${cleanReason}`, link: "/admin/finance", sourceType: "expense", sourceId: id, dedupeKey: `expense:${id}:${rejectingVoid ? "void-rejected" : "rejected"}` });
   revalidatePath("/admin/finance");
   return { ok: true, message: rejectingVoid ? "Void request rejected. The expense remains approved." : "Expense rejected. The reserved funds are available again." };
 }
@@ -639,6 +661,7 @@ export async function voidExpense(id: number, reason: string) {
   });
   if (result.count !== 1) return { ok: false, message: "Expense was not found or is already voided." };
   await logFinance(user.id, needsApproval ? "finance.expense-void.requested" : "finance.expense.voided", { expenseId: id, reason: cleanReason, approverId: expense.approverId1 });
+  if (needsApproval && expense.approverId1) await notifyUsers({ userIds: [expense.approverId1], type: "expense", title: "Expense void requested", message: `A request to void expense #${id} requires your approval. Reason: ${cleanReason}`, link: "/admin/finance", sourceType: "expense", sourceId: id, dedupeKey: `expense:${id}:void-requested:${Date.now()}` });
   revalidatePath("/admin/finance");
   return { ok: true, message: needsApproval ? "Void request sent to the original approver. The expense remains deducted until approval." : "Expense voided. Its audit history was preserved." };
 }

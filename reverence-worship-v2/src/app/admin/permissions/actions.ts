@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers } from "@/lib/notifications";
 
 type AssignmentInput = {
   pageId: number;
@@ -90,7 +91,7 @@ export async function deleteRole(id: number) {
 }
 
 export async function saveRolePermissions(formData: FormData) {
-  await requirePermission("permissions", "assign-permissions", "/admin/permissions");
+  const admin = await requirePermission("permissions", "assign-permissions", "/admin/permissions");
   const roleId = Number(readString(formData, "roleId"));
   const assignments = parseAssignments(readString(formData, "assignments"));
 
@@ -124,6 +125,10 @@ export async function saveRolePermissions(formData: FormData) {
       skipDuplicates: true,
     }),
   ]);
+
+  const affectedUsers = await prisma.userRole.findMany({ where: { roleId }, select: { userId: true } });
+  await notifyUsers({ userIds: affectedUsers.map((item) => item.userId), type: "account", title: "Permissions changed", message: `Access permissions for your ${role.name} role were updated.`, link: "/admin/dashboard", sourceType: "role", sourceId: roleId, dedupeKey: `role:${roleId}:permissions:${Date.now()}` });
+  await prisma.activityLog.create({ data: { userId: admin.id, action: "permissions.role-updated", module: "permissions", metadata: { roleId, assignmentCount: assignments.length } } });
 
   revalidatePath("/admin/permissions");
   revalidatePath("/admin");

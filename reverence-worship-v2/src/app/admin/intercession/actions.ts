@@ -4,6 +4,16 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireAnyPermission, requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers, userIdsWithPermission } from "@/lib/notifications";
+
+async function notifyFormPublished(form: { id: number; title: string }, event: string) {
+  await notifyUsers({
+    userIds: await userIdsWithPermission("intercession", "submit-forms"),
+    type: "form", title: "New form published", message: `${form.title} is now available for submission.`,
+    link: `/admin/intercession/forms/${form.id}/take`, sourceType: "spiritual_form", sourceId: form.id,
+    dedupeKey: `form:${form.id}:published:${event}`,
+  });
+}
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -237,7 +247,7 @@ export async function createSpiritualForm(formData: FormData) {
   const limitOneResponse = readBoolean(formData, "limitOneResponse");
   const isPublished = readBoolean(formData, "isPublished");
 
-  await prisma.spiritualForm.create({
+  const form = await prisma.spiritualForm.create({
     data: {
       title,
       description: readString(formData, "description"),
@@ -252,6 +262,8 @@ export async function createSpiritualForm(formData: FormData) {
       createdBy: user.id,
     },
   });
+
+  if (isPublished) await notifyFormPublished(form, String(form.createdAt.getTime()));
 
   revalidatePath("/admin/intercession");
 
@@ -275,7 +287,7 @@ export async function createSpiritualFormFromBuilder(formData: FormData) {
     ...readJsonObject(formData, "settings"),
   };
 
-  await prisma.spiritualForm.create({
+  const form = await prisma.spiritualForm.create({
     data: {
       title,
       description: readString(formData, "description"),
@@ -285,6 +297,8 @@ export async function createSpiritualFormFromBuilder(formData: FormData) {
       createdBy: user.id,
     },
   });
+
+  if (Boolean((settings as Record<string, unknown>).is_published)) await notifyFormPublished(form, String(form.createdAt.getTime()));
 
   revalidatePath("/admin/intercession");
 
@@ -342,7 +356,7 @@ export async function updateSpiritualFormFromBuilder(formId: number, formData: F
     return { ok: false, message: "Form not found." };
   }
 
-  await prisma.spiritualForm.update({
+  const updated = await prisma.spiritualForm.update({
     where: { id: formId },
     data: {
       title,
@@ -355,6 +369,8 @@ export async function updateSpiritualFormFromBuilder(formId: number, formData: F
       isActive: true,
     },
   });
+
+  if (Boolean((updated.settings as Record<string, unknown> | null)?.is_published)) await notifyFormPublished(updated, String(updated.updatedAt.getTime()));
 
   revalidatePath("/admin/intercession");
   revalidatePath(`/admin/intercession/forms/${formId}/edit`);
@@ -381,7 +397,7 @@ export async function updateSpiritualForm(formId: number, formData: FormData) {
     limit_one_response: readBoolean(formData, "limitOneResponse"),
   };
 
-  await prisma.spiritualForm.update({
+  const updated = await prisma.spiritualForm.update({
     where: { id: formId },
     data: {
       title,
@@ -391,6 +407,8 @@ export async function updateSpiritualForm(formId: number, formData: FormData) {
       isActive: true,
     },
   });
+
+  if (Boolean((updated.settings as Record<string, unknown> | null)?.is_published)) await notifyFormPublished(updated, String(updated.updatedAt.getTime()));
 
   revalidatePath("/admin/intercession");
 
@@ -402,7 +420,7 @@ export async function toggleSpiritualFormPublish(formId: number) {
 
   const form = await prisma.spiritualForm.findUnique({
     where: { id: formId },
-    select: { settings: true },
+    select: { settings: true, title: true },
   });
 
   if (!form) {
@@ -412,7 +430,7 @@ export async function toggleSpiritualFormPublish(formId: number) {
   const settings = (form.settings as Record<string, unknown> | null) ?? {};
   const nextPublished = !Boolean(settings.is_published);
 
-  await prisma.spiritualForm.update({
+  const updated = await prisma.spiritualForm.update({
     where: { id: formId },
     data: {
       settings: {
@@ -421,6 +439,8 @@ export async function toggleSpiritualFormPublish(formId: number) {
       },
     },
   });
+
+  if (nextPublished) await notifyFormPublished(updated, String(updated.updatedAt.getTime()));
 
   revalidatePath("/admin/intercession");
 

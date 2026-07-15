@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers, userIdsForRoles } from "@/lib/notifications";
 
 type AttendanceRecordInput = {
   userId: number;
@@ -230,18 +231,23 @@ export async function savePermissionRequest(formData: FormData) {
     reason,
   };
 
+  let request;
   if (Number.isFinite(id) && id > 0) {
-    await prisma.permissionRequest.update({
+    request = await prisma.permissionRequest.update({
       where: { id },
       data,
     });
   } else {
-    await prisma.permissionRequest.create({
+    request = await prisma.permissionRequest.create({
       data: {
         ...data,
         status: "pending",
       },
     });
+  }
+
+  if (!(Number.isFinite(id) && id > 0)) {
+    await notifyUsers({ userIds: await userIdsForRoles(["discipline-dpt"]), type: "permission", title: "Permission request submitted", message: `A new ${type} permission request is awaiting review.`, link: "/admin/discipline", sourceType: "permission_request", sourceId: request.id, dedupeKey: `permission:${request.id}:submitted` });
   }
 
   revalidatePath("/admin/discipline");
@@ -252,7 +258,7 @@ export async function savePermissionRequest(formData: FormData) {
 export async function approvePermissionRequest(id: number) {
   const user = await requireUser();
 
-  await prisma.permissionRequest.update({
+  const request = await prisma.permissionRequest.update({
     where: { id },
     data: {
       status: "approved",
@@ -261,6 +267,8 @@ export async function approvePermissionRequest(id: number) {
       rejectionReason: null,
     },
   });
+
+  await notifyUsers({ userIds: [request.userId], type: "permission", title: "Permission request approved", message: `Your ${request.type} permission request was approved.`, link: "/admin/discipline", sourceType: "permission_request", sourceId: request.id, dedupeKey: `permission:${request.id}:approved` });
 
   revalidatePath("/admin/discipline");
 
@@ -288,6 +296,9 @@ export async function rejectPermissionRequest(id: number, reason: string) {
   if (result.count === 0) {
     return { ok: false, message: "This permission request is no longer pending." };
   }
+
+  const request = await prisma.permissionRequest.findUnique({ where: { id }, select: { userId: true, type: true } });
+  if (request) await notifyUsers({ userIds: [request.userId], type: "permission", title: "Permission request rejected", message: `Your ${request.type} permission request was rejected: ${rejectionReason}`, link: "/admin/discipline", sourceType: "permission_request", sourceId: id, dedupeKey: `permission:${id}:rejected` });
 
   revalidatePath("/admin/discipline");
 

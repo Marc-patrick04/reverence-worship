@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers, userIdsForAnnouncement } from "@/lib/notifications";
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -76,8 +77,9 @@ export async function saveAnnouncement(formData: FormData) {
   const status = normalizeStatus(statusValue, scheduledDateValue);
   const publishedAt = status === "active" ? new Date() : null;
 
+  let announcement;
   if (Number.isFinite(id) && id > 0) {
-    await prisma.announcement.update({
+    announcement = await prisma.announcement.update({
       where: { id },
       data: {
         title,
@@ -95,7 +97,7 @@ export async function saveAnnouncement(formData: FormData) {
       },
     });
   } else {
-    await prisma.announcement.create({
+    announcement = await prisma.announcement.create({
       data: {
         title,
         content,
@@ -112,6 +114,19 @@ export async function saveAnnouncement(formData: FormData) {
         publishedAt,
         emailSent: false,
       },
+    });
+  }
+
+  if (announcement.status === "active") {
+    await notifyUsers({
+      userIds: await userIdsForAnnouncement(announcement.targetType, announcement.targetRoles, announcement.targetUsers),
+      type: "announcement",
+      title: announcement.title,
+      message: announcement.content,
+      link: "/admin/announcements",
+      sourceType: "announcement",
+      sourceId: announcement.id,
+      dedupeKey: `announcement:${announcement.id}:${announcement.updatedAt.getTime()}`,
     });
   }
 
@@ -140,7 +155,6 @@ export async function toggleAnnouncementStatus(id: number) {
 
   const announcement = await prisma.announcement.findUnique({
     where: { id },
-    select: { status: true },
   });
 
   if (!announcement) {
@@ -148,7 +162,7 @@ export async function toggleAnnouncementStatus(id: number) {
   }
 
   const nextStatus = announcement.status === "active" ? "draft" : "active";
-  await prisma.announcement.update({
+  const updated = await prisma.announcement.update({
     where: { id },
     data: {
       status: nextStatus,
@@ -156,6 +170,19 @@ export async function toggleAnnouncementStatus(id: number) {
       publishedAt: nextStatus === "active" ? new Date() : null,
     },
   });
+
+  if (nextStatus === "active") {
+    await notifyUsers({
+      userIds: await userIdsForAnnouncement(updated.targetType, updated.targetRoles, updated.targetUsers),
+      type: "announcement",
+      title: updated.title,
+      message: updated.content,
+      link: "/admin/announcements",
+      sourceType: "announcement",
+      sourceId: updated.id,
+      dedupeKey: `announcement:${updated.id}:published:${updated.updatedAt.getTime()}`,
+    });
+  }
 
   revalidatePath("/admin/announcements");
   return { ok: true, message: nextStatus === "active" ? "Announcement published." : "Announcement moved to draft." };
@@ -168,7 +195,7 @@ export async function markAnnouncementSent(id: number) {
     return { ok: false, message: "Announcement not found." };
   }
 
-  await prisma.announcement.update({
+  const announcement = await prisma.announcement.update({
     where: { id },
     data: {
       emailSent: true,
@@ -176,6 +203,17 @@ export async function markAnnouncementSent(id: number) {
       publishedBy: user.id,
       publishedAt: new Date(),
     },
+  });
+
+  await notifyUsers({
+    userIds: await userIdsForAnnouncement(announcement.targetType, announcement.targetRoles, announcement.targetUsers),
+    type: "announcement",
+    title: announcement.title,
+    message: announcement.content,
+    link: "/admin/announcements",
+    sourceType: "announcement",
+    sourceId: announcement.id,
+    dedupeKey: `announcement:${announcement.id}:sent:${announcement.updatedAt.getTime()}`,
   });
 
   revalidatePath("/admin/announcements");
