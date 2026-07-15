@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
   prismaSchemaVersion?: string;
 };
 
-const PRISMA_SCHEMA_VERSION = "2026-07-14-expense-void-approval";
+const PRISMA_SCHEMA_VERSION = "2026-07-15-expense-void-requester";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,

@@ -65,6 +65,15 @@ function announcementIsForUser(
   return false;
 }
 
+async function safeRead<T>(promise: Promise<T>, fallback: T) {
+  try {
+    return await promise;
+  } catch (error) {
+    console.error("Unable to read notification data", error);
+    return fallback;
+  }
+}
+
 export async function getAdminNotifications() {
   const user = await requireUser();
   const roleNames = user.roles.map((userRole) => userRole.role.name);
@@ -73,27 +82,27 @@ export async function getAdminNotifications() {
   const notifications: AdminNotification[] = [];
 
   const [announcements, activeForms, userFormSubmissions, assignedTasks, expenses, expenseDecisions] = await Promise.all([
-    prisma.announcement.findMany({
+    safeRead(prisma.announcement.findMany({
       where: { status: "active" },
       include: { reads: { where: { userId: user.id }, take: 1 } },
       orderBy: { createdAt: "desc" },
       take: 30,
-    }),
-    prisma.spiritualForm.findMany({
+    }), []),
+    safeRead(prisma.spiritualForm.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
       take: 30,
-    }),
-    prisma.formSubmission.findMany({
+    }), []),
+    safeRead(prisma.formSubmission.findMany({
       where: { userId: user.id },
       select: { formId: true },
-    }),
-    prisma.actionPlanTask.findMany({
+    }), []),
+    safeRead(prisma.actionPlanTask.findMany({
       where: { assignedTo: user.id, NOT: { status: "completed" } },
       orderBy: { createdAt: "desc" },
       take: 10,
-    }),
-    prisma.expense.findMany({
+    }), []),
+    safeRead(prisma.expense.findMany({
       where: {
         status: { in: ["pending", "void_pending"] },
         OR: [{ approverId1: user.id }, { approverId2: user.id }],
@@ -101,13 +110,13 @@ export async function getAdminNotifications() {
       include: { creator: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 10,
-    }),
-    prisma.expense.findMany({
+    }), []),
+    safeRead(prisma.expense.findMany({
       where: { OR: [{ createdBy: user.id }, { voidRequestedBy: user.id }], status: { in: ["approved", "rejected", "voided"] }, updatedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
       include: { approver: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 10,
-    }),
+    }), []),
   ]);
 
   for (const announcement of announcements) {
