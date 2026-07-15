@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useAppDialog } from "@/components/app-dialog-provider";
 import {
   AlertTriangle,
   BarChart3,
@@ -35,7 +36,8 @@ import {
   deleteFinanceActionPlan,
   deleteFinanceActionPlanTask,
   deleteSponsor,
-  deleteExpense,
+  rejectExpense,
+  voidExpense,
   deleteFinancePayment,
   recordContributionPayment,
   recordSponsorPayment,
@@ -55,6 +57,7 @@ type UserOption = {
   familyId: number | null;
   familyName: string | null;
   familyYear: number | null;
+  canApproveExpenses: boolean;
 };
 
 type FamilyOption = {
@@ -89,6 +92,7 @@ type Payment = {
   notes: string | null;
   createdByName: string;
   createdAt: string;
+  referenceNumber: string | null;
 };
 
 type GiftItem = {
@@ -98,6 +102,7 @@ type GiftItem = {
   receivedAmount: number;
   giftType: string | null;
   status: string;
+  dateRaw: string;
   date: string;
 };
 
@@ -116,6 +121,19 @@ type Expense = {
   approverId2: number | null;
   approver1Name: string | null;
   approver2Name: string | null;
+  rejectionReason: string | null;
+  voidReason: string | null;
+  referenceNumber: string | null;
+  hasReceipt: boolean;
+};
+
+type FinancePermissions = {
+  manageExpenses: boolean;
+  approveExpenses: boolean;
+  deleteExpenses: boolean;
+  export: boolean;
+  reconcile: boolean;
+  viewReports: boolean;
 };
 
 type Sponsor = {
@@ -199,6 +217,7 @@ type ConfirmAction = {
 
 export function FinanceClient({
   year,
+  currentUserId,
   users,
   families,
   contributions,
@@ -208,8 +227,10 @@ export function FinanceClient({
   sponsors,
   actionPlans,
   termSettings,
+  permissions,
 }: {
   year: number;
+  currentUserId: number;
   users: UserOption[];
   families: FamilyOption[];
   contributions: Contribution[];
@@ -219,10 +240,12 @@ export function FinanceClient({
   sponsors: Sponsor[];
   actionPlans: ActionPlan[];
   termSettings: FinanceTermSetting[];
+  permissions: FinancePermissions;
 }) {
-  const currentYearContributions = contributions.filter((item) => item.year === year);
   const currentYearPayments = payments.filter((item) => item.year === year);
   const [activeTab, setActiveTab] = useState("overview");
+  const [startDate, setStartDate] = useState(`${year}-01-01`);
+  const [endDate, setEndDate] = useState(`${year}-12-31`);
   const tabs = [
     { id: "overview", label: "Overview", mobileLabel: "Home", icon: BarChart3 },
     { id: "settings", label: "Settings", mobileLabel: "Settings", icon: Settings },
@@ -230,19 +253,40 @@ export function FinanceClient({
     { id: "payments", label: "Payments", mobileLabel: "Pay", icon: CreditCard },
     { id: "sponsors", label: "Sponsors", mobileLabel: "Sponsors", icon: Users },
     { id: "expenses", label: "Expenses", mobileLabel: "Expenses", icon: Receipt },
+    ...(permissions.viewReports ? [{ id: "ledger", label: "Ledger & Reports", mobileLabel: "Reports", icon: FileSpreadsheet }] : []),
     { id: "action-plans", label: "Action Plans", mobileLabel: "Plans", icon: ClipboardList },
   ];
 
   const stats = useMemo(() => {
-    const totalExpected = currentYearContributions.reduce((sum, item) => sum + item.annualAmount, 0);
-    const totalCollected = currentYearPayments.reduce((sum, item) => sum + item.amount, 0);
-    const totalGifts = gifts.reduce((sum, item) => sum + item.receivedAmount, 0);
-    const totalSponsorReceived = sponsors.reduce((sum, item) => sum + item.receivedAmount, 0);
-    const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
+    const fromYear = Number(startDate.slice(0, 4)) || year;
+    const toYear = Number(endDate.slice(0, 4)) || year;
+    const memberCommitments = contributions.filter((item) => item.year >= fromYear && item.year <= toYear).reduce((sum, item) => sum + item.annualAmount, 0);
+    const sponsorCommitments = sponsors.filter((item) => item.year >= fromYear && item.year <= toYear && item.status !== "inactive").reduce((sum, item) => sum + item.commitmentAmount, 0);
+    const totalExpected = memberCommitments + sponsorCommitments;
+    const inRange = (date: string) => (!startDate || date >= startDate) && (!endDate || date <= endDate);
+    const totalCollected = payments.filter((item) => item.status !== "voided" && inRange(item.paymentDateRaw)).reduce((sum, item) => sum + item.amount, 0);
+    const totalGifts = gifts.filter((item) => inRange(item.dateRaw)).reduce((sum, item) => sum + item.receivedAmount, 0);
+    const totalSponsorReceived = sponsors.flatMap((item) => item.payments).filter((item) => inRange(item.paymentDateRaw)).reduce((sum, item) => sum + item.amount, 0);
+    const totalExpenses = expenses.filter((item) => (item.status === "approved" || item.status === "void_pending") && inRange(item.dateRaw)).reduce((sum, item) => sum + item.amount, 0);
+    const reservedExpenses = expenses.filter((item) => item.status === "pending" && inRange(item.dateRaw)).reduce((sum, item) => sum + item.amount, 0);
     const totalIncome = totalCollected + totalGifts + totalSponsorReceived;
-    const collectionRate = totalExpected ? Math.round((totalCollected / totalExpected) * 100) : 0;
-    return { totalExpected, totalCollected, totalGifts, totalSponsorReceived, totalExpenses, totalIncome, collectionRate };
-  }, [currentYearContributions, currentYearPayments, gifts, sponsors, expenses]);
+    const committedIncomeReceived = totalCollected + totalSponsorReceived;
+    const accountBalance = Math.max(totalIncome - totalExpenses - reservedExpenses, 0);
+    const pendingAmount = Math.max(totalExpected - committedIncomeReceived, 0);
+    const collectionRate = totalExpected ? Math.round((committedIncomeReceived / totalExpected) * 100) : 0;
+    return {
+      totalExpected,
+      totalCollected,
+      totalGifts,
+      totalSponsorReceived,
+      totalExpenses,
+      totalIncome,
+      accountBalance,
+      pendingAmount,
+      collectionRate,
+      reservedExpenses,
+    };
+  }, [year, contributions, payments, gifts, sponsors, expenses, startDate, endDate]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-2 py-4 sm:px-4 sm:py-6">
@@ -297,33 +341,28 @@ export function FinanceClient({
         <div className="p-3 sm:p-4">
           {activeTab === "overview" ? (
             <div className="space-y-5">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <FinanceStat label="Total Income" value={stats.totalIncome} tone="emerald" icon={HandCoins} />
-                <FinanceStat label="Total Expenses" value={stats.totalExpenses} tone="rose" icon={Receipt} />
-                <FinanceStat label="Total Expected" value={stats.totalExpected} tone="sky" icon={ChartPie} />
-                <FinanceStat label="Total Collected" value={stats.totalCollected} tone="indigo" icon={CreditCard} />
+              <div className="flex flex-wrap justify-end gap-2">
+                <FieldLabel label="From"><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
+                <FieldLabel label="To"><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
               </div>
-
-              <section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-gray-800">Collection Progress</h2>
-                  <span className="text-sm font-bold text-blue-600">{stats.collectionRate}%</span>
-                </div>
-                <div className="h-3 rounded-full bg-gray-100">
-                  <div className="h-3 rounded-full bg-blue-600" style={{ width: `${Math.min(stats.collectionRate, 100)}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-gray-500">Year {year}</p>
-              </section>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FinanceStat label="Expected Amount" value={stats.totalExpected} tone="sky" icon={ChartPie} />
+                <FinanceStat label="Total Income" value={stats.totalIncome} tone="emerald" icon={HandCoins} />
+                <FinanceStat label="Total Expense" value={stats.totalExpenses} tone="rose" icon={Receipt} />
+                <FinanceStat label="Account Balance" value={stats.accountBalance} tone="indigo" icon={Calculator} />
+                <FinanceStat label="Pending Amount" value={stats.pendingAmount} tone="amber" icon={CreditCard} />
+                <FinanceStat label="Collection Rate" value={stats.collectionRate} tone="violet" icon={BarChart3} format="percentage" />
+              </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <RecentList title="Recent Payments" empty="No payments yet">
-                  {currentYearPayments.slice(0, 6).map((payment) => (
+                  {currentYearPayments.slice(0, 5).map((payment) => (
                     <RecentRow key={payment.id} title={payment.userName} subtitle={`${payment.paymentDate} • ${payment.paymentMethod}`} amount={payment.amount} />
                   ))}
                 </RecentList>
                 <RecentList title="Recent Expenses" empty="No expenses yet">
-                  {expenses.slice(0, 6).map((expense) => (
-                    <RecentRow key={expense.id} title={expense.category || "Expense"} subtitle={`${expense.date} • ${expense.status}`} amount={expense.amount} danger />
+                  {expenses.slice(0, 5).map((expense) => (
+                    <RecentRow key={expense.id} title={expense.category || "Expense"} subtitle={`${expense.date} • ${expenseStatusLabel(expense.status)}`} amount={expense.amount} danger />
                   ))}
                 </RecentList>
               </div>
@@ -336,6 +375,10 @@ export function FinanceClient({
               contributions={contributions}
               payments={payments}
               termSettings={termSettings}
+              fromDate={startDate}
+              toDate={endDate}
+              setFromDate={setStartDate}
+              setToDate={setEndDate}
             />
           ) : activeTab === "payments" ? (
             <FinancePaymentsTab
@@ -343,11 +386,38 @@ export function FinanceClient({
               payments={payments}
               users={users}
               termSettings={termSettings}
+              fromDate={startDate}
+              toDate={endDate}
+              setFromDate={setStartDate}
+              setToDate={setEndDate}
             />
           ) : activeTab === "sponsors" ? (
-            <FinanceSponsorsTab currentYear={year} sponsors={sponsors} />
+            <FinanceSponsorsTab currentYear={year} sponsors={sponsors} fromDate={startDate} toDate={endDate} setFromDate={setStartDate} setToDate={setEndDate} />
           ) : activeTab === "expenses" ? (
-            <FinanceExpensesTab currentYear={year} expenses={expenses} users={users} />
+            <FinanceExpensesTab
+              currentYear={year}
+              currentUserId={currentUserId}
+              accountBalance={stats.accountBalance}
+              expenses={expenses}
+              users={users}
+              permissions={permissions}
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+            />
+          ) : activeTab === "ledger" ? (
+            <FinanceLedgerReportsTab
+              payments={payments}
+              gifts={gifts}
+              sponsors={sponsors}
+              expenses={expenses}
+              permissions={permissions}
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+            />
           ) : activeTab === "action-plans" ? (
             <FinanceActionPlansTab currentYear={year} actionPlans={actionPlans} />
           ) : (
@@ -357,6 +427,69 @@ export function FinanceClient({
       </div>
     </div>
   );
+}
+
+function FinanceLedgerReportsTab({ payments, gifts, sponsors, expenses, permissions, startDate, endDate, onStartDateChange, onEndDateChange }: {
+  payments: Payment[];
+  gifts: GiftItem[];
+  sponsors: Sponsor[];
+  expenses: Expense[];
+  permissions: FinancePermissions;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+}) {
+  const entries = useMemo(() => {
+    const rows = [
+      ...payments.filter((item) => item.status !== "voided").map((item) => ({ sourceType: "payment", sourceId: item.id, date: item.paymentDateRaw, description: `Member payment - ${item.userName}`, income: item.amount, expense: 0, status: item.status })),
+      ...gifts.filter((item) => item.receivedAmount > 0).map((item) => ({ sourceType: "gift", sourceId: item.id, date: item.dateRaw, description: `Gift - ${item.donorName}`, income: item.receivedAmount, expense: 0, status: item.status })),
+      ...sponsors.flatMap((sponsor) => sponsor.payments.map((item) => ({ sourceType: "sponsor_payment", sourceId: item.id, date: item.paymentDateRaw, description: `Sponsor payment - ${sponsor.name}`, income: item.amount, expense: 0, status: "completed" }))),
+      ...expenses.filter((item) => item.status === "approved" || item.status === "void_pending").map((item) => ({ sourceType: "expense", sourceId: item.id, date: item.dateRaw, description: item.description || "Expense", income: 0, expense: item.amount, status: item.status })),
+    ].filter((item) => (!startDate || item.date >= startDate) && (!endDate || item.date <= endDate));
+    return rows.sort((a, b) => a.date.localeCompare(b.date) || a.sourceId - b.sourceId).reduce<Array<(typeof rows)[number] & { balance: number }>>((ledger, row) => {
+      const balance = (ledger.at(-1)?.balance ?? 0) + row.income - row.expense;
+      return [...ledger, { ...row, balance }];
+    }, []);
+  }, [payments, gifts, sponsors, expenses, startDate, endDate]);
+  const income = entries.reduce((sum, item) => sum + item.income, 0);
+  const spent = entries.reduce((sum, item) => sum + item.expense, 0);
+  const reserved = expenses.filter((item) => item.status === "pending" && (!startDate || item.dateRaw >= startDate) && (!endDate || item.dateRaw <= endDate)).reduce((sum, item) => sum + item.amount, 0);
+
+  function exportReport() {
+    const rows = [["Date", "Description", "Type", "Income", "Expense", "Running Balance", "Status"], ...entries.map((item) => [item.date, item.description, item.sourceType, item.income, item.expense, item.balance, item.status])];
+    const blob = new Blob([`\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `finance_report_${startDate}_to_${endDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return <div className="space-y-4">
+    <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
+   
+      <div className="flex flex-wrap items-end gap-2">
+        <FieldLabel label="From"><input type="date" value={startDate} onChange={(event) => onStartDateChange(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
+        <FieldLabel label="To"><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} className="h-8 rounded-lg border border-gray-300 px-2 text-xs" /></FieldLabel>
+        {permissions.export ? <><button type="button" onClick={exportReport} className="h-8 rounded-lg bg-emerald-600 px-3 text-xs font-medium text-white">Export Excel</button><button type="button" onClick={() => window.print()} className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700">Print / Save PDF</button></> : null}
+      </div>
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ExpenseStat label="Income" value={income} tone="green" icon={HandCoins} />
+      <ExpenseStat label="Approved expense" value={spent} tone="blue" icon={Receipt} />
+      <ExpenseStat label="Reserved pending" value={reserved} tone="yellow" icon={Hourglass} />
+      <ExpenseStat label="Closing balance" value={Math.max(income - spent, 0)} tone="green" icon={Calculator} />
+    </div>
+    {income - spent - reserved < income * 0.1 && income > 0 ? <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="size-4" />Available funds after pending approvals are below 10% of income.</div> : null}
+    <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{["Date", "Description", "Income", "Expense", "Balance"].map((label) => <th key={label} className="px-3 py-2 text-left text-xs uppercase text-gray-500">{label}</th>)}</tr></thead>
+      <tbody className="divide-y divide-gray-100">{entries.length ? [...entries].reverse().map((item) => {
+        return <tr key={`${item.sourceType}-${item.sourceId}`}><td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{item.date}</td><td className="px-3 py-2 text-gray-800">{item.description}</td><td className="px-3 py-2 font-medium text-emerald-600">{item.income ? formatCurrency(item.income) : "-"}</td><td className="px-3 py-2 font-medium text-red-600">{item.expense ? formatCurrency(item.expense) : "-"}</td><td className="px-3 py-2 font-semibold">{formatCurrency(item.balance)}</td></tr>;
+      }) : <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-500">No transactions in this date range.</td></tr>}</tbody></table>
+    </div>
+  </div>;
 }
 
 function FinanceActionPlansTab({ currentYear, actionPlans }: { currentYear: number; actionPlans: ActionPlan[] }) {
@@ -1174,6 +1307,10 @@ function FinanceContributionsTab({
   contributions,
   payments,
   termSettings,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }: {
   currentYear: number;
   users: UserOption[];
@@ -1181,11 +1318,15 @@ function FinanceContributionsTab({
   contributions: Contribution[];
   payments: Payment[];
   termSettings: FinanceTermSetting[];
+  fromDate: string;
+  toDate: string;
+  setFromDate: (value: string) => void;
+  setToDate: (value: string) => void;
 }) {
   const router = useRouter();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
   const [familyFilter, setFamilyFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [requestedPage, setRequestedPage] = useState(1);
   const [annualModalUser, setAnnualModalUser] = useState<UserOption | null>(null);
   const [paymentModalUser, setPaymentModalUser] = useState<UserOption | null>(null);
   const [annualModalOpen, setAnnualModalOpen] = useState(false);
@@ -1194,14 +1335,8 @@ function FinanceContributionsTab({
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const years = useMemo(() => {
-    const values = new Set<number>();
-    for (let offset = -4; offset <= 4; offset += 1) values.add(currentYear + offset);
-    contributions.forEach((item) => values.add(item.year));
-    payments.forEach((item) => values.add(item.year));
-    termSettings.forEach((item) => values.add(item.currentYear));
-    return Array.from(values).sort((a, b) => b - a);
-  }, [currentYear, contributions, payments, termSettings]);
+  const selectedYear = Number(fromDate.slice(0, 4)) || currentYear;
+  const selectedYearEnd = `${selectedYear}-12-31`;
 
   const yearFamilies = useMemo(
     () => families.filter((family) => family.year === selectedYear),
@@ -1214,9 +1349,13 @@ function FinanceContributionsTab({
     () => new Map(contributions.filter((item) => item.year === selectedYear).map((item) => [item.userId, item])),
     [contributions, selectedYear],
   );
-  const paymentsForYear = useMemo(
-    () => payments.filter((payment) => payment.year === selectedYear),
-    [payments, selectedYear],
+  const paymentsForRange = useMemo(
+    () => payments
+      .filter((payment) => payment.year === selectedYear)
+      .filter((payment) => payment.status !== "voided")
+      .filter((payment) => !fromDate || payment.paymentDateRaw >= fromDate)
+      .filter((payment) => !toDate || payment.paymentDateRaw <= toDate),
+    [payments, selectedYear, fromDate, toDate],
   );
 
   const rows = useMemo(() => {
@@ -1228,7 +1367,7 @@ function FinanceContributionsTab({
       .map((user) => {
         const contribution = contributionMap.get(user.id);
         const annualAmount = contribution?.annualAmount ?? 0;
-        const userPayments = paymentsForYear.filter((payment) => payment.userId === user.id);
+        const userPayments = paymentsForRange.filter((payment) => payment.userId === user.id);
         const termRows = termNumbers.map((term, index) => {
           const paid = userPayments
             .filter((payment) => payment.term === term)
@@ -1251,17 +1390,33 @@ function FinanceContributionsTab({
           progress,
         };
       });
-  }, [users, selectedYear, familyFilter, search, contributionMap, paymentsForYear, termNumbers, termPercentages]);
+  }, [users, selectedYear, familyFilter, search, contributionMap, paymentsForRange, termNumbers, termPercentages]);
 
-  const totals = useMemo(() => {
-    const totalExpected = rows.reduce((sum, row) => sum + row.annualAmount, 0);
-    const totalCollected = rows.reduce((sum, row) => sum + row.totalPaid, 0);
-    return {
-      totalExpected,
-      totalCollected,
-      collectionRate: totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0,
-    };
-  }, [rows]);
+  const memberStats = useMemo(() => {
+    const annualExpected = rows.reduce((sum, row) => sum + row.annualAmount, 0);
+    const totalReceived = rows.reduce((sum, row) => sum + row.totalPaid, 0);
+    const rangeStart = Date.parse(`${fromDate}T00:00:00.000Z`);
+    const rangeEnd = Date.parse(`${toDate}T00:00:00.000Z`);
+    const yearStart = Date.UTC(selectedYear, 0, 1);
+    const nextYearStart = Date.UTC(selectedYear + 1, 0, 1);
+    const clampedStart = Math.max(rangeStart, yearStart);
+    const clampedEnd = Math.min(rangeEnd, nextYearStart - 1);
+    const selectedDays = Number.isFinite(clampedStart) && Number.isFinite(clampedEnd) && clampedEnd >= clampedStart
+      ? Math.floor((clampedEnd - clampedStart) / 86_400_000) + 1
+      : 0;
+    const daysInYear = Math.round((nextYearStart - yearStart) / 86_400_000);
+    const totalExpected = Math.round(annualExpected * (selectedDays / daysInYear));
+    const pendingAmount = Math.max(totalExpected - totalReceived, 0);
+    const contributionRate = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
+
+    return { totalExpected, totalReceived, pendingAmount, contributionRate };
+  }, [rows, fromDate, toDate, selectedYear]);
+
+  const recordsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(rows.length / recordsPerPage));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const firstRecordIndex = (currentPage - 1) * recordsPerPage;
+  const paginatedRows = rows.slice(firstRecordIndex, firstRecordIndex + recordsPerPage);
 
   function submitAction(action: (formData: FormData) => Promise<{ ok: boolean; message: string }>, formData: FormData) {
     setResult(null);
@@ -1304,56 +1459,82 @@ function FinanceContributionsTab({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `contributions_${selectedYear}.csv`;
+    link.download = `contributions_${fromDate}_to_${toDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <h2 className="text-base font-semibold text-gray-800">Member Contributions</h2>
-        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap sm:items-end">
-          <label className="col-span-2 flex items-center gap-2 sm:col-auto">
-            <span className="text-sm text-gray-600">Year:</span>
-            <select
-              value={selectedYear}
-              onChange={(event) => {
-                setSelectedYear(Number(event.target.value));
-                setFamilyFilter("all");
-              }}
-              className="h-8 min-w-[110px] rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              {years.map((yearValue) => (
-                <option key={yearValue} value={yearValue}>{yearValue}</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={exportCsv} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs text-white transition hover:bg-emerald-700 sm:h-8">
-            <FileSpreadsheet className="size-4" />
-            Export Excel
-          </button>
-          <button type="button" onClick={() => { setPaymentModalUser(null); setPaymentModalOpen(true); }} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs text-white transition hover:bg-blue-700 sm:h-8">
-            <HandCoins className="size-4" />
-            Record Payment
-          </button>
-          <button type="button" onClick={() => { setAnnualModalUser(null); setAnnualModalOpen(true); }} className="col-span-2 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs text-white transition hover:bg-green-700 sm:col-auto sm:h-8">
-            <PlusCircle className="size-4" />
-            Set Annual Contribution
-          </button>
+      <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-end xl:gap-2">
+        <div className="min-w-0 flex-1 xl:min-w-[650px]">
+          <h2 className="text-base font-semibold text-gray-800">Member Contributions</h2>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <MemberContributionStat label="Expected Amount" value={formatCurrency(memberStats.totalExpected)} tone="blue" />
+            <MemberContributionStat label="Total Received" value={formatCurrency(memberStats.totalReceived)} tone="green" />
+            <MemberContributionStat label="Pending Amount" value={formatCurrency(memberStats.pendingAmount)} tone="amber" />
+            <MemberContributionStat label="Contribution Rate" value={`${memberStats.contributionRate}%`} tone="purple" />
+          </div>
         </div>
-      </div>
-
-      <div className="grid max-w-3xl grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-        <InfoCard label="Total Expected" value={formatCurrency(totals.totalExpected)} tone="blue" />
-        <InfoCard label="Total Collected" value={formatCurrency(totals.totalCollected)} tone="green" />
-        <InfoCard label="Collection Rate" value={`${totals.collectionRate}%`} tone="purple" wide />
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end xl:w-auto">
+          <div className="grid grid-cols-2 gap-2">
+            <FieldLabel label="From date">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(event) => {
+                  const nextFromDate = event.target.value;
+                  const nextYear = Number(nextFromDate.slice(0, 4)) || currentYear;
+                  setFromDate(nextFromDate);
+                  if (!toDate || toDate.slice(0, 4) !== String(nextYear) || toDate < nextFromDate) setToDate(`${nextYear}-12-31`);
+                  setFamilyFilter("all");
+                  setRequestedPage(1);
+                }}
+                className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-36"
+              />
+            </FieldLabel>
+            <FieldLabel label="To date">
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate}
+                max={selectedYearEnd}
+                onChange={(event) => {
+                  setToDate(event.target.value);
+                  setRequestedPage(1);
+                }}
+                className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-36"
+              />
+            </FieldLabel>
+          </div>
+          <div className="flex w-full flex-col gap-1.5 sm:w-48">
+            <button type="button" onClick={exportCsv} className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-3 text-xs text-white transition hover:bg-emerald-700">
+              <FileSpreadsheet className="size-4" />
+              Export Excel
+            </button>
+            <button type="button" onClick={() => { setPaymentModalUser(null); setPaymentModalOpen(true); }} className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 text-xs text-white transition hover:bg-blue-700">
+              <HandCoins className="size-4" />
+              Record Payment
+            </button>
+            <button type="button" onClick={() => { setAnnualModalUser(null); setAnnualModalOpen(true); }} className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 text-xs text-white transition hover:bg-green-700">
+              <PlusCircle className="size-4" />
+              Set Annual Contribution
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex max-w-4xl flex-col gap-2 sm:flex-row">
         <label className="relative w-full sm:w-64">
           <Users className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-          <select value={familyFilter} onChange={(event) => setFamilyFilter(event.target.value)} className="h-8 w-full appearance-none rounded-lg border border-gray-300 bg-white px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+          <select
+            value={familyFilter}
+            onChange={(event) => {
+              setFamilyFilter(event.target.value);
+              setRequestedPage(1);
+            }}
+            className="h-8 w-full appearance-none rounded-lg border border-gray-300 bg-white px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
             <option value="all">All Families</option>
             {yearFamilies.map((family) => (
               <option key={family.id} value={family.id}>{family.name}</option>
@@ -1362,7 +1543,15 @@ function FinanceContributionsTab({
         </label>
         <label className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by member name or email..." className="h-8 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+          <input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setRequestedPage(1);
+            }}
+            placeholder="Search by member name or email..."
+            className="h-8 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
         </label>
       </div>
       <p className="text-xs text-gray-500">{rows.length} contribution records found</p>
@@ -1386,7 +1575,7 @@ function FinanceContributionsTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {rows.length ? rows.map((row) => (
+            {rows.length ? paginatedRows.map((row) => (
               <tr key={row.user.id}>
                 <td className="min-w-56 px-3 py-3">
                   <p className="font-medium text-gray-800">{row.user.name}</p>
@@ -1418,8 +1607,37 @@ function FinanceContributionsTab({
         </table>
       </div>
 
+      {rows.length > recordsPerPage ? (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:flex-row">
+          <p className="text-xs text-gray-500">
+            Showing {firstRecordIndex + 1}–{Math.min(firstRecordIndex + recordsPerPage, rows.length)} of {rows.length} records
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setRequestedPage(currentPage - 1)}
+              className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="min-w-20 text-center text-xs font-medium text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={() => setRequestedPage(currentPage + 1)}
+              className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="space-y-2 sm:hidden">
-        {rows.length ? rows.map((row) => (
+        {rows.length ? paginatedRows.map((row) => (
           <article key={row.user.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="bg-gray-50 px-3 py-2">
               <p className="font-medium text-gray-800">{row.user.name}</p>
@@ -1472,6 +1690,7 @@ function FinanceContributionsTab({
           user={paymentModalUser}
           users={users}
           year={selectedYear}
+          defaultDate={fromDate <= new Date().toISOString().slice(0, 10) && new Date().toISOString().slice(0, 10) <= toDate ? new Date().toISOString().slice(0, 10) : fromDate}
           termNumbers={termNumbers}
           pending={pending}
           onUserChange={setPaymentModalUser}
@@ -1481,7 +1700,7 @@ function FinanceContributionsTab({
       ) : null}
 
       {detailRow ? (
-        <DetailsModal row={detailRow} payments={paymentsForYear.filter((payment) => payment.userId === detailRow.user.id)} onClose={() => setDetailRow(null)} />
+        <DetailsModal row={detailRow} payments={paymentsForRange.filter((payment) => payment.userId === detailRow.user.id)} onClose={() => setDetailRow(null)} />
       ) : null}
     </div>
   );
@@ -1492,16 +1711,23 @@ function FinancePaymentsTab({
   payments,
   users,
   termSettings,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }: {
   currentYear: number;
   payments: Payment[];
   users: UserOption[];
   termSettings: FinanceTermSetting[];
+  fromDate: string;
+  toDate: string;
+  setFromDate: (value: string) => void;
+  setToDate: (value: string) => void;
 }) {
   const router = useRouter();
-  const [fromDate, setFromDate] = useState(`${currentYear}-01-01`);
-  const [toDate, setToDate] = useState(`${currentYear}-12-31`);
   const [search, setSearch] = useState("");
+  const [requestedPage, setRequestedPage] = useState(1);
   const [detailPayment, setDetailPayment] = useState<Payment | null>(null);
   const [editPayment, setEditPayment] = useState<Payment | null>(null);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -1519,7 +1745,13 @@ function FinancePaymentsTab({
       .sort((a, b) => b.paymentDateRaw.localeCompare(a.paymentDateRaw) || b.id - a.id);
   }, [payments, fromDate, toDate, search]);
 
-  const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const recordsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / recordsPerPage));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const firstRecordIndex = (currentPage - 1) * recordsPerPage;
+  const paginatedPayments = filteredPayments.slice(firstRecordIndex, firstRecordIndex + recordsPerPage);
+
+  const totalPayments = filteredPayments.filter((payment) => payment.status !== "voided").reduce((sum, payment) => sum + payment.amount, 0);
 
   function exportCsv() {
     if (fromDate && toDate && fromDate > toDate) {
@@ -1563,9 +1795,9 @@ function FinancePaymentsTab({
 
   function deletePayment(payment: Payment) {
     setConfirmAction({
-      title: "Delete Payment",
-      message: `Delete payment for ${payment.userName} (${formatCurrency(payment.amount)})? This action cannot be undone.`,
-      confirmLabel: "Delete Payment",
+      title: "Void Payment",
+      message: `Void payment for ${payment.userName} (${formatCurrency(payment.amount)})? The record remains in the audit history.`,
+      confirmLabel: "Void Payment",
       action: async () => {
         setResult(null);
         const response = await deleteFinancePayment(payment.id);
@@ -1583,15 +1815,15 @@ function FinancePaymentsTab({
       <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
           <FieldLabel label="From">
-            <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={fromDate} onChange={(event) => { setFromDate(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
           <FieldLabel label="To">
-            <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={toDate} onChange={(event) => { setToDate(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
           <label className="relative col-span-2 sm:col-auto">
             <span className="mb-1 block text-xs font-medium text-gray-600">Search Member</span>
             <Search className="absolute left-3 top-[34px] size-4 text-gray-400 sm:top-[31px]" aria-hidden="true" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by member name or email..." className="h-9 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:w-72" />
+            <input value={search} onChange={(event) => { setSearch(event.target.value); setRequestedPage(1); }} placeholder="Search by member name or email..." className="h-9 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8 sm:w-72" />
           </label>
           <button type="button" onClick={exportCsv} className="col-span-2 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 sm:h-8 sm:w-auto">
             <FileSpreadsheet className="size-4" aria-hidden="true" />
@@ -1640,9 +1872,9 @@ function FinancePaymentsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredPayments.length ? filteredPayments.map((payment, index) => (
+              {filteredPayments.length ? paginatedPayments.map((payment, index) => (
                 <tr key={payment.id} className="transition hover:bg-gray-50">
-                  <td className="px-3 py-2 text-xs text-gray-400">{index + 1}</td>
+                  <td className="px-3 py-2 text-xs text-gray-400">{firstRecordIndex + index + 1}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-600">{payment.paymentDate}</td>
                   <td className="px-3 py-2">
                     <p className="font-medium text-gray-800">{payment.userName}</p>
@@ -1674,6 +1906,23 @@ function FinancePaymentsTab({
         </div>
       </div>
 
+      {filteredPayments.length > recordsPerPage ? (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:flex-row">
+          <p className="text-xs text-gray-500">
+            Showing {firstRecordIndex + 1}–{Math.min(firstRecordIndex + recordsPerPage, filteredPayments.length)} of {filteredPayments.length} records
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={currentPage === 1} onClick={() => setRequestedPage(currentPage - 1)} className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+              Previous
+            </button>
+            <span className="min-w-20 text-center text-xs font-medium text-gray-600">Page {currentPage} of {totalPages}</span>
+            <button type="button" disabled={currentPage === totalPages} onClick={() => setRequestedPage(currentPage + 1)} className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {detailPayment ? (
         <PaymentDetailsModal payment={detailPayment} onClose={() => setDetailPayment(null)} />
       ) : null}
@@ -1701,32 +1950,56 @@ function FinancePaymentsTab({
 
 function FinanceExpensesTab({
   currentYear,
+  currentUserId,
+  accountBalance,
   expenses,
   users,
+  permissions,
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
 }: {
   currentYear: number;
+  currentUserId: number;
+  accountBalance: number;
   expenses: Expense[];
   users: UserOption[];
+  permissions: FinancePermissions;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
 }) {
   const router = useRouter();
-  const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
-  const [endDate, setEndDate] = useState(`${currentYear}-12-31`);
+  const { prompt } = useAppDialog();
   const [statusFilter, setStatusFilter] = useState("all");
   const [approverFilter, setApproverFilter] = useState("all");
+  const [requestedPage, setRequestedPage] = useState(1);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const filteredExpenses = useMemo(() => {
+  const dateRangeExpenses = useMemo(() => {
     return expenses
       .filter((expense) => !startDate || expense.dateRaw >= startDate)
-      .filter((expense) => !endDate || expense.dateRaw <= endDate)
+      .filter((expense) => !endDate || expense.dateRaw <= endDate);
+  }, [expenses, startDate, endDate]);
+
+  const filteredExpenses = useMemo(() => {
+    return dateRangeExpenses
       .filter((expense) => statusFilter === "all" || expense.status === statusFilter)
       .filter((expense) => approverFilter === "all" || expense.approverId1 === Number(approverFilter) || expense.approverId2 === Number(approverFilter))
       .sort((a, b) => b.dateRaw.localeCompare(a.dateRaw) || b.id - a.id);
-  }, [expenses, startDate, endDate, statusFilter, approverFilter]);
+  }, [dateRangeExpenses, statusFilter, approverFilter]);
+
+  const recordsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / recordsPerPage));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const firstRecordIndex = (currentPage - 1) * recordsPerPage;
+  const paginatedExpenses = filteredExpenses.slice(firstRecordIndex, firstRecordIndex + recordsPerPage);
 
   const approvers = useMemo(() => {
     const map = new Map<number, string>();
@@ -1737,25 +2010,18 @@ function FinanceExpensesTab({
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [expenses]);
 
-  const now = new Date();
   const stats = {
-    total: filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-    pending: filteredExpenses.filter((expense) => expense.status === "pending").reduce((sum, expense) => sum + expense.amount, 0),
-    approved: filteredExpenses.filter((expense) => expense.status === "approved").reduce((sum, expense) => sum + expense.amount, 0),
-    monthly: filteredExpenses
-      .filter((expense) => {
-        if (!expense.dateRaw) return false;
-        const date = new Date(`${expense.dateRaw}T12:00:00`);
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, expense) => sum + expense.amount, 0),
+    total: dateRangeExpenses.filter((expense) => ["pending", "approved", "void_pending"].includes(expense.status)).reduce((sum, expense) => sum + expense.amount, 0),
+    pending: dateRangeExpenses.filter((expense) => expense.status === "pending").reduce((sum, expense) => sum + expense.amount, 0),
+    approved: dateRangeExpenses.filter((expense) => expense.status === "approved" || expense.status === "void_pending").reduce((sum, expense) => sum + expense.amount, 0),
   };
 
   function resetFilters() {
-    setStartDate(`${currentYear}-01-01`);
-    setEndDate(`${currentYear}-12-31`);
+    onStartDateChange(`${currentYear}-01-01`);
+    onEndDateChange(`${currentYear}-12-31`);
     setStatusFilter("all");
     setApproverFilter("all");
+    setRequestedPage(1);
   }
 
   function submitExpense(formData: FormData) {
@@ -1771,10 +2037,11 @@ function FinanceExpensesTab({
   }
 
   function approveRow(expense: Expense) {
+    const approvingVoid = expense.status === "void_pending";
     setConfirmAction({
-      title: "Approve Expense",
-      message: `Approve this expense for ${formatCurrency(expense.amount)}?`,
-      confirmLabel: "Approve",
+      title: approvingVoid ? "Approve Expense Void" : "Approve Expense",
+      message: approvingVoid ? `Approve voiding this previously approved expense for ${formatCurrency(expense.amount)}?` : `Approve this expense for ${formatCurrency(expense.amount)}?`,
+      confirmLabel: approvingVoid ? "Approve Void" : "Approve",
       tone: "primary",
       action: async () => {
         setResult(null);
@@ -1788,20 +2055,24 @@ function FinanceExpensesTab({
     });
   }
 
-  function deleteRow(expense: Expense) {
-    setConfirmAction({
-      title: "Delete Expense",
-      message: `Delete this expense for ${formatCurrency(expense.amount)}? This action cannot be undone.`,
-      confirmLabel: "Delete Expense",
-      action: async () => {
-        setResult(null);
-        const response = await deleteExpense(expense.id);
-        setResult(response);
-        if (response.ok) {
-          setConfirmAction(null);
-          router.refresh();
-        }
-      },
+  async function rejectRow(expense: Expense) {
+    const rejectingVoid = expense.status === "void_pending";
+    const reason = await prompt({ title: rejectingVoid ? "Reject Expense Void" : "Reject Expense", message: rejectingVoid ? `Keep this approved expense of ${formatCurrency(expense.amount)} and reject its void request?` : `Reject this expense for ${formatCurrency(expense.amount)}?`, inputLabel: "Rejection reason", inputPlaceholder: "Explain why this request is being rejected", confirmLabel: rejectingVoid ? "Reject Void" : "Reject Expense", tone: "danger", required: true });
+    if (!reason) return;
+    startTransition(async () => {
+      const response = await rejectExpense(expense.id, reason);
+      setResult(response);
+      if (response.ok) router.refresh();
+    });
+  }
+
+  async function deleteRow(expense: Expense) {
+    const reason = await prompt({ title: "Void Expense", message: expense.status === "approved" ? "The original approver must approve this void request. The money remains deducted until then." : "The record will remain in the audit history.", inputLabel: "Reason for voiding", inputPlaceholder: "Explain why this expense is being voided", confirmLabel: expense.status === "approved" ? "Request Void" : "Void Expense", tone: "danger", required: true });
+    if (!reason) return;
+    startTransition(async () => {
+      const response = await voidExpense(expense.id, reason);
+      setResult(response);
+      if (response.ok) router.refresh();
     });
   }
 
@@ -1811,13 +2082,13 @@ function FinanceExpensesTab({
       return;
     }
     const lines = [
-      ["Date", "Reason", "Amount", "Status", "Approvers", "Recorded By"],
+      ["Date", "Reason", "Amount", "Status", "Approver", "Recorded By"],
       ...filteredExpenses.map((expense) => [
         expense.dateRaw,
         expense.description ?? "",
         expense.amount,
         expense.status,
-        [expense.approver1Name, expense.approver2Name].filter(Boolean).join(", "),
+        expense.approver1Name ?? expense.approver2Name ?? "",
         expense.createdByName,
       ]),
     ];
@@ -1837,50 +2108,59 @@ function FinanceExpensesTab({
         <h2 className="text-base font-semibold text-gray-800">Expenses</h2>
         <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap sm:items-end">
           <FieldLabel label="From">
-            <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={startDate} onChange={(event) => { onStartDateChange(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
           <FieldLabel label="To">
-            <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={endDate} onChange={(event) => { onEndDateChange(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
-          <button type="button" onClick={exportCsv} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs text-white transition hover:bg-green-700 sm:h-8">
+          {permissions.export ? <button type="button" onClick={exportCsv} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs text-white transition hover:bg-green-700 sm:h-8">
             <FileSpreadsheet className="size-4" />
             Export Excel
-          </button>
-          <button type="button" onClick={() => setExpenseModalOpen(true)} className="col-span-2 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs text-white shadow-sm transition hover:bg-blue-700 sm:col-auto sm:h-8">
+          </button> : null}
+          {permissions.manageExpenses ? <button
+            type="button"
+            onClick={() => setExpenseModalOpen(true)}
+            disabled={accountBalance <= 0}
+            title={accountBalance <= 0 ? "No account balance is available for a new expense" : "Record a new expense"}
+            className="col-span-2 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:h-8"
+          >
             <PlusCircle className="size-4" />
             New Expense
-          </button>
+          </button> : null}
         </div>
       </div>
 
-      <div className="grid max-w-4xl grid-cols-2 gap-3 lg:grid-cols-4">
-        <ExpenseStat label="Total" value={stats.total} tone="blue" icon={ChartPie} />
-        <ExpenseStat label="Pending" value={stats.pending} tone="yellow" icon={CreditCard} />
-        <ExpenseStat label="Approved" value={stats.approved} tone="green" icon={Save} />
-        <ExpenseStat label="This Month" value={stats.monthly} tone="purple" icon={Receipt} />
-      </div>
-
-      <div className="max-w-xl rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-        <div className="grid grid-cols-2 gap-3">
-          <FieldLabel label="Status">
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </FieldLabel>
-          <FieldLabel label="Approver">
-            <select value={approverFilter} onChange={(event) => setApproverFilter(event.target.value)} className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-              <option value="all">All Approvers</option>
-              {approvers.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-            </select>
-          </FieldLabel>
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(340px,1.4fr)]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <ExpenseStat label="Total" value={stats.total} tone="blue" icon={ChartPie} />
+          <ExpenseStat label="Pending" value={stats.pending} tone="yellow" icon={CreditCard} />
+          <ExpenseStat label="Approved" value={stats.approved} tone="green" icon={Save} />
         </div>
-        <div className="mt-2 flex justify-end">
-          <button type="button" onClick={resetFilters} className="text-xs text-gray-500 transition hover:text-gray-700">Reset</button>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <FieldLabel label="Status">
+              <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setRequestedPage(1); }} className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="void_pending">Void Pending</option>
+                <option value="voided">Voided</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Approver">
+              <select value={approverFilter} onChange={(event) => { setApproverFilter(event.target.value); setRequestedPage(1); }} className="h-8 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                <option value="all">All Approvers</option>
+                {approvers.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </FieldLabel>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <button type="button" onClick={resetFilters} className="text-xs text-gray-500 transition hover:text-gray-700">Reset</button>
+          </div>
         </div>
       </div>
 
@@ -1893,27 +2173,32 @@ function FinanceExpensesTab({
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["#", "Date", "Reason", "Amount", "Status", "Approvers", "Actions"].map((header) => (
+                {["#", "Date", "Reason", "Amount", "Status", "Approver", "Actions"].map((header) => (
                   <th key={header} className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{header}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredExpenses.length ? filteredExpenses.map((expense, index) => (
+              {filteredExpenses.length ? paginatedExpenses.map((expense, index) => (
                 <tr key={expense.id} className="transition hover:bg-gray-50">
-                  <td className="px-3 py-2 text-xs text-gray-400">{index + 1}</td>
+                  <td className="px-3 py-2 text-xs text-gray-400">{firstRecordIndex + index + 1}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-600">{expense.date}</td>
                   <td className="max-w-xs px-3 py-2 text-gray-800">{expense.description || "-"}</td>
                   <td className="whitespace-nowrap px-3 py-2 font-semibold text-blue-600">{formatCurrency(expense.amount)}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${expenseStatusBadge(expense.status)}`}>{expense.status}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${expenseStatusBadge(expense.status)}`}>{expenseStatusLabel(expense.status)}</span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-gray-600">{[expense.approver1Name, expense.approver2Name].filter(Boolean).join(", ") || "-"}</td>
+                  <td className="px-3 py-2 text-xs text-gray-600">{expense.approver1Name ?? expense.approver2Name ?? "-"}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
                       <ExpenseActionButton label="View" icon={FileText} tone="blue" onClick={() => setDetailExpense(expense)} />
-                      {expense.status === "pending" ? <ExpenseActionButton label="Approve" icon={CheckCircle2} tone="green" onClick={() => approveRow(expense)} /> : null}
-                      <ExpenseActionButton label="Delete" icon={Trash2} tone="red" onClick={() => deleteRow(expense)} />
+                      {(expense.status === "pending" || expense.status === "void_pending") && expense.approverId1 === currentUserId ? (
+                        <ExpenseActionButton label={expense.status === "void_pending" ? "Approve Void" : "Approve"} icon={CheckCircle2} tone="green" onClick={() => approveRow(expense)} />
+                      ) : null}
+                      {(expense.status === "pending" || expense.status === "void_pending") && expense.approverId1 === currentUserId ? (
+                        <ExpenseActionButton label={expense.status === "void_pending" ? "Reject Void" : "Reject"} icon={X} tone="red" onClick={() => rejectRow(expense)} />
+                      ) : null}
+                      {permissions.deleteExpenses && expense.status !== "voided" && expense.status !== "void_pending" ? <ExpenseActionButton label="Void" icon={Trash2} tone="red" onClick={() => deleteRow(expense)} /> : null}
                     </div>
                   </td>
                 </tr>
@@ -1926,14 +2211,14 @@ function FinanceExpensesTab({
           </table>
         </div>
         <div className="space-y-3 p-3 sm:hidden">
-          {filteredExpenses.length ? filteredExpenses.map((expense, index) => {
-            const approverNames = [expense.approver1Name, expense.approver2Name].filter(Boolean).join(", ") || "-";
+          {filteredExpenses.length ? paginatedExpenses.map((expense, index) => {
+            const approverName = expense.approver1Name ?? expense.approver2Name ?? "-";
             return (
               <div key={expense.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
                 <div className="mb-3 rounded-lg bg-gray-50 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-semibold text-gray-400">#{index + 1}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${expenseStatusBadge(expense.status)}`}>{expense.status}</span>
+                    <span className="text-xs font-semibold text-gray-400">#{firstRecordIndex + index + 1}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${expenseStatusBadge(expense.status)}`}>{expenseStatusLabel(expense.status)}</span>
                   </div>
                   <p className="mt-2 text-sm font-medium text-gray-800">{expense.description || "-"}</p>
                 </div>
@@ -1947,14 +2232,19 @@ function FinanceExpensesTab({
                     <p className="mt-0.5 font-semibold text-blue-600">{formatCurrency(expense.amount)}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="font-medium uppercase tracking-wide text-gray-400">Approvers</p>
-                    <p className="mt-0.5 text-gray-700">{approverNames}</p>
+                    <p className="font-medium uppercase tracking-wide text-gray-400">Approver</p>
+                    <p className="mt-0.5 text-gray-700">{approverName}</p>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-1 border-t border-gray-100 pt-2">
                   <ExpenseActionButton label="View" icon={FileText} tone="blue" onClick={() => setDetailExpense(expense)} />
-                  {expense.status === "pending" ? <ExpenseActionButton label="Approve" icon={CheckCircle2} tone="green" onClick={() => approveRow(expense)} /> : null}
-                  <ExpenseActionButton label="Delete" icon={Trash2} tone="red" onClick={() => deleteRow(expense)} />
+                  {(expense.status === "pending" || expense.status === "void_pending") && expense.approverId1 === currentUserId ? (
+                    <ExpenseActionButton label={expense.status === "void_pending" ? "Approve Void" : "Approve"} icon={CheckCircle2} tone="green" onClick={() => approveRow(expense)} />
+                  ) : null}
+                  {(expense.status === "pending" || expense.status === "void_pending") && expense.approverId1 === currentUserId ? (
+                    <ExpenseActionButton label={expense.status === "void_pending" ? "Reject Void" : "Reject"} icon={X} tone="red" onClick={() => rejectRow(expense)} />
+                  ) : null}
+                  {permissions.deleteExpenses && expense.status !== "voided" && expense.status !== "void_pending" ? <ExpenseActionButton label="Void" icon={Trash2} tone="red" onClick={() => deleteRow(expense)} /> : null}
                 </div>
               </div>
             );
@@ -1964,8 +2254,44 @@ function FinanceExpensesTab({
         </div>
       </div>
 
+      {filteredExpenses.length > recordsPerPage ? (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:flex-row">
+          <p className="text-xs text-gray-500">
+            Showing {firstRecordIndex + 1}–{Math.min(firstRecordIndex + recordsPerPage, filteredExpenses.length)} of {filteredExpenses.length} records
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setRequestedPage(currentPage - 1)}
+              className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="min-w-20 text-center text-xs font-medium text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={() => setRequestedPage(currentPage + 1)}
+              className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {expenseModalOpen ? (
-        <ExpenseModal currentYear={currentYear} users={users} pending={pending} onClose={() => setExpenseModalOpen(false)} onSubmit={submitExpense} />
+        <ExpenseModal
+          currentYear={currentYear}
+          availableBalance={accountBalance}
+          users={users.filter((user) => user.id !== currentUserId && user.canApproveExpenses)}
+          pending={pending}
+          onClose={() => setExpenseModalOpen(false)}
+          onSubmit={submitExpense}
+        />
       ) : null}
       {detailExpense ? (
         <ExpenseDetailsModal expense={detailExpense} onClose={() => setDetailExpense(null)} />
@@ -1982,11 +2308,10 @@ function FinanceExpensesTab({
   );
 }
 
-function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sponsors: Sponsor[] }) {
+function FinanceSponsorsTab({ currentYear, sponsors, fromDate, toDate, setFromDate, setToDate }: { currentYear: number; sponsors: Sponsor[]; fromDate: string; toDate: string; setFromDate: (value: string) => void; setToDate: (value: string) => void }) {
   const router = useRouter();
-  const [fromDate, setFromDate] = useState(`${currentYear}-01-01`);
-  const [toDate, setToDate] = useState(`${currentYear}-12-31`);
   const [search, setSearch] = useState("");
+  const [requestedPage, setRequestedPage] = useState(1);
   const [editingSponsor, setEditingSponsor] = useState<Sponsor | "new" | null>(null);
   const [paymentSponsor, setPaymentSponsor] = useState<Sponsor | null>(null);
   const [historySponsor, setHistorySponsor] = useState<Sponsor | null>(null);
@@ -2015,6 +2340,12 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
       .filter((sponsor) => !query || sponsor.name.toLowerCase().includes(query) || (sponsor.email ?? "").toLowerCase().includes(query) || (sponsor.phone ?? "").toLowerCase().includes(query))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sponsors, fromDate, toDate, fromYear, toYear, search]);
+
+  const recordsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredSponsors.length / recordsPerPage));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const firstRecordIndex = (currentPage - 1) * recordsPerPage;
+  const paginatedSponsors = filteredSponsors.slice(firstRecordIndex, firstRecordIndex + recordsPerPage);
 
   const stats = {
     totalSponsors: filteredSponsors.length,
@@ -2048,9 +2379,9 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
 
   function removeSponsor(sponsor: Sponsor) {
     setConfirmAction({
-      title: "Delete Sponsor",
-      message: `Delete "${sponsor.name}" and all associated payments? This action cannot be undone.`,
-      confirmLabel: "Delete Sponsor",
+      title: "Deactivate Sponsor",
+      message: `Deactivate "${sponsor.name}"? Its payment history will be preserved.`,
+      confirmLabel: "Deactivate Sponsor",
       action: async () => {
         setResult(null);
         const response = await deleteSponsor(sponsor.id);
@@ -2099,10 +2430,10 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
         <h2 className="text-base font-semibold text-gray-800">Sponsors</h2>
         <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap sm:items-end sm:gap-3">
           <FieldLabel label="From">
-            <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={fromDate} onChange={(event) => { setFromDate(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
           <FieldLabel label="To">
-            <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+            <input type="date" value={toDate} onChange={(event) => { setToDate(event.target.value); setRequestedPage(1); }} className="h-9 w-full rounded-lg border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
           </FieldLabel>
           <button type="button" onClick={exportCsv} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs text-white transition hover:bg-green-700 sm:h-8">
             <FileSpreadsheet className="size-4" />
@@ -2124,7 +2455,7 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
       <div className="max-w-xl">
         <label className="relative block">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by sponsor name or email..." className="h-9 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
+          <input value={search} onChange={(event) => { setSearch(event.target.value); setRequestedPage(1); }} placeholder="Search by sponsor name or email..." className="h-9 w-full rounded-lg border border-gray-300 px-9 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:h-8" />
         </label>
         <p className="mt-1 text-xs text-gray-500">{filteredSponsors.length} sponsors found</p>
       </div>
@@ -2143,7 +2474,7 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {filteredSponsors.length ? filteredSponsors.map((sponsor) => {
+            {filteredSponsors.length ? paginatedSponsors.map((sponsor) => {
               const status = sponsorStatus(sponsor.commitmentAmount, sponsor.rangeReceived);
               const remaining = Math.max(sponsor.commitmentAmount - sponsor.rangeReceived, 0);
               return (
@@ -2177,6 +2508,23 @@ function FinanceSponsorsTab({ currentYear, sponsors }: { currentYear: number; sp
         </table>
       </div>
 
+      {filteredSponsors.length > recordsPerPage ? (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:flex-row">
+          <p className="text-xs text-gray-500">
+            Showing {firstRecordIndex + 1}–{Math.min(firstRecordIndex + recordsPerPage, filteredSponsors.length)} of {filteredSponsors.length} sponsors
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={currentPage === 1} onClick={() => setRequestedPage(currentPage - 1)} className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+              Previous
+            </button>
+            <span className="min-w-20 text-center text-xs font-medium text-gray-600">Page {currentPage} of {totalPages}</span>
+            <button type="button" disabled={currentPage === totalPages} onClick={() => setRequestedPage(currentPage + 1)} className="h-8 rounded-lg border border-gray-300 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {editingSponsor ? (
         <SponsorModal sponsor={editingSponsor === "new" ? null : editingSponsor} currentYear={currentYear} pending={pending} onClose={() => setEditingSponsor(null)} onSubmit={submitSponsor} />
       ) : null}
@@ -2208,6 +2556,30 @@ function InfoCard({ label, value, tone, wide = false }: { label: string; value: 
     <div className={`rounded-lg p-3 ${colors[tone]} ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
       <p className="text-xs text-gray-600">{label}</p>
       <p className="text-lg font-bold">{value}</p>
+    </div>
+  );
+}
+
+function MemberContributionStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "blue" | "green" | "amber" | "purple";
+}) {
+  const colors = {
+    blue: "border-blue-100 bg-blue-50 text-blue-700",
+    green: "border-green-100 bg-green-50 text-green-700",
+    amber: "border-amber-100 bg-amber-50 text-amber-700",
+    purple: "border-purple-100 bg-purple-50 text-purple-700",
+  };
+
+  return (
+    <div className={`min-w-0 rounded-lg border px-3 py-2 ${colors[tone]}`}>
+      <p className="truncate text-[11px] text-gray-600">{label}</p>
+      <p className="whitespace-nowrap text-sm font-bold sm:text-base">{value}</p>
     </div>
   );
 }
@@ -2419,6 +2791,7 @@ function PaymentModal({
   user,
   users,
   year,
+  defaultDate,
   termNumbers,
   pending,
   onUserChange,
@@ -2428,6 +2801,7 @@ function PaymentModal({
   user: UserOption | null;
   users: UserOption[];
   year: number;
+  defaultDate: string;
   termNumbers: number[];
   pending: boolean;
   onUserChange: (user: UserOption | null) => void;
@@ -2469,7 +2843,10 @@ function PaymentModal({
             </select>
           </FieldLabel>
           <FieldLabel label="Payment Date">
-            <input name="payment_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className={fieldClass} />
+            <input name="payment_date" type="date" defaultValue={defaultDate} className={fieldClass} />
+          </FieldLabel>
+          <FieldLabel label="Reference number">
+            <input name="reference_number" placeholder="Receipt or transaction #" className={fieldClass} />
           </FieldLabel>
         </div>
         <FieldLabel label="Notes">
@@ -2547,6 +2924,7 @@ function PaymentDetailsModal({ payment, onClose }: { payment: Payment; onClose: 
           <DetailItem label="Year" value={String(payment.year)} />
           <DetailItem label="Payment Date" value={payment.paymentDate} />
           <DetailItem label="Payment Method" value={methodLabel(payment.paymentMethod)} />
+          {payment.referenceNumber ? <DetailItem label="Reference" value={payment.referenceNumber} /> : null}
         </div>
         <div className="rounded-lg bg-gray-50 px-3 py-2">
           <p className="text-xs text-gray-500">Notes</p>
@@ -2615,6 +2993,9 @@ function EditPaymentModal({
           </FieldLabel>
           <FieldLabel label="Payment Date">
             <input name="payment_date" type="date" required defaultValue={payment.paymentDateRaw} className={fieldClass} />
+          </FieldLabel>
+          <FieldLabel label="Reference number">
+            <input name="reference_number" defaultValue={payment.referenceNumber ?? ""} className={fieldClass} />
           </FieldLabel>
         </div>
         <FieldLabel label="Notes">
@@ -2785,19 +3166,29 @@ function SponsorHistoryModal({
 
 function ExpenseModal({
   currentYear,
+  availableBalance,
   users,
   pending,
   onClose,
   onSubmit,
 }: {
   currentYear: number;
+  availableBalance: number;
   users: UserOption[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (formData: FormData) => void;
 }) {
-  const [approver1, setApprover1] = useState<UserOption | null>(null);
-  const [approver2, setApprover2] = useState<UserOption | null>(null);
+  const [approverSearch, setApproverSearch] = useState("");
+  const [selectedApproverId, setSelectedApproverId] = useState<number | null>(null);
+  const [approverListOpen, setApproverListOpen] = useState(false);
+  const [approverError, setApproverError] = useState("");
+  const normalizedApproverSearch = approverSearch.trim().toLowerCase();
+  const matchingApprovers = users.filter((user) => {
+    if (!normalizedApproverSearch) return true;
+    return user.name.toLowerCase().includes(normalizedApproverSearch)
+      || user.email.toLowerCase().includes(normalizedApproverSearch);
+  });
 
   return (
     <Modal title="New Expense" onClose={onClose} width="max-w-lg">
@@ -2805,33 +3196,101 @@ function ExpenseModal({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!selectedApproverId) {
+            setApproverError("Search for and select an authorized approver.");
+            setApproverListOpen(true);
+            return;
+          }
           onSubmit(new FormData(event.currentTarget));
         }}
       >
         <input type="hidden" name="year" value={currentYear} />
-        <input type="hidden" name="date" value={new Date().toISOString().slice(0, 10)} />
-        <input type="hidden" name="category" value="other" />
-        <input type="hidden" name="approver_id_1" value={approver1?.id ?? ""} />
-        <input type="hidden" name="approver_id_2" value={approver2?.id ?? ""} />
-        <FieldLabel label="Amount">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">RWF</span>
-            <input name="amount" type="number" min={1} step="0.01" required placeholder="0.00" className={`${fieldClass} pl-12`} />
-          </div>
-        </FieldLabel>
-        <FieldLabel label="Description">
-          <textarea name="description" rows={2} required placeholder="Reason for the expense..." className={`${fieldClass} h-auto py-2`} />
-        </FieldLabel>
-        <div>
-          <p className="mb-2 text-sm font-medium text-gray-700">
-            Approvers <span className="text-xs font-normal text-gray-400">(Select 1 or 2)</span>
-          </p>
-          <div className="space-y-3">
-            <MemberSearchField label="Approver 1" user={approver1} users={users} onUserChange={setApprover1} />
-            <MemberSearchField label="Approver 2 (Optional)" user={approver2} users={users} onUserChange={setApprover2} />
-          </div>
+        <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+          <p className="text-xs text-blue-700">Available Account Balance</p>
+          <p className="text-lg font-bold text-blue-800">{formatCurrency(availableBalance)}</p>
         </div>
-        <ModalFooter pending={pending} submitLabel="Save Expense" onClose={onClose} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldLabel label="Amount">
+            <input name="amount" type="number" min={1} max={availableBalance} step="0.01" required className={fieldClass} />
+          </FieldLabel>
+          <FieldLabel label="Date">
+            <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className={fieldClass} />
+          </FieldLabel>
+        </div>
+        <FieldLabel label="Reason">
+          <textarea name="description" rows={3} required className={`${fieldClass} h-auto py-2`} />
+        </FieldLabel>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldLabel label="Reference number">
+            <input name="reference_number" placeholder="Invoice or request #" className={fieldClass} />
+          </FieldLabel>
+          <FieldLabel label="Receipt / document">
+            <input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png" className={`${fieldClass} py-2 text-xs`} />
+          </FieldLabel>
+        </div>
+        <input type="hidden" name="approver_id_1" value={selectedApproverId ?? ""} />
+        <div
+          className="relative"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setApproverListOpen(false);
+            }
+          }}
+        >
+          <label htmlFor="expense-approver-search" className="mb-1 block text-sm font-medium text-gray-700">Approver</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            <input
+              id="expense-approver-search"
+              type="search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={approverListOpen}
+              aria-controls="expense-approver-results"
+              autoComplete="off"
+              value={approverSearch}
+              onFocus={() => setApproverListOpen(true)}
+              onChange={(event) => {
+                setApproverSearch(event.target.value);
+                setSelectedApproverId(null);
+                setApproverError("");
+                setApproverListOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setApproverListOpen(false);
+              }}
+              placeholder="Search approver by name or email..."
+              className={`${fieldClass} pl-9 ${approverError ? "border-red-400 focus:border-red-500 focus:ring-red-100" : ""}`}
+            />
+          </div>
+          {approverError ? <p className="mt-1 text-xs text-red-600">{approverError}</p> : null}
+          {approverListOpen ? (
+            <div id="expense-approver-results" role="listbox" className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
+              {matchingApprovers.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  role="option"
+                  aria-selected={selectedApproverId === user.id}
+                  onClick={() => {
+                    setSelectedApproverId(user.id);
+                    setApproverSearch(`${user.name} - ${user.email}`);
+                    setApproverError("");
+                    setApproverListOpen(false);
+                  }}
+                  className={`block w-full rounded-md px-3 py-2 text-left transition hover:bg-blue-50 ${selectedApproverId === user.id ? "bg-blue-50" : ""}`}
+                >
+                  <span className="block text-sm font-medium text-gray-800">{user.name}</span>
+                  <span className="block text-xs text-gray-500">{user.email}</span>
+                </button>
+              ))}
+              {!matchingApprovers.length && normalizedApproverSearch ? (
+                <p className="px-3 py-5 text-center text-sm text-gray-500">No approvers found</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <ModalFooter pending={pending} disabled={availableBalance <= 0} submitLabel="Save Expense" onClose={onClose} />
       </form>
     </Modal>
   );
@@ -2847,7 +3306,7 @@ function ExpenseDetailsModal({ expense, onClose }: { expense: Expense; onClose: 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <DetailBox label="Date" value={expense.date} />
-          <DetailBox label="Status" value={expense.status} />
+          <DetailBox label="Status" value={expenseStatusLabel(expense.status)} />
         </div>
         <div className="rounded-lg bg-gray-50 p-3">
           <p className="text-xs text-gray-500">Description</p>
@@ -2859,8 +3318,8 @@ function ExpenseDetailsModal({ expense, onClose }: { expense: Expense; onClose: 
             <p className="text-sm font-medium text-gray-800">{expense.createdByName}</p>
           </div>
           <div className="rounded-lg border-l-4 border-green-500 bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Approvers</p>
-            <p className="text-sm font-medium text-gray-800">{[expense.approver1Name, expense.approver2Name].filter(Boolean).join(", ") || "-"}</p>
+            <p className="text-xs text-gray-500">Approver</p>
+            <p className="text-sm font-medium text-gray-800">{expense.approver1Name ?? expense.approver2Name ?? "-"}</p>
           </div>
         </div>
         {expense.approvedByName ? (
@@ -2868,6 +3327,16 @@ function ExpenseDetailsModal({ expense, onClose }: { expense: Expense; onClose: 
             <p className="text-xs text-green-700">Approved By</p>
             <p className="text-sm font-semibold text-green-800">{expense.approvedByName}</p>
           </div>
+        ) : null}
+        {expense.referenceNumber ? <DetailBox label="Reference" value={expense.referenceNumber} /> : null}
+        {expense.rejectionReason ? (
+          <div className="rounded-lg bg-red-50 p-3"><p className="text-xs text-red-700">Rejection reason</p><p className="text-sm text-red-900">{expense.rejectionReason}</p></div>
+        ) : null}
+        {expense.voidReason ? (
+          <div className="rounded-lg bg-gray-100 p-3"><p className="text-xs text-gray-500">Void reason</p><p className="text-sm text-gray-800">{expense.voidReason}</p></div>
+        ) : null}
+        {expense.hasReceipt ? (
+          <a href={`/admin/finance/expenses/${expense.id}/receipt`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"><FileText className="size-4" />View supporting document</a>
         ) : null}
       </div>
     </Modal>
@@ -2981,8 +3450,14 @@ function sponsorStatus(commitment: number, received: number) {
 function expenseStatusBadge(status: string) {
   if (status === "approved") return "bg-green-100 text-green-700";
   if (status === "pending") return "bg-yellow-100 text-yellow-700";
+  if (status === "void_pending") return "bg-orange-100 text-orange-700";
+  if (status === "voided") return "bg-gray-200 text-gray-700";
   if (status === "rejected") return "bg-red-100 text-red-700";
   return "bg-gray-100 text-gray-700";
+}
+
+function expenseStatusLabel(status: string) {
+  return status === "void_pending" ? "Void Pending" : status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function ExpenseStat({
@@ -3043,19 +3518,35 @@ function formatCurrency(value: number) {
   return `RWF ${value.toLocaleString()}`;
 }
 
-function FinanceStat({ label, value, tone, icon: Icon }: { label: string; value: number; tone: "emerald" | "rose" | "sky" | "indigo"; icon: typeof HandCoins }) {
+function FinanceStat({
+  label,
+  value,
+  tone,
+  icon: Icon,
+  format = "currency",
+}: {
+  label: string;
+  value: number;
+  tone: "emerald" | "rose" | "sky" | "indigo" | "amber" | "violet";
+  icon: typeof HandCoins;
+  format?: "currency" | "percentage";
+}) {
   const colors = {
     emerald: "border-emerald-100 from-white via-emerald-50 to-teal-50/40 text-emerald-700 bg-emerald-100",
     rose: "border-rose-100 from-white via-rose-50 to-red-50/40 text-rose-700 bg-rose-100",
     sky: "border-sky-100 from-white via-sky-50 to-blue-50/40 text-sky-700 bg-sky-100",
     indigo: "border-indigo-100 from-white via-indigo-50 to-violet-50/30 text-indigo-700 bg-indigo-100",
+    amber: "border-amber-100 from-white via-amber-50 to-orange-50/40 text-amber-700 bg-amber-100",
+    violet: "border-violet-100 from-white via-violet-50 to-purple-50/40 text-violet-700 bg-violet-100",
   };
   return (
     <div className={`rounded-xl border bg-gradient-to-br p-4 shadow-sm ${colors[tone]}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-gray-500">{label}</p>
-          <p className="mt-1 text-xl font-bold text-gray-900">{formatCurrency(value)}</p>
+          <p className="mt-1 text-xl font-bold text-gray-900">
+            {format === "percentage" ? `${value}%` : formatCurrency(value)}
+          </p>
         </div>
         <div className={`flex size-10 items-center justify-center rounded-lg ${colors[tone]}`}>
           <Icon className="size-5" />

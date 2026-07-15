@@ -93,6 +93,9 @@ model User {
   approvedExpenses Expense[] @relation("ExpenseApprover")
   firstApprovalExpenses Expense[] @relation("ExpenseFirstApprover")
   secondApprovalExpenses Expense[] @relation("ExpenseSecondApprover")
+  voidedExpenses Expense[] @relation("ExpenseVoider")
+  requestedExpenseVoids Expense[] @relation("ExpenseVoidRequester")
+  financeReconciliations FinanceReconciliation[] @relation("FinanceReconciler")
   createdSponsors Sponsor[] @relation("SponsorCreator")
   createdSponsorPayments SponsorPayment[] @relation("SponsorPaymentCreator")
   createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
@@ -320,6 +323,13 @@ model Expense {
   status      String?   @default("pending")
   approvedBy  Int?      @map("approved_by")
   receiptPath String?   @map("receipt_path")
+  referenceNumber String? @map("reference_number")
+  rejectionReason String? @map("rejection_reason")
+  voidReason  String?   @map("void_reason")
+  voidedAt    DateTime? @map("voided_at")
+  voidedBy    Int?      @map("voided_by")
+  voidRequestedAt DateTime? @map("void_requested_at")
+  voidRequestedBy Int? @map("void_requested_by")
   notes       String?
   createdBy   Int?      @map("created_by")
   approverId1 Int?      @map("approver_id_1")
@@ -332,10 +342,28 @@ model Expense {
   approver       User? @relation("ExpenseApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
   firstApprover  User? @relation("ExpenseFirstApprover", fields: [approverId1], references: [id], onDelete: SetNull)
   secondApprover User? @relation("ExpenseSecondApprover", fields: [approverId2], references: [id], onDelete: SetNull)
+  voider         User? @relation("ExpenseVoider", fields: [voidedBy], references: [id], onDelete: SetNull)
+  voidRequester  User? @relation("ExpenseVoidRequester", fields: [voidRequestedBy], references: [id], onDelete: SetNull)
 
   @@index([year])
   @@index([status])
   @@map("expenses")
+}
+
+model FinanceReconciliation {
+  id         Int      @id @default(autoincrement())
+  sourceType String   @map("source_type")
+  sourceId   Int      @map("source_id")
+  reference  String?
+  notes      String?
+  reconciledBy Int    @map("reconciled_by")
+  reconciledAt DateTime @default(now()) @map("reconciled_at")
+
+  reconciler User @relation("FinanceReconciler", fields: [reconciledBy], references: [id], onDelete: Restrict)
+
+  @@unique([sourceType, sourceId])
+  @@index([reconciledAt])
+  @@map("finance_reconciliations")
 }
 
 model Sponsor {

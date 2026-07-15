@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, CheckCircle2, Download, FileText, RotateCcw, Search, UserCheck, Users, X, XCircle } from "lucide-react";
 import { deleteFormSubmission, saveSubmissionManualReview, setAllSubmissionRelease, setSubmissionRelease } from "@/app/admin/intercession/actions";
+import { useAppDialog } from "@/components/app-dialog-provider";
 
 type SubmissionRow = {
   id: number;
@@ -35,6 +36,7 @@ export function IntercessionSubmissionsClient({
   form: { id: number; title: string; description: string | null; isQuiz: boolean; releaseGrade: string; canDeleteSubmissions: boolean };
   submissions: SubmissionRow[];
 }) {
+  const { confirm } = useAppDialog();
   const [query, setQuery] = useState("");
   const [scoreFilter, setScoreFilter] = useState("all");
   const [releaseFilter, setReleaseFilter] = useState("all");
@@ -332,8 +334,8 @@ export function IntercessionSubmissionsClient({
                           <button
                             type="button"
                             disabled={pending}
-                            onClick={() => {
-                              if (window.confirm(`Delete ${submission.memberName}'s submission?`)) {
+                            onClick={async () => {
+                              if (await confirm({ title: "Delete Submission", message: `Delete ${submission.memberName}'s submission? This action cannot be undone.`, confirmLabel: "Delete Submission", tone: "danger" })) {
                                 runSubmissionAction(() => deleteFormSubmission(submission.id));
                               }
                             }}

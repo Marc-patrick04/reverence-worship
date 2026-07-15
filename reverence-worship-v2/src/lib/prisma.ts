@@ -3,7 +3,10 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  prismaSchemaVersion?: string;
 };
+
+const PRISMA_SCHEMA_VERSION = "2026-07-14-expense-void-approval";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -13,6 +16,7 @@ const existingPrisma = globalForPrisma.prisma;
 
 export const prisma =
   existingPrisma &&
+  globalForPrisma.prismaSchemaVersion === PRISMA_SCHEMA_VERSION &&
   "actionPlan" in existingPrisma &&
   "actionPlanTask" in existingPrisma &&
   "attendanceRecord" in existingPrisma &&
@@ -24,6 +28,7 @@ export const prisma =
   "payment" in existingPrisma &&
   "gift" in existingPrisma &&
   "expense" in existingPrisma &&
+  "financeReconciliation" in existingPrisma &&
   "sponsor" in existingPrisma &&
   "sponsorPayment" in existingPrisma &&
   "announcement" in existingPrisma &&
@@ -35,4 +40,5 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaSchemaVersion = PRISMA_SCHEMA_VERSION;
 }

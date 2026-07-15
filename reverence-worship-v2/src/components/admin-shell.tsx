@@ -493,6 +493,7 @@ function NotificationTypeIcon({ type }: { type: AdminNotification["type"] }) {
     task: { icon: ClipboardList, className: "bg-amber-100 text-amber-600" },
     permission: { icon: Gavel, className: "bg-red-100 text-red-600" },
     expense_approval: { icon: HandCoins, className: "bg-emerald-100 text-emerald-600" },
+    expense_status: { icon: HandCoins, className: "bg-blue-100 text-blue-600" },
   };
   const item = config[type];
   const Icon = item.icon;

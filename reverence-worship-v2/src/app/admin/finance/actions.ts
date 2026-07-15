@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { Prisma } from "@/generated/prisma/client";
+import { requirePermission, requireUser } from "@/lib/auth";
+import { calculateAvailableBalance, canApproveExpense, validateExpenseRequest } from "@/lib/finance-rules";
 import { prisma } from "@/lib/prisma";
 
 function readString(formData: FormData, key: string) {
@@ -30,8 +35,25 @@ function parseNumberList(value: string) {
   }
 }
 
+async function logFinance(userId: number, action: string, metadata: Prisma.InputJsonValue) {
+  await prisma.activityLog.create({ data: { userId, action, module: "finance", metadata } });
+}
+
+async function saveReceipt(file: FormDataEntryValue | null) {
+  if (!(file instanceof File) || file.size === 0) return null;
+  const allowed = new Map([["application/pdf", ".pdf"], ["image/jpeg", ".jpg"], ["image/png", ".png"]]);
+  const extension = allowed.get(file.type);
+  if (!extension) throw new Error("Receipt must be a PDF, JPG, or PNG file.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Receipt must be 5 MB or smaller.");
+  const filename = `${randomUUID()}${extension}`;
+  const directory = path.join(process.cwd(), "storage", "finance-receipts");
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, filename), Buffer.from(await file.arrayBuffer()));
+  return filename;
+}
+
 export async function saveFinanceTermSettings(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("finance", "manage-settings");
 
   const currentYear = Number(readString(formData, "current_year"));
   const numberOfTerms = Number(readString(formData, "number_of_terms"));
@@ -85,11 +107,12 @@ export async function saveFinanceTermSettings(formData: FormData) {
   }
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, "finance.settings.saved", { year: currentYear, numberOfTerms });
   return { ok: true, message: `Settings for ${currentYear} saved successfully.` };
 }
 
 export async function saveAnnualContribution(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-contributions");
   const userId = Number(readString(formData, "user_id"));
   const year = Number(readString(formData, "year"));
   const annualAmount = Number(readString(formData, "annual_amount"));
@@ -135,11 +158,12 @@ export async function saveAnnualContribution(formData: FormData) {
   }
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, existing ? "finance.contribution.updated" : "finance.contribution.created", { userId, year, annualAmount });
   return { ok: true, message: "Annual contribution saved successfully." };
 }
 
 export async function recordContributionPayment(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-payments");
   const userId = Number(readString(formData, "user_id"));
   const year = Number(readString(formData, "year"));
   const term = Number(readString(formData, "term"));
@@ -147,6 +171,7 @@ export async function recordContributionPayment(formData: FormData) {
   const paymentMethod = readString(formData, "payment_method") || "cash";
   const paymentDateValue = readString(formData, "payment_date");
   const notes = readString(formData, "notes") || null;
+  const referenceNumber = readString(formData, "reference_number") || null;
 
   if (!Number.isInteger(userId) || userId <= 0) {
     return { ok: false, message: "Please select a member." };
@@ -164,6 +189,11 @@ export async function recordContributionPayment(formData: FormData) {
     return { ok: false, message: "Payment amount must be greater than zero." };
   }
 
+  if (referenceNumber) {
+    const duplicate = await prisma.payment.findFirst({ where: { referenceNumber, status: { not: "voided" } }, select: { id: true } });
+    if (duplicate) return { ok: false, message: "This payment reference has already been recorded." };
+  }
+
   await prisma.payment.create({
     data: {
       userId,
@@ -173,39 +203,43 @@ export async function recordContributionPayment(formData: FormData) {
       paymentMethod,
       paymentDate: paymentDateValue ? new Date(`${paymentDateValue}T12:00:00.000Z`) : new Date(),
       notes,
+      referenceNumber,
       createdBy: user.id,
       status: "completed",
     },
   });
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, "finance.payment.created", { userId, year, term, amount, referenceNumber });
   return { ok: true, message: "Payment recorded successfully." };
 }
 
 export async function deleteMemberContributionForYear(userId: number, year: number) {
-  await requireUser();
+  const user = await requirePermission("finance", "delete-contributions");
 
   if (!Number.isInteger(userId) || userId <= 0 || !Number.isInteger(year)) {
     return { ok: false, message: "Invalid member or year." };
   }
 
   await prisma.$transaction([
-    prisma.payment.deleteMany({ where: { userId, year } }),
-    prisma.contribution.deleteMany({ where: { userId, year } }),
+    prisma.payment.updateMany({ where: { userId, year }, data: { status: "voided" } }),
+    prisma.contribution.updateMany({ where: { userId, year }, data: { status: "inactive" } }),
   ]);
 
   revalidatePath("/admin/finance");
-  return { ok: true, message: "Contribution records deleted successfully." };
+  await logFinance(user.id, "finance.contribution.deleted", { userId, year });
+  return { ok: true, message: "Contribution and related payments were voided; audit history was preserved." };
 }
 
 export async function updateFinancePayment(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("finance", "manage-payments");
   const paymentId = Number(readString(formData, "payment_id"));
   const term = Number(readString(formData, "term"));
   const amount = Number(readString(formData, "amount"));
   const paymentMethod = readString(formData, "payment_method") || "cash";
   const paymentDateValue = readString(formData, "payment_date");
   const notes = readString(formData, "notes") || null;
+  const referenceNumber = readString(formData, "reference_number") || null;
 
   if (!Number.isInteger(paymentId) || paymentId <= 0) {
     return { ok: false, message: "Payment not found." };
@@ -223,6 +257,11 @@ export async function updateFinancePayment(formData: FormData) {
     return { ok: false, message: "Payment date is required." };
   }
 
+  if (referenceNumber) {
+    const duplicate = await prisma.payment.findFirst({ where: { referenceNumber, id: { not: paymentId }, status: { not: "voided" } }, select: { id: true } });
+    if (duplicate) return { ok: false, message: "This payment reference has already been recorded." };
+  }
+
   await prisma.payment.update({
     where: { id: paymentId },
     data: {
@@ -231,27 +270,30 @@ export async function updateFinancePayment(formData: FormData) {
       paymentMethod,
       paymentDate: new Date(`${paymentDateValue}T12:00:00.000Z`),
       notes,
+      referenceNumber,
     },
   });
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, "finance.payment.updated", { paymentId, term, amount });
   return { ok: true, message: "Payment updated successfully." };
 }
 
 export async function deleteFinancePayment(id: number) {
-  await requireUser();
+  const user = await requirePermission("finance", "delete-payments");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Payment not found." };
   }
 
-  await prisma.payment.delete({ where: { id } });
+  await prisma.payment.update({ where: { id }, data: { status: "voided" } });
   revalidatePath("/admin/finance");
-  return { ok: true, message: "Payment deleted successfully." };
+  await logFinance(user.id, "finance.payment.voided", { paymentId: id });
+  return { ok: true, message: "Payment voided successfully. Its audit history was preserved." };
 }
 
 export async function saveSponsor(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-sponsors");
   const id = Number(readString(formData, "id"));
   const name = readString(formData, "name");
   const email = readString(formData, "email") || null;
@@ -300,11 +342,12 @@ export async function saveSponsor(formData: FormData) {
   }
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, id ? "finance.sponsor.updated" : "finance.sponsor.created", { sponsorId: id || null, name, year, commitmentAmount });
   return { ok: true, message: id ? "Sponsor updated successfully." : "Sponsor created successfully." };
 }
 
 export async function recordSponsorPayment(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-sponsors");
   const sponsorId = Number(readString(formData, "sponsor_id"));
   const amount = Number(readString(formData, "amount"));
   const year = Number(readString(formData, "year"));
@@ -352,30 +395,31 @@ export async function recordSponsorPayment(formData: FormData) {
   }
 
   revalidatePath("/admin/finance");
+  await logFinance(user.id, "finance.sponsor-payment.created", { sponsorId, year, amount });
   return { ok: true, message: "Sponsor payment recorded successfully." };
 }
 
 export async function deleteSponsor(id: number) {
-  await requireUser();
+  const user = await requirePermission("finance", "delete-sponsors");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Sponsor not found." };
   }
 
-  await prisma.sponsor.delete({ where: { id } });
+  await prisma.sponsor.update({ where: { id }, data: { status: "inactive" } });
   revalidatePath("/admin/finance");
-  return { ok: true, message: "Sponsor deleted successfully." };
+  await logFinance(user.id, "finance.sponsor.deactivated", { sponsorId: id });
+  return { ok: true, message: "Sponsor deactivated successfully. Payment history was preserved." };
 }
 
 export async function saveExpense(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-expenses");
   const amount = Number(readString(formData, "amount"));
   const description = readString(formData, "description");
   const dateValue = readString(formData, "date");
   const year = Number(readString(formData, "year"));
-  const category = readString(formData, "category") || "other";
   const approverId1 = Number(readString(formData, "approver_id_1"));
-  const approverId2 = Number(readString(formData, "approver_id_2"));
+  const referenceNumber = readString(formData, "reference_number") || null;
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ok: false, message: "Expense amount must be greater than zero." };
@@ -390,25 +434,89 @@ export async function saveExpense(formData: FormData) {
   }
 
   const firstApprover = Number.isInteger(approverId1) && approverId1 > 0 ? approverId1 : null;
-  const secondApprover = Number.isInteger(approverId2) && approverId2 > 0 ? approverId2 : null;
 
-  await prisma.expense.create({
-    data: {
-      amount,
-      description,
-      date: dateValue ? new Date(`${dateValue}T12:00:00.000Z`) : new Date(),
-      year,
-      category,
-      status: firstApprover || secondApprover ? "pending" : "approved",
-      approverId1: firstApprover,
-      approverId2: secondApprover,
-      approvedBy: firstApprover || secondApprover ? null : user.id,
-      createdBy: user.id,
-    },
+  const preliminaryError = validateExpenseRequest({ amount, availableBalance: Number.MAX_SAFE_INTEGER, recorderId: user.id, approverId: firstApprover });
+  if (preliminaryError) return { ok: false, message: preliminaryError };
+
+  const approver = await prisma.user.findUnique({
+    where: { id: firstApprover! },
+    select: { status: true },
   });
+  if (approver?.status !== "active") return { ok: false, message: "Select an active user as approver." };
 
-  revalidatePath("/admin/finance");
-  return { ok: true, message: "Expense recorded successfully." };
+  if (referenceNumber) {
+    const duplicate = await prisma.expense.findFirst({ where: { referenceNumber, status: { not: "voided" } }, select: { id: true } });
+    if (duplicate) return { ok: false, message: "This expense reference has already been recorded." };
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const [memberIncome, giftIncome, sponsorIncome, existingExpenses] = await Promise.all([
+          tx.payment.aggregate({
+            where: { year, status: { not: "voided" } },
+            _sum: { amount: true },
+          }),
+          tx.gift.aggregate({
+            _sum: { receivedAmount: true },
+          }),
+          tx.sponsorPayment.aggregate({
+            _sum: { amount: true },
+          }),
+          tx.expense.findMany({ where: { status: { in: ["pending", "approved", "void_pending"] } }, select: { amount: true, status: true } }),
+        ]);
+
+        const availableBalance = calculateAvailableBalance({
+          memberIncome: Number(memberIncome._sum.amount ?? 0),
+          giftIncome: Number(giftIncome._sum.receivedAmount ?? 0),
+          sponsorIncome: Number(sponsorIncome._sum.amount ?? 0),
+          expenses: existingExpenses.map((expense) => ({ amount: Number(expense.amount), status: expense.status })),
+        });
+        const validationError = validateExpenseRequest({ amount, availableBalance, recorderId: user.id, approverId: firstApprover });
+        if (validationError) return { ok: false as const, message: validationError };
+
+        let receiptPath: string | null = null;
+        try {
+          receiptPath = await saveReceipt(formData.get("receipt"));
+        } catch (error) {
+          return { ok: false as const, message: error instanceof Error ? error.message : "Receipt could not be uploaded." };
+        }
+
+        const expense = await tx.expense.create({
+          data: {
+            amount,
+            description,
+            date: dateValue ? new Date(`${dateValue}T12:00:00.000Z`) : new Date(),
+            year,
+            category: null,
+            status: "pending",
+            approverId1: firstApprover,
+            approverId2: null,
+            approvedBy: null,
+            createdBy: user.id,
+            referenceNumber,
+            receiptPath,
+          },
+        });
+
+        await tx.activityLog.create({ data: { userId: user.id, action: "finance.expense.created", module: "finance", metadata: { expenseId: expense.id, amount, approverId: firstApprover, referenceNumber } } });
+
+        return { ok: true as const, message: "Expense recorded successfully." };
+      }, { isolationLevel: "Serializable" });
+
+      if (!result.ok) return result;
+
+      revalidatePath("/admin/finance");
+      return result;
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+      if (code === "P2034" && attempt < 3) continue;
+      console.error("Unable to save expense", error);
+      return { ok: false, message: "The expense could not be saved. Please refresh and try again." };
+    }
+  }
+
+  return { ok: false, message: "The expense could not be saved. Please refresh and try again." };
 }
 
 export async function approveExpense(id: number) {
@@ -418,28 +526,98 @@ export async function approveExpense(id: number) {
     return { ok: false, message: "Expense not found." };
   }
 
-  await prisma.expense.update({
+  const expense = await prisma.expense.findUnique({
     where: { id },
-    data: {
-      status: "approved",
-      approvedBy: user.id,
-    },
+    select: { approverId1: true, status: true },
   });
 
-  revalidatePath("/admin/finance");
-  return { ok: true, message: "Expense approved successfully." };
-}
-
-export async function deleteExpense(id: number) {
-  await requireUser();
-
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!expense) {
     return { ok: false, message: "Expense not found." };
   }
 
-  await prisma.expense.delete({ where: { id } });
+  if (!canApproveExpense(expense, user.id)) {
+    if (expense.approverId1 !== user.id) return { ok: false, message: "Only the selected approver can approve this expense." };
+    return { ok: false, message: "This expense is no longer pending approval." };
+  }
+
+  const approvingVoid = expense.status === "void_pending";
+  const result = await prisma.expense.updateMany({
+    where: { id, approverId1: user.id, status: expense.status },
+    data: approvingVoid
+      ? { status: "voided", voidedAt: new Date(), voidedBy: user.id }
+      : { status: "approved", approvedBy: user.id },
+  });
+
+  if (result.count !== 1) {
+    return { ok: false, message: "This expense could not be approved. Refresh and try again." };
+  }
+
   revalidatePath("/admin/finance");
-  return { ok: true, message: "Expense deleted successfully." };
+  await logFinance(user.id, approvingVoid ? "finance.expense-void.approved" : "finance.expense.approved", { expenseId: id });
+  return { ok: true, message: approvingVoid ? "Expense void approved successfully." : "Expense approved successfully." };
+}
+
+export async function rejectExpense(id: number, reason: string) {
+  const user = await requireUser();
+  const cleanReason = reason.trim();
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Expense not found." };
+  if (cleanReason.length < 3) return { ok: false, message: "A rejection reason is required." };
+  const expense = await prisma.expense.findFirst({ where: { id, approverId1: user.id, status: { in: ["pending", "void_pending"] } }, select: { status: true } });
+  if (!expense) return { ok: false, message: "Only the selected approver can reject this pending request." };
+  const rejectingVoid = expense.status === "void_pending";
+  const result = await prisma.expense.updateMany({
+    where: { id, approverId1: user.id, status: expense.status },
+    data: rejectingVoid
+      ? { status: "approved", rejectionReason: `Void request rejected: ${cleanReason}` }
+      : { status: "rejected", rejectionReason: cleanReason, approvedBy: user.id },
+  });
+  if (result.count !== 1) return { ok: false, message: "This request changed. Refresh and try again." };
+  await logFinance(user.id, rejectingVoid ? "finance.expense-void.rejected" : "finance.expense.rejected", { expenseId: id, reason: cleanReason });
+  revalidatePath("/admin/finance");
+  return { ok: true, message: rejectingVoid ? "Void request rejected. The expense remains approved." : "Expense rejected. The reserved funds are available again." };
+}
+
+export async function voidExpense(id: number, reason: string) {
+  const user = await requirePermission("finance", "delete-expenses");
+  const cleanReason = reason.trim();
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Expense not found." };
+  if (cleanReason.length < 3) return { ok: false, message: "A reason is required to void an expense." };
+  const expense = await prisma.expense.findUnique({ where: { id }, select: { status: true, approverId1: true } });
+  if (!expense || expense.status === "voided") return { ok: false, message: "Expense was not found or is already voided." };
+  if (expense.status === "void_pending") return { ok: false, message: "This expense already has a pending void request." };
+  const needsApproval = expense.status === "approved" && Boolean(expense.approverId1);
+  const result = await prisma.expense.updateMany({
+    where: { id, status: expense.status },
+    data: needsApproval
+      ? { status: "void_pending", voidReason: cleanReason, voidRequestedAt: new Date(), voidRequestedBy: user.id }
+      : { status: "voided", voidReason: cleanReason, voidedAt: new Date(), voidedBy: user.id },
+  });
+  if (result.count !== 1) return { ok: false, message: "Expense was not found or is already voided." };
+  await logFinance(user.id, needsApproval ? "finance.expense-void.requested" : "finance.expense.voided", { expenseId: id, reason: cleanReason, approverId: expense.approverId1 });
+  revalidatePath("/admin/finance");
+  return { ok: true, message: needsApproval ? "Void request sent to the original approver. The expense remains deducted until approval." : "Expense voided. Its audit history was preserved." };
+}
+
+export async function deleteExpense(id: number) {
+  return voidExpense(id, "Voided by an authorized finance user");
+}
+
+export async function setTransactionReconciliation(sourceType: string, sourceId: number, reconciled: boolean, reference?: string) {
+  const user = await requirePermission("finance", "reconcile");
+  const supported = new Set(["payment", "sponsor_payment", "gift", "expense"]);
+  if (!supported.has(sourceType) || !Number.isInteger(sourceId) || sourceId <= 0) return { ok: false, message: "Transaction not found." };
+  if (reconciled) {
+    await prisma.financeReconciliation.upsert({
+      where: { sourceType_sourceId: { sourceType, sourceId } },
+      create: { sourceType, sourceId, reconciledBy: user.id, reference: reference?.trim() || null },
+      update: { reconciledBy: user.id, reconciledAt: new Date(), reference: reference?.trim() || null },
+    });
+  } else {
+    await prisma.financeReconciliation.deleteMany({ where: { sourceType, sourceId } });
+  }
+  await logFinance(user.id, reconciled ? "finance.transaction.reconciled" : "finance.transaction.unreconciled", { sourceType, sourceId, reference });
+  revalidatePath("/admin/finance");
+  return { ok: true, message: reconciled ? "Transaction reconciled." : "Reconciliation removed." };
 }
 
 async function syncFinanceActionPlanProgress(actionPlanId: number) {
@@ -457,7 +635,7 @@ async function syncFinanceActionPlanProgress(actionPlanId: number) {
 }
 
 export async function saveFinanceActionPlan(formData: FormData) {
-  const user = await requireUser();
+  const user = await requirePermission("finance", "manage-action-plans");
   const id = Number(readString(formData, "id"));
   const title = readString(formData, "title");
   const description = readString(formData, "description") || null;
@@ -503,7 +681,7 @@ export async function saveFinanceActionPlan(formData: FormData) {
 }
 
 export async function deleteFinanceActionPlan(id: number) {
-  await requireUser();
+  await requirePermission("finance", "manage-action-plans");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Action plan not found." };
@@ -515,7 +693,7 @@ export async function deleteFinanceActionPlan(id: number) {
 }
 
 export async function saveFinanceActionPlanTask(formData: FormData) {
-  await requireUser();
+  await requirePermission("finance", "manage-action-plans");
   const id = Number(readString(formData, "id"));
   const actionPlanId = Number(readString(formData, "actionPlanId"));
   const activity = readString(formData, "activity");
@@ -582,7 +760,7 @@ export async function saveFinanceActionPlanTask(formData: FormData) {
 }
 
 export async function deleteFinanceActionPlanTask(id: number) {
-  await requireUser();
+  await requirePermission("finance", "manage-action-plans");
 
   if (!Number.isInteger(id) || id <= 0) {
     return { ok: false, message: "Task not found." };

@@ -83,11 +83,31 @@ async function writeAttendanceSession(formData: FormData, complete: boolean) {
     select: { isCompleted: true },
   });
 
+  if (!existingSession) {
+    const sessionOnDate = await prisma.attendanceSession.findFirst({
+      where: { sessionDate },
+      select: { sessionType: true },
+    });
+    if (sessionOnDate) {
+      return { ok: false, message: `Only one attendance session is allowed per day. Reopen "${sessionOnDate.sessionType}" for this date.` };
+    }
+  }
+
   if (existingSession?.isCompleted && !complete) {
     return { ok: false, message: "This session is completed and cannot be edited." };
   }
 
-  await prisma.$transaction(async (tx) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (!existingSession) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`attendance:${sessionDateValue}`}))`;
+        const sessionOnDate = await tx.attendanceSession.findFirst({
+          where: { sessionDate },
+          select: { sessionType: true },
+        });
+        if (sessionOnDate) throw new Error(`ATTENDANCE_SESSION_EXISTS:${sessionOnDate.sessionType}`);
+      }
+
     await tx.attendanceSession.upsert({
       where: {
         sessionDate_sessionType: {
@@ -143,7 +163,14 @@ async function writeAttendanceSession(formData: FormData, complete: boolean) {
         },
       });
     }
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("ATTENDANCE_SESSION_EXISTS:")) {
+      const existingName = error.message.slice("ATTENDANCE_SESSION_EXISTS:".length);
+      return { ok: false, message: `Only one attendance session is allowed per day. Reopen "${existingName}" for this date.` };
+    }
+    throw error;
+  }
 
   revalidatePath("/admin/discipline");
 
@@ -242,16 +269,25 @@ export async function approvePermissionRequest(id: number) {
 
 export async function rejectPermissionRequest(id: number, reason: string) {
   const user = await requireUser();
+  const rejectionReason = reason.trim();
 
-  await prisma.permissionRequest.update({
-    where: { id },
+  if (!rejectionReason) {
+    return { ok: false, message: "A rejection reason is required." };
+  }
+
+  const result = await prisma.permissionRequest.updateMany({
+    where: { id, status: "pending" },
     data: {
       status: "rejected",
       approvedBy: user.id,
       approvedAt: new Date(),
-      rejectionReason: reason.trim() || null,
+      rejectionReason,
     },
   });
+
+  if (result.count === 0) {
+    return { ok: false, message: "This permission request is no longer pending." };
+  }
 
   revalidatePath("/admin/discipline");
 
@@ -280,13 +316,41 @@ export async function saveDisciplineSession(formData: FormData) {
     return { ok: false, message: "Session date and title are required." };
   }
 
-  if (records.length === 0) {
-    return { ok: false, message: "Add at least one discipline record." };
-  }
-
   const createdAt = dateOnly(sessionDateValue);
   const dayStart = new Date(`${sessionDateValue}T00:00:00`);
   const dayEnd = new Date(`${sessionDateValue}T23:59:59`);
+
+  const attendanceSession = await prisma.attendanceSession.findFirst({
+    where: { sessionDate: { gte: dayStart, lte: dayEnd }, isCompleted: true },
+    orderBy: { updatedAt: "desc" },
+    select: { sessionType: true },
+  });
+
+  if (!attendanceSession) {
+    return { ok: false, message: "Complete the Attendance session for this date before recording Discipline." };
+  }
+
+  const presentAttendance = await prisma.attendanceRecord.findMany({
+    where: {
+      sessionDate: { gte: dayStart, lte: dayEnd },
+      sessionType: attendanceSession.sessionType,
+      status: { equals: "present", mode: "insensitive" },
+    },
+    select: { userId: true },
+  });
+  const presentUserIds = new Set(presentAttendance.map((record) => record.userId));
+
+  if (presentUserIds.size === 0) {
+    return { ok: false, message: "No members are marked Present in Attendance for this date." };
+  }
+
+  if (records.length === 0) {
+    return { ok: false, message: "Add at least one discipline record from the present members." };
+  }
+
+  if (records.some((record) => !presentUserIds.has(Number(record.userId)))) {
+    return { ok: false, message: "Discipline records can only include members marked Present on this date. Refresh and try again." };
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.disciplineRecord.deleteMany({

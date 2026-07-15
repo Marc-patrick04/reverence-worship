@@ -1,4 +1,4 @@
-import { requirePageAccess } from "@/lib/auth";
+import { getUserPermissionSet, permissionSetHas, requirePageAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FinanceClient } from "@/components/finance-client";
 
@@ -61,7 +61,8 @@ async function safeRead<T>(promise: Promise<T>, fallback: T) {
 }
 
 export default async function FinancePage() {
-  await requirePageAccess("finance");
+  const currentUser = await requirePageAccess("finance");
+  const permissionSet = await getUserPermissionSet(currentUser);
   const year = new Date().getFullYear();
 
   const [users, families, contributions, payments, gifts, expenses, sponsors, actionPlans, termSettings] = await Promise.all([
@@ -146,6 +147,15 @@ export default async function FinancePage() {
   return (
     <FinanceClient
       year={year}
+      currentUserId={currentUser.id}
+      permissions={{
+        manageExpenses: permissionSetHas(permissionSet, "finance", "manage-expenses"),
+        approveExpenses: permissionSetHas(permissionSet, "finance", "approve-expenses"),
+        deleteExpenses: permissionSetHas(permissionSet, "finance", "delete-expenses"),
+        export: permissionSetHas(permissionSet, "finance", "export"),
+        reconcile: permissionSetHas(permissionSet, "finance", "reconcile"),
+        viewReports: permissionSetHas(permissionSet, "finance", "view-reports"),
+      }}
       users={users.map((item) => ({
         id: item.id,
         name: item.name,
@@ -153,6 +163,7 @@ export default async function FinancePage() {
         familyId: item.familyMembership?.familyId ?? null,
         familyName: item.familyMembership?.family?.name ?? null,
         familyYear: item.familyMembership?.family?.year ?? null,
+        canApproveExpenses: true,
       }))}
       families={families.map((item) => ({
         id: item.id,
@@ -184,6 +195,7 @@ export default async function FinancePage() {
         notes: item.notes,
         createdByName: item.creator?.name ?? "System",
         createdAt: item.createdAt.toISOString(),
+        referenceNumber: item.referenceNumber,
       }))}
       gifts={gifts.map((item) => ({
         id: item.id,
@@ -192,6 +204,7 @@ export default async function FinancePage() {
         receivedAmount: money(item.receivedAmount),
         giftType: item.giftType,
         status: item.status ?? "pending",
+        dateRaw: item.date ? item.date.toISOString().slice(0, 10) : "",
         date: formatDate(item.date),
       }))}
       expenses={expenses.map((item) => ({
@@ -209,6 +222,10 @@ export default async function FinancePage() {
         approverId2: item.approverId2,
         approver1Name: item.firstApprover?.name ?? null,
         approver2Name: item.secondApprover?.name ?? null,
+        rejectionReason: item.rejectionReason,
+        voidReason: item.voidReason,
+        referenceNumber: item.referenceNumber,
+        hasReceipt: Boolean(item.receiptPath),
       }))}
       sponsors={sponsors.map((item) => ({
         id: item.id,
