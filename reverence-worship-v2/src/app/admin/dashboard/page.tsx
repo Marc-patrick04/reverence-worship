@@ -84,7 +84,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   ) as DepartmentRole | undefined;
 
   if (departmentRole) {
-    return <DepartmentDashboard userName={user.name} role={departmentRole} metrics={metrics} fromDate={range.from} toDate={range.to} />;
+    return <DepartmentDashboard userName={user.name} metrics={metrics} fromDate={range.from} toDate={range.to} />;
   }
 
   return <MemberDashboard userName={user.name} metrics={metrics} fromDate={range.from} toDate={range.to} />;
@@ -171,9 +171,7 @@ async function SuperAdminDashboard({ userName, metrics, fromDate, toDate }: { us
   return (
     <div className="super-admin-dashboard mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
       <DashboardHero
-        eyebrow="System administration"
-        title="Super Admin Dashboard"
-        message={`Welcome back, ${userName}.`}
+        message={`Welcome back, ${userName}!`}
         actions={[
           { label: "Activity Logs", href: "/admin/logs", icon: Clock, variant: "secondary" },
           { label: "Manage Users", href: "/admin/users", icon: UserPlus, variant: "primary" },
@@ -207,9 +205,7 @@ async function SuperAdminDashboard({ userName, metrics, fromDate, toDate }: { us
 function AdminOperationsDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
     <RoleDashboard
-      eyebrow="Operations"
-      title="Admin Dashboard"
-      message={`Welcome back, ${userName}.`}
+      message={`Welcome back, ${userName}!`}
       performanceMetrics={metrics}
       fromDate={fromDate}
       toDate={toDate}
@@ -217,31 +213,10 @@ function AdminOperationsDashboard({ userName, metrics, fromDate, toDate }: { use
   );
 }
 
-function DepartmentDashboard({ userName, role, metrics, fromDate, toDate }: { userName: string; role: DepartmentRole; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
-  const configs = {
-    "music-dpt": {
-      eyebrow: "Music and Evangelism",
-      title: "Music DPT Dashboard",
-    },
-    "social-dpt": {
-      eyebrow: "Social Fellowship",
-      title: "Social DPT Dashboard",
-    },
-    "discipline-dpt": {
-      eyebrow: "Discipline Management",
-      title: "Discipline DPT Dashboard",
-    },
-    "intercession-dpt": {
-      eyebrow: "Intercession and Spiritual Growth",
-      title: "Intercession DPT Dashboard",
-    },
-  }[role];
-
+function DepartmentDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
     <RoleDashboard
-      eyebrow={configs.eyebrow}
-      title={configs.title}
-      message={`Welcome back, ${userName}.`}
+      message={`Welcome back, ${userName}!`}
       performanceMetrics={metrics}
       fromDate={fromDate}
       toDate={toDate}
@@ -252,9 +227,7 @@ function DepartmentDashboard({ userName, role, metrics, fromDate, toDate }: { us
 function MemberDashboard({ userName, metrics, fromDate, toDate }: { userName: string; metrics: PerformanceMetrics; fromDate: string; toDate: string }) {
   return (
     <RoleDashboard
-      eyebrow="Member area"
-      title="Member Dashboard"
-      message={`Welcome back, ${userName}.`}
+      message={`Welcome back, ${userName}!`}
       performanceMetrics={metrics}
       fromDate={fromDate}
       toDate={toDate}
@@ -263,23 +236,15 @@ function MemberDashboard({ userName, metrics, fromDate, toDate }: { userName: st
 }
 
 function DashboardHero({
-  eyebrow,
-  title,
   message,
   actions,
 }: {
-  eyebrow: string;
-  title: string;
   message: string;
   actions: Array<{ label: string; href: string; icon: typeof Users; variant: "primary" | "secondary" }>;
 }) {
   return (
     <div className="dashboard-hero mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-100">{eyebrow}</p>
-        <h1 className="mt-1 text-xl font-bold text-white sm:text-2xl">{title}</h1>
-        <p className="mt-1 text-sm text-blue-50">{message}</p>
-      </div>
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{message}</h1>
       <div className="flex flex-col gap-2 sm:flex-row">
         {actions.map((action) => (
           <Link
@@ -297,15 +262,11 @@ function DashboardHero({
 }
 
 function RoleDashboard({
-  eyebrow,
-  title,
   message,
   performanceMetrics,
   fromDate,
   toDate,
 }: {
-  eyebrow: string;
-  title: string;
   message: string;
   performanceMetrics: PerformanceMetrics;
   fromDate: string;
@@ -314,8 +275,6 @@ function RoleDashboard({
   return (
     <div className="super-admin-dashboard mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
       <DashboardHero
-        eyebrow={eyebrow}
-        title={title}
         message={message}
         actions={[{ label: "My Profile", href: "/admin/profile", icon: UserCheck, variant: "secondary" }]}
       />

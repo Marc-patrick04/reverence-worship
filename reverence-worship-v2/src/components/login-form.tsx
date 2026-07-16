@@ -8,7 +8,7 @@ import { loginAction } from "@/app/auth-actions";
 import { AuthFormButton } from "@/components/auth-form-button";
 import { PasswordField } from "@/components/password-field";
 
-export function LoginForm({ registrationEnabled = true }: { registrationEnabled?: boolean }) {
+export function LoginForm({ registrationEnabled = true, oauthError }: { registrationEnabled?: boolean; oauthError?: string }) {
   const [state, formAction] = useActionState(loginAction, {});
 
   return (
@@ -85,9 +85,9 @@ export function LoginForm({ registrationEnabled = true }: { registrationEnabled?
         <Link href="/forgot-password" className="auth-link text-xs font-semibold">Forgot password?</Link>
       </div>
 
-      {state.error ? (
+      {state.error || oauthError ? (
         <p className="rounded-[0.65rem] border border-red-200 bg-red-50 px-4 py-2.5 text-[0.82rem] text-red-700">
-          {state.error}
+          {state.error || oauthError}
         </p>
       ) : null}
 
@@ -102,13 +102,13 @@ export function LoginForm({ registrationEnabled = true }: { registrationEnabled?
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 
-      <button
-        type="button"
+      <Link
+        href="/api/auth/google/start?intent=login"
         className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-[0.82rem] font-semibold text-gray-700 transition hover:bg-gray-50"
       >
         <span className="font-bold text-red-500">G</span>
         Continue with Google
-      </button>
+      </Link>
 
       {registrationEnabled ? (
         <p className="mt-4 text-center text-[0.82rem] text-gray-500">
