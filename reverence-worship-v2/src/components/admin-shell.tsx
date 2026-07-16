@@ -95,9 +95,13 @@ function navGroupsForPermissions(permissions: string[], roles: string[], isParen
   return navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) =>
-        hasPagePermission(permissions, item.page) || (item.page === "parent" && roles.some((r) => r.toLowerCase() === "parent") && isParent),
-      ),
+      items: group.items.filter((item) => {
+        if (item.page === "parent") {
+          return isParent && (hasPagePermission(permissions, item.page) || roles.some((r) => r.toLowerCase() === "parent"));
+        }
+
+        return hasPagePermission(permissions, item.page);
+      }),
     }))
     .filter((group) => group.items.length > 0);
 }
