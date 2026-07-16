@@ -2,7 +2,6 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import readXlsxFile from "read-excel-file/node";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -77,6 +76,12 @@ export type UserActionState = {
 };
 
 const IMPORT_DEFAULT_PASSWORD = "Pass@123";
+
+type ParsedImportTable = {
+  rows: Record<string, string>[];
+  headers: string[];
+  delimiter: string;
+};
 
 type ImportedUserRow = {
   name: string;
@@ -169,52 +174,63 @@ function splitCsvLine(line: string, delimiter: string) {
   return cells;
 }
 
-function parseImportTable(raw: string) {
+function countDelimiterCells(line: string, delimiter: string) {
+  return splitCsvLine(line, delimiter).length;
+}
+
+function detectImportDelimiter(firstLine: string) {
+  const separatorDirective = firstLine.match(/^sep=(.)$/i);
+  if (separatorDirective?.[1]) return separatorDirective[1];
+
+  return ["\t", ",", ";"].sort((left, right) => countDelimiterCells(firstLine, right) - countDelimiterCells(firstLine, left))[0] ?? ",";
+}
+
+function decodeImportText(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(buffer);
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(buffer);
+  }
+  return new TextDecoder("utf-8").decode(buffer);
+}
+
+function parseImportTable(raw: string): ParsedImportTable {
   const text = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-  if (!text) return [];
+  if (!text) return { rows: [], headers: [], delimiter: "," };
 
   const lines = text.split("\n").filter((line) => line.trim());
   const firstLine = lines[0] ?? "";
-  const delimiter = firstLine.includes("\t") ? "\t" : ",";
-  const headers = splitCsvLine(firstLine, delimiter).map(normalizeHeader);
+  const delimiter = detectImportDelimiter(firstLine);
+  const headerLineIndex = /^sep=./i.test(firstLine) ? 1 : 0;
+  const headerLine = lines[headerLineIndex] ?? "";
+  const headers = splitCsvLine(headerLine, delimiter).map(normalizeHeader);
 
-  return lines.slice(1).map((line) => {
+  const rows = lines.slice(headerLineIndex + 1).map((line) => {
     const cells = splitCsvLine(line, delimiter);
     return Object.fromEntries(headers.map((header, index) => [header, cells[index]?.trim() ?? ""]));
   });
-}
 
-function formatImportCell(value: unknown) {
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
-  }
-
-  if (value === null || value === undefined) return "";
-  return String(value).trim();
-}
-
-async function parseImportWorkbook(buffer: ArrayBuffer) {
-  const rows = (await readXlsxFile(Buffer.from(buffer))) as unknown as unknown[][];
-  const [headerRow, ...dataRows] = rows;
-  if (!headerRow?.length) return [];
-
-  const headers = headerRow.map((cell) => normalizeHeader(formatImportCell(cell)));
-  return dataRows
-    .filter((row) => row.some((cell) => formatImportCell(cell)))
-    .map((row) => Object.fromEntries(headers.map((header, index) => [header, formatImportCell(row[index])])));
+  return { rows, headers, delimiter };
 }
 
 async function parseImportFile(file: File) {
   const lowerName = file.name.toLowerCase();
-  const isWorkbook =
-    lowerName.endsWith(".xlsx") ||
-    file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-  if (isWorkbook) {
-    return parseImportWorkbook(await file.arrayBuffer());
+  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+    throw new Error("Excel files are not supported here. Open the file in Excel and save/export it as CSV first.");
   }
 
-  return parseImportTable(await file.text());
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+  const isZipXlsx = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  const isLegacyXls = bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
+
+  if (isZipXlsx || isLegacyXls) {
+    throw new Error("This file is still an Excel workbook. Open it in Excel, choose Save As, and select CSV UTF-8 (*.csv).");
+  }
+
+  return parseImportTable(decodeImportText(buffer));
 }
 
 function readImportValue(row: Record<string, string>, ...keys: string[]) {
@@ -292,6 +308,22 @@ function parseImportedUser(row: Record<string, string>): ImportedUserRow | null 
     family: readImportValue(row, "Family") || null,
     occupation: readImportValue(row, "Occupation") || null,
     membershipType: parseMembershipType(readImportValue(row, "Membership Type")),
+  };
+}
+
+function importedUserData(row: ImportedUserRow) {
+  return {
+    name: row.name,
+    phone: row.phone,
+    dateOfBirth: row.dateOfBirth,
+    gender: row.gender,
+    maritalStatus: row.maritalStatus,
+    membershipType: row.membershipType ?? "permanent",
+    occupation: row.occupation,
+    village: row.residence,
+    notes: row.family ? `Imported family: ${row.family}` : undefined,
+    status: row.status,
+    emailVerifiedAt: row.status === "active" ? new Date() : null,
   };
 }
 
@@ -419,100 +451,102 @@ export async function importUsersCsvAction(
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, message: "Select an Excel or CSV file to import." };
+    return { ok: false, message: "Select a CSV file to import." };
   }
 
+  let parsedTable: ParsedImportTable;
   let rows: ImportedUserRow[];
   try {
-    rows = (await parseImportFile(file)).map(parseImportedUser).filter((row): row is ImportedUserRow => Boolean(row));
+    parsedTable = await parseImportFile(file);
+    rows = parsedTable.rows.map(parseImportedUser).filter((row): row is ImportedUserRow => Boolean(row));
   } catch (error) {
     console.error("User import failed while reading file", error);
     return {
       ok: false,
-      message: "Could not read that file. Please upload a valid .xlsx, CSV, or tab-separated export file.",
+      message: error instanceof Error && (error.message.includes("Excel files") || error.message.includes("Excel workbook"))
+        ? error.message
+        : "Could not read that file. Please upload a valid CSV or tab-separated file.",
     };
   }
 
   if (!rows.length) {
-    return { ok: false, message: "No valid users found. Make sure the file has Full Name and Email columns." };
+    const detectedHeaders = parsedTable.headers.filter(Boolean).slice(0, 6).join(", ") || "none";
+    return {
+      ok: false,
+      message: `No valid users found. Make sure the file has Full Name and Email columns. Detected columns: ${detectedHeaders}.`,
+    };
   }
 
+  const uniqueRows = Array.from(new Map(rows.map((row) => [row.email, row])).values());
   const passwordHash = await bcrypt.hash(IMPORT_DEFAULT_PASSWORD, 12);
   const roleIdsForImport = await importRoleLookup();
   let created = 0;
   let updated = 0;
-  let skipped = 0;
+  let skipped = rows.length - uniqueRows.length;
+  const roleRows: Array<{ userId: number; roleId: number }> = [];
+  const affectedUserIds: number[] = [];
 
-  for (const row of rows) {
-    const roleIds = await roleIdsForImport(row.roles);
-    const existing = await prisma.user.findUnique({
-      where: { email: row.email },
-      select: { id: true, googleId: true, passwordHash: true, status: true },
-    });
+  const existingUsers = await prisma.user.findMany({
+    where: { email: { in: uniqueRows.map((row) => row.email) } },
+    select: { id: true, email: true, googleId: true, passwordHash: true },
+  });
+  const existingByEmail = new Map(existingUsers.map((user) => [user.email, user]));
+  const newRows = uniqueRows.filter((row) => !existingByEmail.has(row.email));
 
-    const data = {
-      name: row.name,
-      phone: row.phone,
-      dateOfBirth: row.dateOfBirth,
-      gender: row.gender,
-      maritalStatus: row.maritalStatus,
-      membershipType: row.membershipType ?? "permanent",
-      occupation: row.occupation,
-      village: row.residence,
-      notes: row.family ? `Imported family: ${row.family}` : undefined,
-      status: row.status,
-      emailVerifiedAt: row.status === "active" ? new Date() : null,
-    };
+  for (const row of uniqueRows) {
+    const existing = existingByEmail.get(row.email);
+    if (!existing) continue;
 
     try {
-      if (existing) {
-        await prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            ...data,
-            ...(existing.googleId ? {} : { ...(existing.passwordHash ? {} : { passwordHash }), mustChangePassword: true }),
-          },
-        });
-
-        await prisma.userRole.deleteMany({ where: { userId: existing.id, role: { name: { not: "super-admin" } } } });
-        await prisma.userRole.createMany({
-          data: roleIds.map((roleId) => ({ userId: existing.id, roleId })),
-          skipDuplicates: true,
-        });
-        updated += 1;
-      } else {
-        const user = await prisma.user.create({
-          data: {
-            ...data,
-            email: row.email,
-            passwordHash,
-            mustChangePassword: true,
-            createdById: admin.id,
-            roles: roleIds.length ? { create: roleIds.map((roleId) => ({ roleId })) } : undefined,
-          },
-          select: { id: true },
-        });
-        created += 1;
-
-        if (row.status === "active") {
-          await notifyUsers({
-            userIds: [user.id],
-            type: "account",
-            title: "Account imported",
-            message: `Your account has been created. Your temporary password is ${IMPORT_DEFAULT_PASSWORD}. Please sign in and change it.`,
-            link: "/login",
-            sourceType: "user",
-            sourceId: user.id,
-            dedupeKey: `account:${user.id}:imported:${Date.now()}`,
-            emailSubject: "Your Reverence Worship account has been created",
-            emailText: `Your Reverence Worship account has been created. Sign in with your email and temporary password: ${IMPORT_DEFAULT_PASSWORD}. Please change your password after signing in.`,
-            sendEmail: true,
-          });
-        }
-      }
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          ...importedUserData(row),
+          ...(existing.googleId ? {} : { ...(existing.passwordHash ? {} : { passwordHash }), mustChangePassword: true }),
+        },
+      });
+      affectedUserIds.push(existing.id);
+      const roleIds = await roleIdsForImport(row.roles);
+      roleRows.push(...roleIds.map((roleId) => ({ userId: existing.id, roleId })));
+      updated += 1;
     } catch {
       skipped += 1;
     }
+  }
+
+  if (newRows.length) {
+    try {
+      const createdUsers = await prisma.user.createManyAndReturn({
+        data: newRows.map((row) => ({
+          ...importedUserData(row),
+          email: row.email,
+          passwordHash,
+          mustChangePassword: true,
+          createdById: admin.id,
+        })),
+        select: { id: true, email: true },
+      });
+      created = createdUsers.length;
+      affectedUserIds.push(...createdUsers.map((user) => user.id));
+      const createdByEmail = new Map(createdUsers.map((user) => [user.email, user.id]));
+
+      for (const row of newRows) {
+        const userId = createdByEmail.get(row.email);
+        if (!userId) continue;
+        const roleIds = await roleIdsForImport(row.roles);
+        roleRows.push(...roleIds.map((roleId) => ({ userId, roleId })));
+      }
+    } catch {
+      skipped += newRows.length;
+    }
+  }
+
+  if (affectedUserIds.length) {
+    await prisma.userRole.deleteMany({ where: { userId: { in: affectedUserIds }, role: { name: { not: "super-admin" } } } });
+  }
+
+  if (roleRows.length) {
+    await prisma.userRole.createMany({ data: roleRows, skipDuplicates: true });
   }
 
   await prisma.activityLog.create({ data: { userId: admin.id, action: "users.imported", module: "users", metadata: { created, updated, skipped, total: rows.length } } });
@@ -522,7 +556,7 @@ export async function importUsersCsvAction(
 
   return {
     ok: true,
-    message: `Import completed. Created ${created}, updated ${updated}${skipped ? `, skipped ${skipped}` : ""}. Default password for imported password accounts is ${IMPORT_DEFAULT_PASSWORD}.`,
+    message: `Import completed. Created ${created}, updated ${updated}${skipped ? `, skipped ${skipped}` : ""}. Imported password accounts use ${IMPORT_DEFAULT_PASSWORD} and must change it on first login.`,
   };
 }
 
