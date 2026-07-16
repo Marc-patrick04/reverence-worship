@@ -3,11 +3,12 @@ import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth";
 import { isRegistrationEnabled } from "@/lib/system-settings";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
   const [user, registrationEnabled] = await Promise.all([
     getCurrentUser(),
     isRegistrationEnabled(),
   ]);
+  const params = await searchParams;
 
   if (user) {
     redirect("/admin/dashboard");
@@ -15,7 +16,7 @@ export default async function LoginPage() {
 
   return (
     <div className="auth-login-content mx-auto w-full max-w-sm">
-      <LoginForm registrationEnabled={registrationEnabled} />
+      <LoginForm registrationEnabled={registrationEnabled} externalError={params?.error} />
     </div>
   );
 }
