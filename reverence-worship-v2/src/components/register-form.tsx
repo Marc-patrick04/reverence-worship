@@ -77,6 +77,19 @@ export function RegisterForm() {
 
   return (
     <form action={formAction}>
+      <Link href="/" className="mb-7 hidden justify-center md:flex" aria-label="Reverence Worship Team home">
+        <span className="relative h-20 w-full max-w-[340px] overflow-hidden">
+          <Image
+            src="/reverence-logo-transparent.png"
+            alt="Reverence Worship Team logo"
+            fill
+            sizes="340px"
+            className="scale-[1.9] object-contain"
+            priority
+          />
+        </span>
+      </Link>
+
       <Link href="/" className="mobile-card-brand" aria-label="Back to home">
         <div className="brand-mark size-9 rounded-[0.7rem] border-blue-100 bg-blue-50">
           <Image

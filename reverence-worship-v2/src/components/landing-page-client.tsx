@@ -81,7 +81,6 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
   const [menuOpen, setMenuOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const heroPictures = pictures.length > 0 ? pictures : [{ id: 0, title: "Reverence Worship", imagePath: "/logo.png", description: null, isHero: true }];
-  const heroDescription = heroPictures[heroIndex]?.description || "A community serving God through worship, music, fellowship, and the message of hope.";
 
   useEffect(() => {
     if (heroPictures.length <= 1) return;
@@ -141,11 +140,11 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 to-slate-950/20" />
         <div className="relative z-10 mx-auto w-[min(1080px,calc(100%-28px))] pt-16">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-200">Reverence Worship Team</p>
-            <h1 className="mt-4 max-w-3xl text-5xl font-bold leading-[1.04] tracking-tight sm:text-6xl">A sound of faith. A life of worship.</h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-200">{heroDescription}</p>
+            <h1 className="mt-4 max-w-3xl text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl">
+              <span className="block text-white">Reverence Worship Team</span>
+            </h1>
             <div className="mt-4 max-w-2xl border-l-4 border-blue-300 pl-4 text-sm leading-6 text-blue-100">
-              <span>Let us be thankful, and so worship God acceptably with reverence and awe.</span>
+              <span>Therefore let us be grateful for receiving a kingdom that cannot be shaken, and thus let us offer to God acceptable worship, with reverence and awe,</span>
               <strong className="mt-1 block text-xs uppercase tracking-wide text-white">Hebrews 12:28</strong>
             </div>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -156,18 +155,81 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
         </div>
       </section>
 
-      <section id="about" className="scroll-mt-20 py-20">
-        <div className="mx-auto grid w-[min(1080px,calc(100%-28px))] items-center gap-12 md:grid-cols-[0.9fr_1.1fr]">
-          <aside className="relative flex min-h-72 flex-col justify-end overflow-hidden rounded-3xl border border-blue-100 border-l-[6px] border-l-blue-600 bg-gradient-to-br from-white to-slate-50 p-9 shadow-xl shadow-blue-950/5">
-            <span className="absolute left-7 top-0 font-serif text-9xl font-bold text-blue-100">&quot;</span>
-            <blockquote className="relative font-serif text-3xl font-semibold leading-snug text-blue-950">Let everything that has breath praise the Lord.</blockquote>
-            <cite className="mt-5 text-xs font-bold uppercase tracking-wide not-italic text-blue-600">Psalm 150:6</cite>
-          </aside>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">About us</p>
-            <h2 className="mt-3 font-serif text-4xl font-bold text-slate-950">More than music, it is our ministry.</h2>
-            <p className="mt-4 leading-8 text-slate-500">Reverence Worship brings singers, musicians, worshippers, and evangelists together to serve with excellence and humility. Our public board shares the latest sound, stories, and moments from our ministry.</p>
-            <a href="#events" className="mt-6 inline-flex rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white">See what is happening</a>
+      <section id="about" className="scroll-mt-20 bg-gradient-to-b from-white via-blue-50/40 to-white py-20">
+        <div className="mx-auto w-[min(1080px,calc(100%-28px))]">
+          <div className="mx-auto mb-12 max-w-3xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">About us</p>
+            <h2 className="mt-3 font-serif text-4xl font-bold text-slate-950 sm:text-5xl">Worship as a life of surrender</h2>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <article className="h-full min-h-[410px] rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-blue-950/5 sm:p-9">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Our foundation</p>
+              <h3 className="mt-3 font-serif text-3xl font-bold text-blue-950">Profound honor and respect for God</h3>
+              <div className="mt-5 space-y-4 leading-8 text-slate-600">
+                <p>We are a group of worshipers based at the Free Methodist Church of Rwanda, Kicukiro Parish. The name <strong className="text-slate-900">Reverence</strong> means profound honor and respect for God, reflecting our aspiration to uphold God&apos;s glory in everything we do, with reference to Hebrews 12:28.</p>
+                <p>We strongly believe that worship is not merely something done inside church buildings or during religious rituals. It is an inner attitude of the heart and spirit that reflects total surrender to God in every aspect of life.</p>
+              </div>
+            </article>
+
+            <article className="h-full min-h-[410px] rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-blue-950/5 sm:p-9">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Background</p>
+              <h3 className="mt-3 font-serif text-3xl font-bold text-blue-950">From a commission to a worship ministry</h3>
+              <div className="mt-5 space-y-4 leading-8 text-slate-600">
+                <p>Established in 2012 by the church leadership as the <strong className="text-slate-900">Worship and Praise Commission</strong> under the Evangelism Department, the commission grew into an established and permanent group leading praise and worship activities across all church services.</p>
+                <p>The group operated under that name until <strong className="text-slate-900">October 9, 2021</strong>, when it became <strong className="text-slate-900">Reverence Worship Team</strong> after beginning to produce and publish its own songs.</p>
+              </div>
+            </article>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <article className="h-full min-h-[410px] rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-blue-950/5 sm:p-9">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Mission and responsibilities</p>
+              <h3 className="mt-3 font-serif text-3xl font-bold text-slate-950">Called to lead, develop, and unite</h3>
+              <ul className="mt-6 grid gap-4">
+                {[
+                  "To lead and support all worship and praise activities in church services.",
+                  "To develop and build the church's capacity in worship and praise.",
+                  "To bring together individuals with passion and gifts in worship and praise.",
+                ].map((item, index) => (
+                  <li key={item} className="flex gap-4 rounded-2xl bg-slate-50 p-4 text-slate-700">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="pt-1 leading-6">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+
+            <aside className="relative h-full min-h-[410px] overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-blue-950/5 sm:p-9">
+              <span className="absolute -right-4 -top-10 font-serif text-[11rem] font-bold leading-none text-blue-100/70">&quot;</span>
+              <p className="relative text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Our vision</p>
+              <blockquote className="relative mt-5 font-serif text-3xl font-semibold leading-snug text-blue-950">To see our worship and praise through music help people encounter God and exalt His glory.</blockquote>
+              <p className="relative mt-7 text-sm font-bold uppercase tracking-[0.14em] text-blue-600">Encounter God · Exalt His glory</p>
+            </aside>
+          </div>
+
+          <div className="mt-14">
+            <div className="mb-7 max-w-2xl">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Our values</p>
+              <h3 className="mt-3 font-serif text-3xl font-bold text-slate-950">The character behind our worship</h3>
+              <p className="mt-3 leading-7 text-slate-600">To achieve our mission, every worship team member is called to demonstrate these values.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                ["01", "Commitment", "Romans 12:1 · 2 Timothy 2:4–10"],
+                ["02", "Excellence", "Colossians 3:22–25"],
+                ["03", "Perseverance", "Hebrews 10:36"],
+                ["04", "Unity", "Ephesians 4:1–3"],
+                ["05", "Holiness", "1 Thessalonians 4:7"],
+                ["06", "Collaboration", "1 Corinthians 12:27"],
+              ].map(([number, value, scripture]) => (
+                <article key={value} className="group flex min-h-40 flex-col rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-950/5">
+                  <span className="text-xs font-extrabold tracking-[0.18em] text-blue-500">{number}</span>
+                  <h4 className="mt-3 text-xl font-bold text-slate-950">{value}</h4>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">{scripture}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -177,7 +239,6 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Listen & worship</p>
             <h2 className="mt-3 font-serif text-4xl font-bold">Our music</h2>
-            <p className="mt-3 leading-7 text-slate-500">Published from the Music & Evangelism Public Board.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             {videos.length > 0 ? videos.map((video) => (
@@ -197,7 +258,6 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
           <div className="mb-10 max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Our story in frames</p>
             <h2 className="mt-3 font-serif text-4xl font-bold">Pictures</h2>
-            <p className="mt-3 leading-7 text-slate-500">Moments selected and published by the Music & Evangelism team.</p>
           </div>
           {pictures.length > 0 ? (
             <div className="overflow-x-auto rounded-3xl pb-2">
@@ -222,7 +282,6 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
           <div className="mb-10 max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-200">Stay connected</p>
             <h2 className="mt-3 font-serif text-4xl font-bold">Events & updates</h2>
-            <p className="mt-3 leading-7 text-blue-100">The latest notices published by Music & Evangelism.</p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {events.length > 0 ? events.map((event) => (
@@ -303,9 +362,8 @@ export function LandingPageClient({ dashboardHref, registrationEnabled, videos, 
               </div>
             </section>
           </div>
-          <div className="mt-[38px] flex flex-col justify-between gap-5 border-t border-blue-100/20 pt-[18px] text-xs md:flex-row">
+          <div className="mt-[38px] flex justify-center border-t border-blue-100/20 pt-[18px] text-center text-xs">
             <span>© {new Date().getFullYear()} Reverence Worship Team. All rights reserved.</span>
-            <span>Built for worship, service, and community.</span>
           </div>
         </div>
       </footer>

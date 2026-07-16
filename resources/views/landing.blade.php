@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -227,10 +227,10 @@
             <div class="wrap">
                 <div class="hero-content">
                     <div class="eyebrow">Reverence Worship Team</div>
-                    <h1>A sound of faith. A life of worship.</h1>
-                    <p>{{ $heroPictures->first()->description ?? 'A community serving God through worship, music, fellowship, and the message of hope.' }}</p>
+                    <h1>Life of worship</h1>
+
                     <div class="hero-verse">
-                        <span>“Let us be thankful, and so worship God acceptably with reverence and awe.”</span>
+                        <span>“Therefore let us be grateful for receiving a kingdom that cannot be shaken, and thus let us offer to God acceptable worship, with reverence and awe,”</span>
                         <strong>Hebrews 12:28</strong>
                     </div>
                     <div class="actions">
@@ -258,7 +258,7 @@
 
         <section class="music" id="music">
             <div class="wrap">
-                <div class="section-head center"><div class="eyebrow">Listen & worship</div><h2>Our music</h2><p class="lead">Published from the Music & Evangelism Public Board.</p></div>
+               
                 <div class="video-grid">
                     @forelse($videos as $video)
                         <article class="video"><div class="ratio"><iframe src="https://www.youtube-nocookie.com/embed/{{ urlencode($video->youtube_id) }}" title="{{ $video->title }}" loading="lazy" allowfullscreen></iframe></div><div class="card-body">{{ $video->title }}</div></article>
@@ -271,7 +271,7 @@
 
         <section id="pictures">
             <div class="wrap">
-                <div class="section-head"><div class="eyebrow">Our story in frames</div><h2>Pictures</h2><p class="lead">Moments selected and published by the Music & Evangelism team.</p></div>
+            
                 @if($pictures->isNotEmpty())
                     <div class="picture-carousel" data-picture-carousel>
                         <div class="picture-viewport" data-picture-viewport tabindex="0" aria-label="Featured pictures carousel">
@@ -298,7 +298,7 @@
 
         <section class="events" id="events">
             <div class="wrap">
-                <div class="section-head"><div class="eyebrow">Stay connected</div><h2>Events & updates</h2><p class="lead">The latest notices published by Music & Evangelism.</p></div>
+               
                 <div class="event-grid">
                     @forelse($events as $event)
                         <article class="event">
@@ -374,7 +374,7 @@
             </div>
             <div class="footer-bottom">
                 <span>© {{ date('Y') }} Reverence Worship Team. All rights reserved.</span>
-                <span>Built for worship, service, and community.</span>
+            
             </div>
         </div>
     </footer>

@@ -20,7 +20,7 @@ export default async function RegisterPage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="auth-register-content w-full">
       <RegisterForm />
     </div>
   );

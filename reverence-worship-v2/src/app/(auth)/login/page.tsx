@@ -14,7 +14,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-sm">
+    <div className="auth-login-content mx-auto w-full max-w-sm">
       <LoginForm registrationEnabled={registrationEnabled} />
     </div>
   );

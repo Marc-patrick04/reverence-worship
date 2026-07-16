@@ -71,6 +71,36 @@ input {
   border-radius: 1.25rem;
 }
 
+.auth-card-single {
+  max-width: 760px;
+  min-height: 640px;
+  grid-template-columns: 1fr;
+  border-radius: 1.25rem;
+}
+
+.auth-card-single .form-panel::before {
+  display: none;
+}
+
+.auth-card:has(.auth-login-content) {
+  max-width: 650px;
+  min-height: auto;
+  grid-template-columns: 1fr;
+}
+
+.auth-card:has(.auth-register-content) {
+  max-width: 760px;
+  min-height: 640px;
+  grid-template-columns: 1fr;
+}
+
+.auth-card:has(.auth-login-content) .brand-panel,
+.auth-card:has(.auth-login-content) .form-panel::before,
+.auth-card:has(.auth-register-content) .brand-panel,
+.auth-card:has(.auth-register-content) .form-panel::before {
+  display: none;
+}
+
 .brand-panel {
   display: flex;
   flex-direction: column;
