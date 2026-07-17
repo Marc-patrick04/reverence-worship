@@ -3,10 +3,8 @@ import { RegisterForm } from "@/components/register-form";
 import { getCurrentUser } from "@/lib/auth";
 import { isRegistrationEnabled } from "@/lib/system-settings";
 import { prisma } from "@/lib/prisma";
-import { oauthErrorMessage } from "@/lib/oauth-errors";
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ oauth_error?: string }> }) {
-  const { oauth_error: oauthErrorCode } = await searchParams;
+export default async function RegisterPage() {
   const [user, registrationEnabled, userCount] = await Promise.all([
     getCurrentUser(),
     isRegistrationEnabled(),
@@ -23,7 +21,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="auth-register-content w-full">
-      <RegisterForm oauthError={oauthErrorMessage(oauthErrorCode)} />
+      <RegisterForm />
     </div>
   );
 }
