@@ -29,13 +29,19 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getAdminNotifications,
   markAdminNotificationRead,
   markAllAdminNotificationsRead,
   type AdminNotification,
 } from "@/app/admin/notifications/actions";
+import {
+  OPEN_PROFILE_MODAL_EVENT,
+  ProfileModal,
+  ProfileModalTrigger,
+  type ProfileModalData,
+} from "@/components/profile-modal";
 
 type AdminUser = {
   name: string;
@@ -44,6 +50,7 @@ type AdminUser = {
   roles: string[];
   permissions: string[];
   isParent?: boolean;
+  profile: ProfileModalData;
 };
 
 type NavItem = {
@@ -60,7 +67,6 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: "",
     items: [
       { label: "Dashboard", href: "/admin/dashboard", page: "dashboard", icon: Gauge },
-      { label: "My Profile", href: "/admin/profile", page: "profile", icon: User },
       { label: "My Performance", href: "/admin/performance", page: "performance", icon: BarChart3 },
       { label: "My Contribution", href: "/admin/contributions", page: "contributions", icon: HandCoins },
       { label: "My Family", href: "/admin/family", page: "family", icon: Home },
@@ -87,7 +93,6 @@ const mobileNavItems = [
   { label: "Bible", href: "/admin/intercession?tab=bible", page: "intercession", feature: "read-bible", icon: BookOpen },
   { label: "Playlist", href: "/admin/music?tab=playlist", page: "music-ministry", feature: "view-playlists", icon: ListMusic },
   { label: "Giving", href: "/admin/contributions", page: "contributions", icon: HandCoins },
-  { label: "Profile", href: "/admin/profile", page: "profile", icon: User },
   { label: "Progress", href: "/admin/performance", page: "performance", icon: BarChart3 },
   { label: "Settings", href: "/admin/settings", page: "settings", icon: Settings },
 ];
@@ -137,12 +142,14 @@ export function AdminShell({
   const [notificationsLoaded, setNotificationsLoaded] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const lastActivityRef = useRef(0);
   const activitySincePingRef = useRef(true);
   const loggingOutRef = useRef(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const closeProfile = useCallback(() => setProfileOpen(false), []);
   const visibleNavGroups = navGroupsForPermissions(user.permissions, user.roles, !!user.isParent);
   const visibleMobileNavItems = mobileNavItems.filter((item) =>
     visibleNavGroups.some((group) => group.items.some((navItem) => navItem.href === item.href)),
@@ -183,6 +190,17 @@ export function AdminShell({
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadNotifications(), 0);
     return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    const openProfile = () => {
+      setProfileOpen(true);
+      setMobileOpen(false);
+      setUserMenuOpen(false);
+      setNotificationOpen(false);
+    };
+    window.addEventListener(OPEN_PROFILE_MODAL_EVENT, openProfile);
+    return () => window.removeEventListener(OPEN_PROFILE_MODAL_EVENT, openProfile);
   }, []);
 
   useEffect(() => {
@@ -318,21 +336,27 @@ export function AdminShell({
               <div key={group.label} className="admin-nav-group">
                 <p className="admin-nav-heading">{group.label}</p>
                 <div className="space-y-1">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`admin-nav-item ${
-                        pathname === item.href || pathname.startsWith(`${item.href}/`)
-                          ? "active"
-                          : ""
-                      }`}
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      <item.icon className="admin-nav-icon" aria-hidden="true" />
-                      <span>{item.label}</span>
-                    </Link>
-                  ))}
+                  {group.items.map((item) => {
+                    const className = `admin-nav-item ${
+                      pathname === item.href || pathname.startsWith(`${item.href}/`) ? "active" : ""
+                    }`;
+                    const content = (
+                      <>
+                        <item.icon className="admin-nav-icon" aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </>
+                    );
+
+                    return item.page === "profile" ? (
+                      <ProfileModalTrigger key={item.href} className={`${className} w-full`} onOpen={() => setMobileOpen(false)}>
+                        {content}
+                      </ProfileModalTrigger>
+                    ) : (
+                      <Link key={item.href} href={item.href} className={className} onClick={() => setMobileOpen(false)}>
+                        {content}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -482,14 +506,13 @@ export function AdminShell({
 
                 {userMenuOpen && (
                   <div className="admin-user-dropdown">
-                    <Link
-                      href="/admin/profile"
+                    <ProfileModalTrigger
                       className="admin-user-dropdown-item"
-                      onClick={() => setUserMenuOpen(false)}
+                      onOpen={() => setUserMenuOpen(false)}
                     >
                       <User className="size-4 text-gray-500" aria-hidden="true" />
                       <span>My Profile</span>
-                    </Link>
+                    </ProfileModalTrigger>
                     <div className="h-px bg-gray-200" />
                     <form action="/logout" method="post">
                       <button type="submit" className="admin-user-dropdown-item w-full text-left">
@@ -508,12 +531,24 @@ export function AdminShell({
       </div>
 
       <nav className="admin-mobile-footer">
-        {visibleMobileNavItems.map((item) => (
-          <Link key={item.href} href={item.href} className="admin-mobile-footer-item" onClick={() => setMobileOpen(false)}>
-            <item.icon className="size-5" aria-hidden="true" />
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {visibleMobileNavItems.map((item) => {
+          const content = (
+            <>
+              <item.icon className="size-5" aria-hidden="true" />
+              <span>{item.label}</span>
+            </>
+          );
+
+          return item.page === "profile" ? (
+            <ProfileModalTrigger key={item.href} className="admin-mobile-footer-item" onOpen={() => setMobileOpen(false)}>
+              {content}
+            </ProfileModalTrigger>
+          ) : (
+            <Link key={item.href} href={item.href} className="admin-mobile-footer-item" onClick={() => setMobileOpen(false)}>
+              {content}
+            </Link>
+          );
+        })}
         <button
           type="button"
           className={`admin-mobile-footer-item admin-mobile-footer-menu ${mobileOpen ? "active" : ""}`}
@@ -525,6 +560,8 @@ export function AdminShell({
           <span>Menu</span>
         </button>
       </nav>
+
+      <ProfileModal profile={user.profile} open={profileOpen} onClose={closeProfile} />
     </main>
   );
 }

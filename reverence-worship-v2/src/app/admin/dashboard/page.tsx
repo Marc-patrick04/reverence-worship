@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { PerformanceSummaryCards } from "@/components/performance-client";
 import { getPerformanceDateRange } from "@/lib/performance-date-range";
 import { getUserPerformanceData, type PerformanceMetrics } from "@/lib/user-performance";
+import { ProfileModalTrigger } from "@/components/profile-modal";
 
 const systemCountLabels = [
   "Forms",
@@ -242,22 +243,37 @@ function DashboardHero({
   actions,
 }: {
   message: string;
-  actions: Array<{ label: string; href: string; icon: typeof Users; variant: "primary" | "secondary" }>;
+  actions: Array<{
+    label: string;
+    href: string;
+    icon: typeof Users;
+    variant: "primary" | "secondary";
+    opensProfile?: boolean;
+  }>;
 }) {
   return (
     <div className="dashboard-hero mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{message}</h1>
       <div className="flex flex-col gap-2 sm:flex-row">
-        {actions.map((action) => (
-          <Link
-            key={action.label}
-            href={action.href}
-            className={action.variant === "primary" ? "dashboard-hero-primary" : "dashboard-hero-secondary"}
-          >
-            <action.icon className="size-4" aria-hidden="true" />
-            {action.label}
-          </Link>
-        ))}
+        {actions.map((action) => {
+          const className = action.variant === "primary" ? "dashboard-hero-primary" : "dashboard-hero-secondary";
+          const content = (
+            <>
+              <action.icon className="size-4" aria-hidden="true" />
+              {action.label}
+            </>
+          );
+
+          return action.opensProfile ? (
+            <ProfileModalTrigger key={action.label} className={className}>
+              {content}
+            </ProfileModalTrigger>
+          ) : (
+            <Link key={action.label} href={action.href} className={className}>
+              {content}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -278,7 +294,9 @@ function RoleDashboard({
     <div className="super-admin-dashboard mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
       <DashboardHero
         message={message}
-        actions={[{ label: "My Profile", href: "/admin/profile", icon: UserCheck, variant: "secondary" }]}
+        actions={[
+          { label: "My Profile", href: "/admin/profile", icon: UserCheck, variant: "secondary", opensProfile: true },
+        ]}
       />
 
       <DashboardPerformance metrics={performanceMetrics} fromDate={fromDate} toDate={toDate} />

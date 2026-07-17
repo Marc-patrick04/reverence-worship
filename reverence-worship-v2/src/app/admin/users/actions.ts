@@ -414,6 +414,7 @@ export async function createUserAction(
       occupation: parsed.data.occupation || null,
       skills: parsed.data.skills || null,
       passwordHash,
+      mustChangePassword: true,
       status: parsed.data.status,
       emailVerifiedAt: parsed.data.status === "active" ? new Date() : null,
       createdById: admin.id,
@@ -429,8 +430,8 @@ export async function createUserAction(
     userIds: [createdUser.id],
     type: "account",
     title: "Account created",
-    message: `Your account was created with ${createdUser.status} status.`,
-    link: "/admin/dashboard",
+    message: `Your account was created with ${createdUser.status} status. You must choose a new password when you first sign in.`,
+    link: "/change-password",
     sourceType: "user",
     sourceId: createdUser.id,
     dedupeKey: `account:${createdUser.id}:created`,
@@ -685,6 +686,7 @@ export async function updateUserAction(
 
   const password = parsed.data.password?.trim();
   const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+  const passwordChangedByAnotherUser = Boolean(passwordHash && admin.id !== parsed.data.userId);
 
   await prisma.user.update({
     where: { id: parsed.data.userId },
@@ -705,7 +707,7 @@ export async function updateUserAction(
       status: parsed.data.status,
       emailVerifiedAt: parsed.data.status === "active" ? new Date() : null,
       ...(passwordHash ? { passwordHash } : {}),
-      ...(passwordHash ? { mustChangePassword: false } : {}),
+      ...(passwordHash ? { mustChangePassword: passwordChangedByAnotherUser } : {}),
     },
   });
 
@@ -716,7 +718,18 @@ export async function updateUserAction(
     ]);
   }
   if (passwordHash) {
-    await notifyUsers({ userIds: [parsed.data.userId], type: "security", title: "Password changed", message: "Your account password was changed successfully. Contact an administrator if you did not request this.", link: "/admin/profile", sourceType: "user", sourceId: parsed.data.userId, dedupeKey: `account:${parsed.data.userId}:password:${Date.now()}` });
+    await notifyUsers({
+      userIds: [parsed.data.userId],
+      type: "security",
+      title: "Password changed",
+      message: passwordChangedByAnotherUser
+        ? "Your account password was changed by another authorized user. You must choose a new password when you next sign in."
+        : "Your account password was changed successfully. Contact an administrator if you did not request this.",
+      link: passwordChangedByAnotherUser ? "/change-password" : "/admin/profile",
+      sourceType: "user",
+      sourceId: parsed.data.userId,
+      dedupeKey: `account:${parsed.data.userId}:password:${Date.now()}`,
+    });
   }
   if (currentUser.status !== parsed.data.status) {
     const action = parsed.data.status === "active" ? "activate" : "deactivate";

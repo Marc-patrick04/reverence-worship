@@ -26,7 +26,36 @@ export default async function AdminLayout({
 
   return (
     <AppDialogProvider>
-      <AdminShell user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl, roles, permissions, isParent }}>
+      <AdminShell
+        user={{
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          roles,
+          permissions,
+          isParent,
+          profile: {
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+            status: user.status,
+            roleLabels: user.roles.map((userRole) => userRole.role.displayName),
+            phone: user.phone,
+            gender: user.gender,
+            dateOfBirth: user.dateOfBirth?.toISOString() ?? null,
+            maritalStatus: user.maritalStatus,
+            membershipType: user.membershipType,
+            occupation: user.occupation,
+            province: user.province,
+            district: user.district,
+            sector: user.sector,
+            village: user.village,
+            emergencyName: user.emergencyName,
+            emergencyPhone: user.emergencyPhone,
+            notes: user.notes,
+          },
+        }}
+      >
         {children}
       </AdminShell>
     </AppDialogProvider>

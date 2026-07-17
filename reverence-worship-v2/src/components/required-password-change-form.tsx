@@ -12,9 +12,9 @@ export function RequiredPasswordChangeForm() {
   return (
     <form action={formAction} className="mx-auto w-full max-w-md space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Change Your Password</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Change Password</h1>
         <p className="mt-1 text-sm leading-6 text-gray-500">
-          Your account was imported with a temporary password. Please set your own password before continuing.
+          Please set your own password before continuing.
         </p>
       </div>
 

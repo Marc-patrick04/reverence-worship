@@ -744,7 +744,9 @@ export function UserManagementClient({
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-700">New Password (Optional)</label>
                   <input name="password" type="password" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p className="mt-1 text-xs text-gray-500">Leave blank to keep current password</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Leave blank to keep the current password. If you set one for another user, they must change it when they next sign in.
+                  </p>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-700">Confirm New Password</label>
@@ -876,6 +878,7 @@ export function UserManagementClient({
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-700">Password *</label>
                   <input name="password" required type="password" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p className="mt-1 text-xs text-gray-500">This is temporary; the user must change it when they first sign in.</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-700">Confirm Password *</label>
