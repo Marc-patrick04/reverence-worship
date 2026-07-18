@@ -185,9 +185,6 @@ export default async function DisciplinePage({
     ),
     safeRead(
       prisma.permissionRequest.findMany({
-        where: {
-          createdAt: { gte: startDate, lte: endDate },
-        },
         orderBy: { createdAt: "desc" },
         take: 6,
         include: {

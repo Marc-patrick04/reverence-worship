@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, BookOpen, CalendarCheck, CheckCircle2, ClipboardList, Clock, Download, Edit, FileText, FileUp, Filter, Gavel, Info, MailOpen, Play, Plus, Save, Search, Smile, Trash2, TriangleAlert, X, XCircle } from "lucide-react";
+import { BarChart3, BookOpen, CalendarCheck, CheckCircle2, ClipboardList, Clock, Download, Edit, Eye, FileText, FileUp, Filter, Gavel, Info, MailOpen, Play, Plus, Save, Search, Smile, Trash2, TriangleAlert, X, XCircle } from "lucide-react";
 import {
   approvePermissionRequest,
   completeAttendanceSession,
@@ -12,6 +12,7 @@ import {
   deleteDisciplineSession,
   deletePermissionRequest,
   importAttendanceCsv,
+  importPermissionRequestsCsv,
   rejectPermissionRequest,
   resolveDisciplineRecord,
   saveDisciplineActionPlan,
@@ -233,7 +234,12 @@ export function DisciplineClient({
   const [permissionStatus, setPermissionStatus] = useState("all");
   const [permissionFrom, setPermissionFrom] = useState("");
   const [permissionTo, setPermissionTo] = useState("");
+  const [permissionPage, setPermissionPage] = useState(1);
   const [permissionModal, setPermissionModal] = useState(false);
+  const [permissionImportModal, setPermissionImportModal] = useState(false);
+  const [permissionImportFiles, setPermissionImportFiles] = useState<File[]>([]);
+  const [permissionImportError, setPermissionImportError] = useState<string | null>(null);
+  const [isImportingPermissions, setIsImportingPermissions] = useState(false);
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
   const [selectedPermissionUser, setSelectedPermissionUser] = useState<AttendanceUser | null>(null);
   const [permissionUserSearch, setPermissionUserSearch] = useState("");
@@ -678,6 +684,13 @@ export function DisciplineClient({
     approved: filteredPermissions.filter((permission) => permission.status === "approved").length,
     rejected: filteredPermissions.filter((permission) => permission.status === "rejected").length,
   };
+  const permissionPageSize = 10;
+  const permissionPageCount = Math.max(1, Math.ceil(filteredPermissions.length / permissionPageSize));
+  const currentPermissionPage = Math.min(permissionPage, permissionPageCount);
+  const paginatedPermissions = filteredPermissions.slice(
+    (currentPermissionPage - 1) * permissionPageSize,
+    currentPermissionPage * permissionPageSize,
+  );
   const filteredPermissionUsers = users.filter((user) => {
     const normalized = permissionUserSearch.trim().toLowerCase();
     if (normalized.length < 2) return false;
@@ -709,6 +722,49 @@ export function DisciplineClient({
     URL.revokeObjectURL(url);
   }
 
+  function downloadPermissionTemplate() {
+    const headers = ["Email", "Full Name", "Permission Type", "Start Date", "End Date", "Reason", "Status", "Approver Email", "Decision Date", "Rejection Reason", "Recorded Date"];
+    const example = ["member@example.com", "Example Member", "General", "2025-01-01", "2025-01-03", "Family commitment", "Approved", "approver@example.com", "2025-01-01", "", "2025-01-01"];
+    const csvCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const csv = `\uFEFF${headers.map(csvCell).join(",")}\r\n${example.map(csvCell).join(",")}\r\n`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "historical-permission-import-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function submitPermissionImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (permissionImportFiles.length === 0) {
+      setPermissionImportError("Choose one or more CSV files to import.");
+      return;
+    }
+
+    const formData = new FormData();
+    permissionImportFiles.forEach((file) => formData.append("files", file));
+    setPermissionImportError(null);
+    setIsImportingPermissions(true);
+    try {
+      const result = await importPermissionRequestsCsv(formData);
+      if (!result.ok) {
+        setPermissionImportError(result.message);
+        return;
+      }
+      setMessage(result.message);
+      setPermissionImportModal(false);
+      setPermissionImportFiles([]);
+      router.refresh();
+    } catch (error) {
+      setPermissionImportError(error instanceof Error ? error.message : "Permission import failed. Please try again.");
+    } finally {
+      setIsImportingPermissions(false);
+    }
+  }
+
   function openPermissionModal(permission?: Permission) {
     setEditingPermission(permission ?? null);
     const selectedUser = permission
@@ -723,6 +779,15 @@ export function DisciplineClient({
     setPermissionEndDate(permission?.endDateValue ?? new Date().toISOString().slice(0, 10));
     setPermissionReason(permission?.reason ?? "");
     setPermissionModal(true);
+  }
+
+  function viewRecentPermission(permission: RecentPermission) {
+    setPermissionSearch(permission.userEmail);
+    setPermissionStatus("all");
+    setPermissionFrom("");
+    setPermissionTo("");
+    setPermissionPage(1);
+    setActiveTab("permission");
   }
 
   async function submitPermission() {
@@ -1155,6 +1220,15 @@ export function DisciplineClient({
                               {session.sessionDateLabel}
                             </p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => openAttendanceSession(session.sessionDate, session.sessionType)}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                            aria-label={`View ${session.sessionType} attendance session`}
+                          >
+                            <Eye className="size-3.5" />
+                            View
+                          </button>
                         </div>
                       ))
                     ) : (
@@ -1183,7 +1257,13 @@ export function DisciplineClient({
                               <p className="line-clamp-1 text-xs text-gray-500">{permission.reason}</p>
                               <p className="mt-1 text-xs text-gray-400">{permission.type} • {permission.createdAt}</p>
                             </div>
-                            <button type="button" onClick={() => setActiveTab("permission")} className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                            <button
+                              type="button"
+                              onClick={() => viewRecentPermission(permission)}
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                              aria-label={`View permission request for ${permission.userName}`}
+                            >
+                              <Eye className="size-3.5" />
                               View
                             </button>
                           </div>
@@ -1384,12 +1464,12 @@ export function DisciplineClient({
                   <label className="mb-1 block text-xs text-gray-600">Search</label>
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                    <input value={permissionSearch} onChange={(event) => setPermissionSearch(event.target.value)} placeholder="Search by name or reason..." className="h-9 w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:py-2.5" />
+                    <input value={permissionSearch} onChange={(event) => { setPermissionSearch(event.target.value); setPermissionPage(1); }} placeholder="Search by name or reason..." className="h-9 w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:py-2.5" />
                   </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-600">Status</label>
-                  <select value={permissionStatus} onChange={(event) => setPermissionStatus(event.target.value)} className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm">
+                  <select value={permissionStatus} onChange={(event) => { setPermissionStatus(event.target.value); setPermissionPage(1); }} className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm">
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
@@ -1399,21 +1479,27 @@ export function DisciplineClient({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-600">From</label>
-                  <input value={permissionFrom} onChange={(event) => setPermissionFrom(event.target.value)} type="date" className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm" />
+                  <input value={permissionFrom} onChange={(event) => { setPermissionFrom(event.target.value); setPermissionPage(1); }} type="date" className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-600">To</label>
-                  <input value={permissionTo} onChange={(event) => setPermissionTo(event.target.value)} type="date" className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm" />
+                  <input value={permissionTo} onChange={(event) => { setPermissionTo(event.target.value); setPermissionPage(1); }} type="date" className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:h-auto sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-sm" />
                 </div>
                   <button type="button" className="h-9 w-full rounded-lg bg-gray-100 px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-200 sm:h-auto sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
                     <Search className="mr-1 inline size-4" />
                     Filter
                   </button>
                 </div>
-                {canManage && <button onClick={exportPermissionsCsv} className="mt-3 h-9 w-full rounded-lg bg-blue-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 sm:h-auto sm:w-52 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
-                  <FileText className="mr-1 inline size-4" />
-                  Export
-                </button>}
+                {canManage && <div className="mt-3 grid grid-cols-2 gap-3 sm:flex">
+                  <button onClick={exportPermissionsCsv} className="h-9 w-full rounded-lg bg-blue-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 sm:h-auto sm:w-52 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
+                    <FileText className="mr-1 inline size-4" />
+                    Export
+                  </button>
+                  <button type="button" onClick={() => { setPermissionImportError(null); setPermissionImportModal(true); }} className="h-9 w-full rounded-lg border border-blue-200 bg-white px-3 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-50 sm:h-auto sm:w-40 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
+                    <FileUp className="mr-1 inline size-4" />
+                    Import
+                  </button>
+                </div>}
               </div>
 
               <div className="hidden overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm md:block">
@@ -1431,7 +1517,7 @@ export function DisciplineClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredPermissions.length ? filteredPermissions.map((permission) => (
+                      {filteredPermissions.length ? paginatedPermissions.map((permission) => (
                         <tr key={permission.id} className="align-top hover:bg-gray-50/70">
                           <td className="px-4 py-4 text-sm font-semibold text-gray-900">
                             <span className="block max-w-[160px] break-words">{permission.userName}</span>
@@ -1485,7 +1571,7 @@ export function DisciplineClient({
               </div>
 
               <div className="space-y-3 md:hidden">
-                {filteredPermissions.length ? filteredPermissions.map((permission) => (
+                {filteredPermissions.length ? paginatedPermissions.map((permission) => (
                   <article key={permission.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
@@ -1539,6 +1625,35 @@ export function DisciplineClient({
                   </div>
                 )}
               </div>
+
+              {filteredPermissions.length > permissionPageSize && (
+                <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                  <p className="text-xs text-slate-500 sm:text-sm">
+                    Showing {(currentPermissionPage - 1) * permissionPageSize + 1}–{Math.min(currentPermissionPage * permissionPageSize, filteredPermissions.length)} of {filteredPermissions.length} permission records
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPermissionPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPermissionPage === 1}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                    >
+                      Previous
+                    </button>
+                    <span className="min-w-24 text-center text-xs font-medium text-slate-600 sm:text-sm">
+                      Page {currentPermissionPage} of {permissionPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPermissionPage((page) => Math.min(permissionPageCount, page + 1))}
+                      disabled={currentPermissionPage === permissionPageCount}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : activeTab === "discipline-records" ? (
             <div className="space-y-5">
@@ -1967,6 +2082,71 @@ export function DisciplineClient({
                 <button type="submit" disabled={isImportingAttendance || attendanceImportFiles.length === 0} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
                   <FileUp className="size-4" />
                   {isImportingAttendance ? "Importing..." : "Import Attendance"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {permissionImportModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Import Historical Permissions</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Add permission records that were kept outside this system.</p>
+              </div>
+              <button type="button" onClick={() => setPermissionImportModal(false)} disabled={isImportingPermissions} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60" aria-label="Close permission import">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitPermissionImport} className="space-y-4 p-5">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                <p className="font-semibold">How to prepare the file</p>
+                <p className="mt-1 leading-5">Download the template, replace or delete its example row, then save it as CSV UTF-8.</p>
+                <p className="mt-2 text-xs leading-5 text-blue-700">
+                  <strong>Email</strong>, Start Date, End Date, Reason, and Status are required. Use unambiguous <strong>YYYY-MM-DD</strong> dates; existing US-style <strong>MM/DD/YYYY</strong> files are also accepted. Status can be Pending, Approved, Rejected, or Cancelled. Rejected rows also require a Rejection Reason.
+                </p>
+                <p className="mt-1 text-xs text-blue-700">Full Name is only for reference. Members and optional approvers are matched by email. Existing matching records are skipped.</p>
+              </div>
+
+              <button type="button" onClick={downloadPermissionTemplate} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">
+                <Download className="size-4" />
+                Download Permission CSV Template
+              </button>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">Permission CSV files</label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+                  required
+                  onChange={(event) => { setPermissionImportError(null); setPermissionImportFiles(Array.from(event.target.files ?? [])); }}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {permissionImportFiles.length > 0 && (
+                  <p className="mt-2 text-xs font-medium text-slate-600">
+                    {permissionImportFiles.length} file{permissionImportFiles.length === 1 ? "" : "s"} selected
+                  </p>
+                )}
+              </div>
+
+              {permissionImportError && (
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  {permissionImportError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setPermissionImportModal(false)} disabled={isImportingPermissions} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-60">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isImportingPermissions || permissionImportFiles.length === 0} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+                  <FileUp className="size-4" />
+                  {isImportingPermissions ? "Importing..." : "Import Permissions"}
                 </button>
               </div>
             </form>

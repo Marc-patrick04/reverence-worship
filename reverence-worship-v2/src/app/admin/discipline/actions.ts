@@ -28,6 +28,19 @@ type ImportedAttendanceRecord = {
   notes: string | null;
 };
 
+type ImportedPermissionRequest = {
+  userId: number;
+  type: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  approvedBy: number | null;
+  approvedAt: Date | null;
+  rejectionReason: string | null;
+  createdAt: Date;
+};
+
 type DisciplineRecordInput = {
   userId: number;
   behaviour: "good" | "bad";
@@ -123,6 +136,22 @@ function importedDate(value: string) {
     ? { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) }
     : dayFirst
       ? { year: Number(dayFirst[3].length === 2 ? `20${dayFirst[3]}` : dayFirst[3]), month: Number(dayFirst[2]), day: Number(dayFirst[1]) }
+      : null;
+  if (!parts) return null;
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+  return date.getUTCFullYear() === parts.year && date.getUTCMonth() === parts.month - 1 && date.getUTCDate() === parts.day
+    ? `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`
+    : null;
+}
+
+function importedPermissionDate(value: string) {
+  const normalized = value.trim();
+  const iso = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const monthFirst = normalized.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  const parts = iso
+    ? { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) }
+    : monthFirst
+      ? { year: Number(monthFirst[3].length === 2 ? `20${monthFirst[3]}` : monthFirst[3]), month: Number(monthFirst[1]), day: Number(monthFirst[2]) }
       : null;
   if (!parts) return null;
   const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
@@ -560,6 +589,154 @@ export async function deleteAttendanceSession(sessionDateValue: string, sessionT
   revalidatePath("/admin/discipline");
 
   return { ok: true, message: "Attendance session deleted." };
+}
+
+export async function importPermissionRequestsCsv(formData: FormData) {
+  const admin = await requirePermission("discipline", "approve-permission-requests");
+  const files = formData.getAll("files").filter((value): value is File => value instanceof File && value.size > 0);
+
+  if (files.length === 0) return { ok: false, message: "Choose one or more CSV files to import." };
+  if (files.length > 25) return { ok: false, message: "Import no more than 25 CSV files at once." };
+  const oversizedFile = files.find((file) => file.size > 10 * 1024 * 1024);
+  if (oversizedFile) return { ok: false, message: `${oversizedFile.name} is larger than the 10 MB per-file limit.` };
+  const excelFile = files.find((file) => /\.(xlsx|xls)$/i.test(file.name));
+  if (excelFile) return { ok: false, message: `Save ${excelFile.name} as CSV UTF-8 before importing it.` };
+
+  const sourceRows: Array<{ values: Record<string, string>; location: string }> = [];
+  for (const file of files) {
+    const table = parseDelimitedRows(decodeImportFile(await file.arrayBuffer()));
+    if (table.length < 2) return { ok: false, message: `${file.name} has no permission rows.` };
+    const headers = table[0].map(normalizeImportHeader);
+    table.slice(1).forEach((cells, index) => {
+      sourceRows.push({
+        values: Object.fromEntries(headers.map((header, cellIndex) => [header, cells[cellIndex] ?? ""])),
+        location: `${file.name}, row ${index + 2}`,
+      });
+    });
+  }
+  if (sourceRows.length > 10_000) return { ok: false, message: "Import no more than 10,000 permission rows at once." };
+
+  const users = await prisma.user.findMany({ select: { id: true, email: true } });
+  const usersByEmail = new Map(users.map((user) => [user.email.trim().toLowerCase(), user]));
+  const failures: string[] = [];
+  const parsed = new Map<string, ImportedPermissionRequest>();
+
+  for (const { values: row, location } of sourceRows) {
+    const email = importedValue(row, "Email", "Member Email", "Email Address").toLowerCase();
+    const member = usersByEmail.get(email);
+    const startDate = importedPermissionDate(importedValue(row, "Start Date", "From"));
+    const endDate = importedPermissionDate(importedValue(row, "End Date", "To"));
+    const reason = importedValue(row, "Reason");
+    const type = importedValue(row, "Permission Type", "Type") || "General";
+    const statusValue = importedValue(row, "Status").toLowerCase();
+    const status = (["pending", "approved", "rejected", "cancelled"].includes(statusValue)
+      ? statusValue
+      : null) as ImportedPermissionRequest["status"] | null;
+
+    if (!member) {
+      failures.push(email ? `${location}: no user has email ${email}` : `${location}: missing Email`);
+      continue;
+    }
+    if (!startDate || !endDate) {
+      failures.push(`${location}: invalid or missing Start Date or End Date`);
+      continue;
+    }
+    if (startDate > endDate) {
+      failures.push(`${location}: End Date is before Start Date`);
+      continue;
+    }
+    if (!reason) {
+      failures.push(`${location}: missing Reason`);
+      continue;
+    }
+    if (!status) {
+      failures.push(`${location}: Status must be Pending, Approved, Rejected, or Cancelled`);
+      continue;
+    }
+
+    const approverEmail = importedValue(row, "Approver Email", "Approved By Email").toLowerCase();
+    const approver = approverEmail ? usersByEmail.get(approverEmail) : undefined;
+    if (approverEmail && !approver) {
+      failures.push(`${location}: no approver has email ${approverEmail}`);
+      continue;
+    }
+    const decisionDateValue = importedValue(row, "Decision Date", "Approval Date", "Approved At");
+    const decisionDate = decisionDateValue ? importedPermissionDate(decisionDateValue) : null;
+    if (decisionDateValue && !decisionDate) {
+      failures.push(`${location}: invalid Decision Date`);
+      continue;
+    }
+    const recordedDateValue = importedValue(row, "Recorded Date", "Created Date", "Created At");
+    const recordedDate = recordedDateValue ? importedPermissionDate(recordedDateValue) : startDate;
+    if (!recordedDate) {
+      failures.push(`${location}: invalid Recorded Date`);
+      continue;
+    }
+    const rejectionReason = importedValue(row, "Rejection Reason", "Comment", "Comments") || null;
+    if (status === "rejected" && !rejectionReason) {
+      failures.push(`${location}: Rejection Reason is required for rejected records`);
+      continue;
+    }
+
+    const decisionStatus = status === "approved" || status === "rejected";
+    const record: ImportedPermissionRequest = {
+      userId: member.id,
+      type,
+      startDate,
+      endDate,
+      reason,
+      status,
+      approvedBy: decisionStatus ? (approver?.id ?? admin.id) : null,
+      approvedAt: decisionStatus ? dateOnly(decisionDate ?? recordedDate) : null,
+      rejectionReason: status === "rejected" ? rejectionReason : null,
+      createdAt: dateOnly(recordedDate),
+    };
+    const key = `${record.userId}__${startDate}__${endDate}__${type.toLowerCase()}__${reason.toLowerCase()}`;
+    if (parsed.has(key)) failures.push(`${location}: duplicate row in import files`);
+    else parsed.set(key, record);
+  }
+
+  if (parsed.size === 0) {
+    return { ok: false, message: `No permission records were imported. ${failures.slice(0, 4).join("; ") || "Check the template columns."}` };
+  }
+
+  const candidateUserIds = [...new Set([...parsed.values()].map((record) => record.userId))];
+  const existing = await prisma.permissionRequest.findMany({
+    where: { userId: { in: candidateUserIds } },
+    select: { userId: true, startDate: true, endDate: true, type: true, reason: true },
+  });
+  const existingKeys = new Set(existing.map((record) =>
+    `${record.userId}__${record.startDate.toISOString().slice(0, 10)}__${record.endDate.toISOString().slice(0, 10)}__${record.type.toLowerCase()}__${record.reason.toLowerCase()}`,
+  ));
+  const records = [...parsed.entries()].filter(([key]) => !existingKeys.has(key)).map(([, record]) => record);
+  const duplicates = parsed.size - records.length;
+
+  if (records.length === 0) {
+    return { ok: false, message: `No new permission records were imported; all ${duplicates} valid row(s) already exist.` };
+  }
+
+  await prisma.permissionRequest.createMany({
+    data: records.map((record) => ({
+      userId: record.userId,
+      type: record.type,
+      startDate: dateOnly(record.startDate),
+      endDate: dateOnly(record.endDate),
+      reason: record.reason,
+      status: record.status,
+      approvedBy: record.approvedBy,
+      approvedAt: record.approvedAt,
+      rejectionReason: record.rejectionReason,
+      createdAt: record.createdAt,
+      updatedAt: record.createdAt,
+    })),
+  });
+
+  revalidatePath("/admin/discipline");
+  const skipped = failures.length + duplicates;
+  return {
+    ok: true,
+    message: `Imported ${records.length} historical permission record(s)${skipped ? `; skipped ${skipped} row(s)${duplicates ? ` (${duplicates} already existed)` : ""}${failures.length ? `: ${failures.slice(0, 3).join("; ")}` : ""}` : ""}.`,
+  };
 }
 
 export async function savePermissionRequest(formData: FormData) {
