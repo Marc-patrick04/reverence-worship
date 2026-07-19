@@ -592,7 +592,7 @@ export function DisciplineClient({
     );
     setSessionModal(true);
     setPermissionReviewModal(!completed && pendingPermissionsForDate.length > 0 ? "pending" : null);
-    if (completed) setMessage("This session is completed. You can view it, but editing is locked.");
+  
   }
 
   function updateDraft(userId: number, patch: Partial<AttendanceDraft>) {
