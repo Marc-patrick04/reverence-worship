@@ -823,12 +823,22 @@ export function DisciplineClient({
     formData.set("startDate", permissionStartDate);
     formData.set("endDate", permissionEndDate);
     formData.set("reason", permissionReason);
-    const result = await savePermissionRequest(formData);
-    setMessage(result.message);
-    setIsSaving(false);
-    if (result.ok) {
-      setPermissionModal(false);
-      router.refresh();
+    try {
+      const result = await savePermissionRequest(formData);
+      setMessage(result.message);
+      if (result.ok) {
+        setPermissionModal(false);
+        router.refresh();
+      } else {
+        setNotice({ title: "Permission Not Saved", message: result.message });
+      }
+    } catch (error) {
+      setNotice({
+        title: "Permission Not Saved",
+        message: error instanceof Error ? error.message : "The permission request could not be saved. Please retry.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -1025,12 +1035,22 @@ export function DisciplineClient({
     formData.set("sessionDate", disciplineDate);
     formData.set("title", disciplineTitle.trim());
     formData.set("recordsJson", JSON.stringify(disciplineDrafts));
-    const result = await saveDisciplineSession(formData);
-    setMessage(result.message);
-    setIsSaving(false);
-    if (result.ok) {
-      setDisciplineModal(false);
-      router.refresh();
+    try {
+      const result = await saveDisciplineSession(formData);
+      setMessage(result.message);
+      if (result.ok) {
+        setDisciplineModal(false);
+        router.refresh();
+      } else {
+        setNotice({ title: "Discipline Records Not Saved", message: result.message });
+      }
+    } catch (error) {
+      setNotice({
+        title: "Discipline Records Not Saved",
+        message: error instanceof Error ? error.message : "The discipline records could not be saved. Please retry.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -1084,14 +1104,24 @@ export function DisciplineClient({
     setIsSaving(true);
     const formData = new FormData(event.currentTarget);
     if (editingActionPlan) formData.set("id", String(editingActionPlan.id));
-    const result = await saveDisciplineActionPlan(formData);
-    setIsSaving(false);
-    if (result.ok) {
-      setActionPlanModal(false);
-      setEditingActionPlan(null);
-      router.refresh();
+    try {
+      const result = await saveDisciplineActionPlan(formData);
+      setMessage(result.message);
+      if (result.ok) {
+        setActionPlanModal(false);
+        setEditingActionPlan(null);
+        router.refresh();
+      } else {
+        setNotice({ title: "Action Plan Not Saved", message: result.message });
+      }
+    } catch (error) {
+      setNotice({
+        title: "Action Plan Not Saved",
+        message: error instanceof Error ? error.message : "The action plan could not be saved. Please retry.",
+      });
+    } finally {
+      setIsSaving(false);
     }
-    setMessage(result.message);
   }
 
   async function submitActionPlanTask(event: FormEvent<HTMLFormElement>) {
@@ -1101,15 +1131,25 @@ export function DisciplineClient({
     const formData = new FormData(event.currentTarget);
     formData.set("actionPlanId", String(taskPlan.id));
     if (editingActionTask) formData.set("id", String(editingActionTask.id));
-    const result = await saveDisciplineActionPlanTask(formData);
-    setIsSaving(false);
-    if (result.ok) {
-      setTaskModal(false);
-      setTaskPlan(null);
-      setEditingActionTask(null);
-      router.refresh();
+    try {
+      const result = await saveDisciplineActionPlanTask(formData);
+      setMessage(result.message);
+      if (result.ok) {
+        setTaskModal(false);
+        setTaskPlan(null);
+        setEditingActionTask(null);
+        router.refresh();
+      } else {
+        setNotice({ title: "Action Plan Task Not Saved", message: result.message });
+      }
+    } catch (error) {
+      setNotice({
+        title: "Action Plan Task Not Saved",
+        message: error instanceof Error ? error.message : "The action plan task could not be saved. Please retry.",
+      });
+    } finally {
+      setIsSaving(false);
     }
-    setMessage(result.message);
   }
 
   function removeActionPlan(plan: DisciplineActionPlan) {
